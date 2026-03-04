@@ -1,0 +1,47 @@
+/* Interior pages — blurred background */
+.page-wrapper {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.page-bg {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(18px);
+  transform: scale(1.05);
+  z-index: 0;
+}
+
+.page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.page-content {
+  position: relative;
+  z-index: 1;
+  padding: 8rem 3rem 3rem;
+  color: var(--white);
+}
+
+.page-content h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 3rem;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 768px) {
+  .page-bg {
+    filter: blur(12px);
+  }
+
+  .page-content {
+    padding: 6rem 1.5rem 2rem;
+  }
+}
