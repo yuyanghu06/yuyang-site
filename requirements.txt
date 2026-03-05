@@ -4,6 +4,6 @@ pdfplumber
 langchain
 langchain-text-splitters
 openai
-pinecone-client
+pinecone
 python-multipart
 python-dotenv

@@ -36,6 +36,7 @@
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('pdf')">Upload PDF</button>
+    <button class="tab" onclick="switchTab('markdown')">Upload Markdown</button>
     <button class="tab" onclick="switchTab('text')">Paste Text</button>
   </div>
 
@@ -44,6 +45,13 @@
     <label for="pdf-file">Select a PDF file</label>
     <input type="file" id="pdf-file" accept=".pdf" />
     <button class="submit" onclick="submitPdf()">Ingest PDF</button>
+  </div>
+
+  <!-- Markdown Panel -->
+  <div id="panel-markdown" class="panel">
+    <label for="md-file">Select a Markdown file</label>
+    <input type="file" id="md-file" accept=".md,.markdown" />
+    <button class="submit" onclick="submitMarkdown()">Ingest Markdown</button>
   </div>
 
   <!-- Text Panel -->
@@ -60,7 +68,8 @@
   const API_BASE = "http://localhost:8000";
 
   function switchTab(tab) {
-    document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", ["pdf","text"][i] === tab));
+    const tabs = ["pdf", "markdown", "text"];
+    document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", tabs[i] === tab));
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
     document.getElementById(`panel-${tab}`).classList.add("active");
     setStatus("", "");
@@ -79,6 +88,14 @@
     const formData = new FormData();
     formData.append("file", fileInput.files[0]);
     await callApi(`${API_BASE}/ingest/pdf`, { method: "POST", body: formData });
+  }
+
+  async function submitMarkdown() {
+    const fileInput = document.getElementById("md-file");
+    if (!fileInput.files.length) { setStatus("Please select a Markdown file.", "error"); return; }
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    await callApi(`${API_BASE}/ingest/markdown`, { method: "POST", body: formData });
   }
 
   async function submitText() {

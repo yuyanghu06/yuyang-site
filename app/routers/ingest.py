@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from app.services.pdf_parser import extract_text_from_pdf
+from app.services.markdown_parser import extract_text_from_markdown
 from app.services.chunker import chunk_text
 from app.services.embedder import embed_chunks
 from app.services.pinecone_client import upsert_vectors
@@ -39,6 +40,17 @@ async def ingest_pdf(file: UploadFile = File(...)):
     text = extract_text_from_pdf(contents)
     if not text.strip():
         raise HTTPException(status_code=422, detail="Could not extract text from PDF.")
+    return await run_ingest_pipeline(text, source=file.filename)
+
+
+@router.post("/markdown")
+async def ingest_markdown(file: UploadFile = File(...)):
+    if not file.filename.endswith((".md", ".markdown")):
+        raise HTTPException(status_code=400, detail="Only Markdown files are supported.")
+    contents = await file.read()
+    text = extract_text_from_markdown(contents)
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="Could not extract text from Markdown file.")
     return await run_ingest_pipeline(text, source=file.filename)
 
 
