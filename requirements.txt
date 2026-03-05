@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pdfplumber
+langchain
+langchain-text-splitters
+openai
+pinecone-client
+python-multipart
+python-dotenv

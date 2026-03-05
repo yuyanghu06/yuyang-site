@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Ingest Pipeline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 48px 16px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.1); padding: 32px; width: 100%; max-width: 560px; }
+    h1 { font-size: 1.4rem; margin-bottom: 24px; color: #111; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; cursor: pointer; font-size: .9rem; }
+    .tab.active { background: #111; color: white; border-color: #111; }
+    .panel { display: none; flex-direction: column; gap: 12px; }
+    .panel.active { display: flex; }
+    label { font-size: .85rem; color: #555; }
+    input[type="file"], textarea {
+      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: .9rem;
+    }
+    textarea { resize: vertical; min-height: 140px; }
+    button.submit {
+      margin-top: 4px; padding: 12px; background: #111; color: white; border: none;
+      border-radius: 8px; font-size: 1rem; cursor: pointer;
+    }
+    button.submit:disabled { background: #888; cursor: not-allowed; }
+    #status { margin-top: 16px; font-size: .9rem; padding: 10px 14px; border-radius: 8px; display: none; }
+    #status.loading { background: #e8f0fe; color: #1a73e8; display: block; }
+    #status.success { background: #e6f4ea; color: #188038; display: block; }
+    #status.error   { background: #fce8e6; color: #c5221f; display: block; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>📥 Data Ingest Pipeline</h1>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('pdf')">Upload PDF</button>
+    <button class="tab" onclick="switchTab('text')">Paste Text</button>
+  </div>
+
+  <!-- PDF Panel -->
+  <div id="panel-pdf" class="panel active">
+    <label for="pdf-file">Select a PDF file</label>
+    <input type="file" id="pdf-file" accept=".pdf" />
+    <button class="submit" onclick="submitPdf()">Ingest PDF</button>
+  </div>
+
+  <!-- Text Panel -->
+  <div id="panel-text" class="panel">
+    <label for="text-input">Paste your text</label>
+    <textarea id="text-input" placeholder="Enter text to embed..."></textarea>
+    <button class="submit" onclick="submitText()">Ingest Text</button>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<script>
+  const API_BASE = "http://localhost:8000";
+
+  function switchTab(tab) {
+    document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", ["pdf","text"][i] === tab));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.getElementById(`panel-${tab}`).classList.add("active");
+    setStatus("", "");
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById("status");
+    el.textContent = msg;
+    el.className = type || "";
+    if (!type) el.style.display = "none";
+  }
+
+  async function submitPdf() {
+    const fileInput = document.getElementById("pdf-file");
+    if (!fileInput.files.length) { setStatus("Please select a PDF file.", "error"); return; }
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    await callApi(`${API_BASE}/ingest/pdf`, { method: "POST", body: formData });
+  }
+
+  async function submitText() {
+    const text = document.getElementById("text-input").value.trim();
+    if (!text) { setStatus("Please enter some text.", "error"); return; }
+    await callApi(`${API_BASE}/ingest/text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async function callApi(url, options) {
+    setStatus("Ingesting… please wait.", "loading");
+    const btns = document.querySelectorAll("button.submit");
+    btns.forEach(b => b.disabled = true);
+    try {
+      const res = await fetch(url, options);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Unknown error");
+      setStatus(`✅ Success — ${data.chunks_ingested} chunk(s) ingested.`, "success");
+    } catch (err) {
+      setStatus(`❌ Error: ${err.message}`, "error");
+    } finally {
+      btns.forEach(b => b.disabled = false);
+    }
+  }
+</script>
+</body>
+</html>
