@@ -34,6 +34,7 @@ const PROJECT_BLOCKS = [
   },
   {
     size:    "third" as const,
+    height:  375,
     photo:   "/public/photos/NOOTES.png"
   },
   {
