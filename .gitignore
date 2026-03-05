@@ -1,6 +1,7 @@
-prompts
+copilot-prompts
 .github
 node_modules
 dist
 .env
+planning
 .DS_Store

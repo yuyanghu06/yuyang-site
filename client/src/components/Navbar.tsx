@@ -5,7 +5,7 @@ import "../styles/global.css";
 export default function Navbar() {
   return (
     <nav className="navbar">
-      <span className="navbar-logo">✦</span>
+      <span className="navbar-logo"></span>
       <ul className="navbar-links">
         {CONFIG.navLinks.map(({ label, path }) => (
           <li key={path}>

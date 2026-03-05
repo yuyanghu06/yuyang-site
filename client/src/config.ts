@@ -2,15 +2,15 @@ export const CONFIG = {
   backgroundImage: "/public/photos/BACKGROUND.jpeg",
 
   // ── Hero text ────────────────────────────────────────────────────────────────
-  heroText: "NATURE",
-  subText: "INTO THE WILD",
+  heroText: "I AM YUYANG",
+  subText: "Get to know the real me",
 
   // ── Navigation links ─────────────────────────────────────────────────────────
   navLinks: [
-    { label: "Home",    path: "/" },
-    { label: "About",   path: "/about" },
-    { label: "Service", path: "/service" },
-    { label: "Contact", path: "/contact" },
+    { label: "Home",     path: "/" },
+    { label: "About",    path: "/about" },
+    { label: "Projects", path: "/projects" },
+    { label: "Contact",  path: "/contact" },
   ],
 
   // ── Bottom-strip social links ─────────────────────────────────────────────────
@@ -23,32 +23,38 @@ export const CONFIG = {
 
   // ── Homepage sections (modifiable placeholder text) ───────────────────────────
   featuredStory: {
-    label:   "FEATURED STORY",
-    heading: "Where the Wild Things Are",
-    body:    "An expedition into the untouched highlands of Patagonia — where glaciers carve silence into stone and condors drift above ancient valleys without names.",
-    cta:     "READ MORE",
+    label:   "FEATURED PROJECT",
+    heading: "Journey",
+    body:    "AI-powered journaling app with a Swift/NestJS/PostgreSQL stack featuring a custom on-device Core ML LLM for personalized Big Five personality-based insights.",
+    cta:     "LINK",
   },
 
   stories: [
     {
-      label:   "WILDLIFE",
-      heading: "The Last Migration",
-      excerpt: "Tracking the final herds across the Serengeti as climate reshapes a century-old journey.",
+      label:   "MACHINE LEARNING",
+      heading: "On the frontier of AI research",
+      excerpt: "My work sits at the intersection of systems design and applied ML — building agentic runtimes, RAG pipelines, and edge inference infrastructure for production AI applications.",
     },
     {
-      label:   "LANDSCAPE",
-      heading: "Light Before Dawn",
-      excerpt: "A photographer's 30-day vigil in Iceland — waiting for the sky to break open.",
+      label:   "FULLSTACK DEVELOPMENT",
+      heading: "End-to-end engineering",
+      excerpt: "From REST APIs and database schemas to reactive frontends, I architect and ship full-stack applications across hackathons, production deployments, and client projects — primarily in TypeScript and Node.js ecosystems.",
     },
     {
-      label:   "OCEAN",
+      label:   "LEADERSHIP EXPERIENCE",
       heading: "Beneath the Surface",
-      excerpt: "Deep-sea surveys reveal ecosystems that science has only begun to name.",
+      excerpt: "I lead ML education and mentorship programs at NYU — holding board positions in the Business Analyics Club at Stern and Tech@NYU, one of the largest tech clubs in New York City",
     },
   ],
 
-  pullQuote: {
-    text:   "The wild does not need us to witness it — but we are lesser without the attempt.",
-    source: "Editorial, Vol. XII",
+  contact: {
+    heading: "Get in Touch",
+    subheading: "Have a project in mind or just want to say hello?",
+    namePlaceholder:    "Your name",
+    emailPlaceholder:   "Your email",
+    messagePlaceholder: "Your message",
+    submitLabel: "SEND MESSAGE",
+    successMessage: "Message sent — I'll be in touch soon.",
+    errorMessage:   "Something went wrong. Please try again.",
   },
 };

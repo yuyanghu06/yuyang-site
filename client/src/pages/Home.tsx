@@ -3,6 +3,7 @@ import { IconType } from "react-icons";
 import Navbar from "../components/Navbar";
 import HeroBg from "../components/HeroBg";
 import SliderControls from "../components/SliderControls";
+import ChatBot from "../components/ChatBot";
 import { CONFIG } from "../config";
 import "../styles/hero.css";
 
@@ -13,6 +14,7 @@ const SOCIAL_ICONS: Record<string, IconType> = {
 };
 
 export default function Home() {
+
   return (
     <div className="home">
 
@@ -24,9 +26,6 @@ export default function Home() {
         <div className="hero-center">
           <h1 className="hero-display">{CONFIG.heroText}</h1>
           <p className="hero-subtitle">{CONFIG.subText}</p>
-          <div className="hero-dots">
-            <span>●</span><span>●</span><span>○</span>
-          </div>
         </div>
 
         <SliderControls />
@@ -46,20 +45,20 @@ export default function Home() {
         </footer>
       </section>
 
-      {/* ── Featured story ── */}
+      {/* ── Featured Project ── */}
       <section className="home-section home-featured">
         <div className="home-section-inner">
           <span className="section-label">{CONFIG.featuredStory.label}</span>
           <h2 className="section-heading">{CONFIG.featuredStory.heading}</h2>
           <p className="section-body">{CONFIG.featuredStory.body}</p>
-          <a className="section-cta" href="#">{CONFIG.featuredStory.cta}</a>
+          <a className="section-cta" href="https://github.com/yuyanghu06/journey">{CONFIG.featuredStory.cta}</a>
         </div>
       </section>
 
-      {/* ── Story grid ── */}
+      {/* ── Skills ── */}
       <section className="home-section home-grid-section">
         <div className="home-section-inner">
-          <span className="section-label">LATEST STORIES</span>
+          <span className="section-label">SKILLS</span>
           <div className="story-grid">
             {CONFIG.stories.map((s) => (
               <article className="story-card" key={s.heading}>
@@ -72,13 +71,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Pull quote ── */}
-      <section className="home-section home-quote-section">
-        <blockquote className="pull-quote">
-          <p>"{CONFIG.pullQuote.text}"</p>
-          <cite>{CONFIG.pullQuote.source}</cite>
-        </blockquote>
-      </section>
+      {/* ── Chatbot section ── */}
+      <ChatBot />
 
     </div>
   );

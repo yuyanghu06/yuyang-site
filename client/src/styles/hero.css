@@ -19,7 +19,7 @@
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  filter: none;
+  filter: brightness(0.35);
   z-index: 0;
 }
 
@@ -30,8 +30,8 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(180, 120, 180, 0.15),
-    rgba(80, 80, 120, 0.25)
+    rgba(180, 120, 180, 0.07),
+    rgba(80, 80, 120, 0.12)
   );
   mix-blend-mode: multiply;
   pointer-events: none;
@@ -55,7 +55,7 @@
   color: var(--white);
   letter-spacing: 0.08em;
   mix-blend-mode: overlay;
-  opacity: 0.88;
+  opacity: 1;
   line-height: 1;
 }
 
@@ -163,7 +163,7 @@
   content: "";
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0);
   z-index: -1;
   pointer-events: none;
 }
@@ -180,7 +180,7 @@
   font-weight: 300;
   letter-spacing: 0.35em;
   text-transform: uppercase;
-  opacity: 0.6;
+  opacity: 0.8;
   margin-bottom: 1.5rem;
 }
 
@@ -198,7 +198,7 @@
   font-size: 1.05rem;
   font-weight: 300;
   line-height: 1.8;
-  opacity: 0.85;
+  opacity: 1;
   max-width: 640px;
   margin-bottom: 2rem;
 }
@@ -220,7 +220,7 @@
 .section-cta:hover { opacity: 0.6; }
 
 /* ── Story grid ── */
-.home-grid-section { background: rgba(0, 0, 0, 0.15); }
+.home-grid-section { background: rgba(0, 0, 0, 0); }
 
 .story-grid {
   display: grid;
@@ -245,7 +245,7 @@
   font-weight: 300;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  opacity: 0.5;
+  opacity: 0.8;
 }
 
 .story-card-heading {
@@ -264,33 +264,261 @@
   opacity: 0.7;
 }
 
-/* ── Pull quote ── */
-.home-quote-section {
+/* ── Contact section ── */
+.home-contact-section {
   padding: 7rem 3rem;
-  text-align: center;
 }
 
-.pull-quote {
-  font-family: var(--font-display);
-  font-size: clamp(1.4rem, 2.5vw, 2.2rem);
-  font-weight: 300;
-  font-style: italic;
-  letter-spacing: 0.03em;
-  line-height: 1.6;
-  max-width: 720px;
-  margin: 0 auto;
-  opacity: 0.88;
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 640px;
+  margin-top: 2rem;
 }
 
-.pull-quote cite {
-  display: block;
+.contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.contact-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
   font-family: var(--font-ui);
-  font-style: normal;
+  font-size: 0.9rem;
+  font-weight: 300;
+  padding: 0.85rem 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.contact-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+}
+
+.contact-input:focus {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.contact-textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.contact-submit {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: var(--white);
+  font-family: var(--font-ui);
   font-size: 0.75rem;
+  font-weight: 300;
   letter-spacing: 0.3em;
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.contact-submit:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.contact-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.contact-success {
+  font-family: var(--font-ui);
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  margin-top: 1rem;
+}
+
+.contact-error {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: rgba(255, 160, 160, 0.9);
+}
+
+/* ── Chatbot section ─────────────────────────────────────────────────────────── */
+.home-chatbot-section {
+  padding: 7rem 3rem;           /* Match the previous contact section spacing */
+}
+
+/* Scrollable message window — frosted-glass card */
+.chatbot-window {
+  margin-top: 2.5rem;
+  max-width: 760px;             /* Slightly wider than body text for breathing room */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  height: 420px;                /* Fixed height so it scrolls rather than expanding */
+  overflow-y: auto;             /* Inner scroll */
+  padding: 1.5rem;
+  scroll-behavior: smooth;
+}
+
+/* Thin custom scrollbar to match editorial aesthetic */
+.chatbot-window::-webkit-scrollbar {
+  width: 3px;
+}
+.chatbot-window::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+}
+
+/* Container stacking bubbles vertically */
+.chatbot-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Individual message bubble */
+.chatbot-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 80%;               /* Bubbles don't span the full window width */
+}
+
+/* User messages pushed to the right */
+.chatbot-bubble--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+/* Assistant messages sit on the left */
+.chatbot-bubble--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+/* Small ALL-CAPS label above each bubble (YOU / AI) */
+.chatbot-bubble-role {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
   text-transform: uppercase;
-  opacity: 0.45;
-  margin-top: 1.5rem;
+  opacity: 0.5;
+}
+
+/* The bubble text pill */
+.chatbot-bubble-text {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--white);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* User bubble gets a slightly warmer tint to distinguish from assistant */
+.chatbot-bubble--user .chatbot-bubble-text {
+  background: rgba(180, 140, 200, 0.15);
+  border-color: rgba(180, 140, 200, 0.2);
+}
+
+/* Animated typing indicator — three bouncing dots */
+.chatbot-typing {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+}
+
+.chatbot-typing span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: chatbot-bounce 1.2s infinite ease-in-out;
+}
+
+/* Stagger the three dots so they ripple */
+.chatbot-typing span:nth-child(1) { animation-delay: 0s; }
+.chatbot-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chatbot-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes chatbot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Input row below the window */
+.chatbot-input-row {
+  display: flex;
+  gap: 0;                       /* No gap — button is flush against input */
+  max-width: 760px;
+  margin-top: 0;                /* Sits directly below the window */
+}
+
+/* Text input — same style family as the old contact inputs */
+.chatbot-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: none;           /* Merged with send button */
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  padding: 0.85rem 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chatbot-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.05em;
+}
+
+.chatbot-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.chatbot-input:disabled {
+  opacity: 0.5;
+}
+
+/* Send button — arrow, flush with input */
+.chatbot-send {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-size: 1.2rem;
+  padding: 0 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  line-height: 1;
+}
+
+.chatbot-send:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chatbot-send:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 /* ── Responsive ── */
@@ -301,5 +529,18 @@
 
   .home-section {
     padding: 4rem 1.5rem;
+  }
+
+  /* Tighten the chatbot on mobile */
+  .home-chatbot-section {
+    padding: 4rem 1.5rem;
+  }
+
+  .chatbot-window {
+    height: 320px;              /* Shorter on small screens */
+  }
+
+  .chatbot-bubble {
+    max-width: 95%;
   }
 }
