@@ -50,7 +50,10 @@ export default function Home() {
         <div className="home-section-inner">
           <span className="section-label">{CONFIG.featuredStory.label}</span>
           <h2 className="section-heading">{CONFIG.featuredStory.heading}</h2>
-          <p className="section-body">{CONFIG.featuredStory.body}</p>
+          {/* Split on \n so authors can insert manual paragraph breaks in config.ts */}
+          {CONFIG.featuredStory.body.split("\n").map((para, i) => (
+            <p key={i} className="section-body">{para.trim()}</p>
+          ))}
           <a className="section-cta" href="https://github.com/yuyanghu06/journey">{CONFIG.featuredStory.cta}</a>
         </div>
       </section>

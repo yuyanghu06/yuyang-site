@@ -27,11 +27,13 @@ const ABOUT_BLOCKS = [
     size:    "wide" as const,
     label:   "EDUCATION",
     heading: "New York University — Courant Institute of Mathematics",
+    height:  320,
     body:
       "B.A. in Mathematics, B.A. in Computer Science \n" +
       "Relevant coursework: Data Structures, Linear Algebra, Probability Theory, Algorithms, " +
-      "Algebra, Real & Numerical Analysis",
-    tags: ["NYU", "Mathematics", "Computer Science", "Expected May 2027"],
+      "Algebra, Real & Numerical Analysis \n" +
+      "Campus activities: Business Analyics Club, Tech@NYU, Tzu Ching Collegiate Association",
+    tags: ["NYU", "Mathematics", "Computer Science", "Expected May 2028"],
   },
   {
     // ── Photo block ──────────────────────────────────────────────────────────
@@ -63,6 +65,7 @@ const ABOUT_BLOCKS = [
     // ── Wide photo block ─────────────────────────────────────────────────────
     // Great for landscape / action shots. Swap the path below.
     size:    "wide" as const,
+    height:  530,
     photo:   "/public/photos/NEW_YORK.jpeg",   // ← replace with your photo path
   },
   {
@@ -70,10 +73,10 @@ const ABOUT_BLOCKS = [
     label:   "LEADERSHIP",
     heading: "Tech@NYU & Business Analytics Club",
     body:
-      "Mentorship lead for Tech@NYU — one of the largest student tech organisations in New York City. " +
-      "I head a team connecting sudents with professionals working across the tech landscape. \n" +
+      "Mentorship lead for Tech@NYU — the largest student tech organisation in New York City. " +
+      "I head a team connecting sudents with professionals working across the tech landscape, helping them develop valuable soft and hard skills. \n" +
       "Co-director of the Machine Learning Team for the Business Analytics Club at NYU Stern, " +
-      "teaching students the mathematics of ML models and guide them through hands on projects with real companies like iMasons and Blackbox.",
+      "teaching students the mathematics of ML models and guiding them through hands on projects with real companies like iMasons and Blackbox.",
     tags: ["Tech@NYU", "Stern BAC", "Teaching", "Mentorship"],
   },
   {

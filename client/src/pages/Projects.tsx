@@ -13,64 +13,65 @@ const PROJECT_BLOCKS = [
     heading: "Journey — AI-Powered Journaling App",
     body:
       "An iOS journaling application that uses a custom on-device Core ML language model to surface " +
-      "personalised insights based on Big Five personality traits. Built with Swift (frontend), " +
-      "NestJS (API), and PostgreSQL (database). The model runs entirely on-device — no cloud calls " +
-      "for inference, preserving user privacy.",
-    tags: ["Swift", "Core ML", "NestJS", "PostgreSQL", "Big Five"],
-    link: { href: "#", label: "View Project" },
+      "personalised insights based on Big Five personality traits and tailor API call responses. Built with Swift (frontend), " +
+      "NestJS (API), and PostgreSQL (database). Base personality model trained in Torch, " +
+      "before being converted for Apple's CoreML library to be run entirely on-device, supporting local fine-tuning " +
+      "to better suit individual user personalities.",
+    tags: ["Swift", "CoreML", "NestJS", "PostgreSQL", "CUDA"],
+    link: { href: "https://github.com/yuyanghu06/journey", label: "View Project" },
   },
   {
     size:    "wide" as const,
-    label:   "PROJECT",
-    heading: "Placeholder Project Title",
+    label:   "2026 Startup Week Buildathon",
+    heading: "Nootes - Merge ideas, not just text",
     body:
-      "Brief description of what this project does, the problem it solves, and what technologies " +
-      "power it. Edit this text and the tags below to reflect your work.",
-    tags: ["TypeScript", "React", "Node.js"],
-    link: { href: "#", label: "View Project" },
+      "Platform built to allow users to open source their ideas. Share and fork documents, and let our AI merge changes together, " +
+      "ensuring a smooth form of collaboration and synchronization. Utilize our in house agent to navigate the site, create new documents, " +
+      "or simply generate new ideas on an existing document. Create mind graphs for better visualization and brainstorming. \n" +
+      "Built using Vite (frontend), paired with Fast-API (backend) and PostgreSQL on Supabase (database). Deployed on Railway.",
+    tags: ["Vite", "React", "Fast-API", "Railway", "Supabase"],
+    link: { href: "https://nootes-beryl.vercel.app/", label: "View Project" },
   },
   {
     size:    "third" as const,
-    label:   "PROJECT",
-    heading: "Placeholder Project",
-    body:
-      "Short description. What it does and why you built it. One to two sentences is enough for a small card.",
-    tags: ["Python", "ML"],
+    photo:   "/public/photos/NOOTES.png"
   },
   {
     size:    "third" as const,
-    label:   "PROJECT",
-    heading: "Placeholder Project",
+    label:   "S25 @ Portland State",
+    heading: "PAINT",
     body:
-      "Short description. What it does and why you built it. One to two sentences is enough for a small card.",
-    tags: ["Rust", "Systems"],
-  },
-  {
-    size:    "third" as const,
-    label:   "PROJECT",
-    heading: "Placeholder Project",
-    body:
-      "Short description. What it does and why you built it. One to two sentences is enough for a small card.",
-    tags: ["Go", "API"],
+      "Diffusion based MOE pipeline for art restoration, designed to be used as a research aid by academic collaboraters",
+    tags: ["Stable Diffusion", "MOE", "ART"],
   },
   {
     size:    "wide" as const,
-    label:   "PROJECT",
-    heading: "Placeholder Project Title",
+    label:   "2026 Gemini Hackathon",
+    heading: "Cronicl",
     body:
-      "Medium-length description for a wider card. Use this size when the project needs a bit more " +
-      "context — a paragraph or two explaining the architecture, challenges, or outcomes.",
-    tags: ["Next.js", "Prisma", "Vercel"],
-    link: { href: "#", label: "View Project" },
+      "AI storyboarder, automatically generating visuals for user ideas.\n" +
+      "Built using Vite, Nest.JS, and Gemini's APIs",
+    link: { href: "https://cronicl-production.up.railway.app/", label: "View Project" },
+    tags: ["Gemini", "Storyboarding"],
+  },
+  {
+    size:    "wide" as const,
+    label:   "F24 NYU DS Club Project Expo: Runner Up Project",
+    heading: "Presidential Speech Analysis",
+    body:
+      "Small library built in Java, utilizing the Gunning Fox Index on scraped presidential speeches from the Miller Center " +
+      "to analyze presidential speech complexity. Won the runner-up award at the DSC's Project Expo.",
+    tags: ["Gunning Fox Index", "Java", "DSC", "Project Expo"],
+    link: { href: "https://github.com/yuyanghu06/presidentialSpeechAnalysis", label: "View Project" },
   },
   {
     size:    "third" as const,
-    label:   "HACKATHON",
-    heading: "Placeholder Hackathon Project",
+    label:   "F25 BAC ML",
+    heading: "DAIGNOSIS",
     body:
-      "Built at [Hackathon Name] in [duration]. What you made and what you won (if anything). " +
-      "Edit this block to reflect your experience.",
-    tags: ["24h", "Award"],
+      "LLM fine-tuned on synthetic datasets to output medical advice to help serve underpriviliged communities. " +
+      "Hard-coded COT logic using custom MCP layer built using MongoDB.",
+    tags: ["MongoDB", "Mistral7b", "LORA", "GRPO"],
   },
 ] as const;
 
@@ -83,7 +84,7 @@ export default function Projects() {
         {/* Page title */}
         <header className="page-header">
           <h1>Projects</h1>
-          <p className="page-header-sub">Work · Experiments · Hackathons</p>
+          <p className="page-header-sub">Personal · Research · Hackathons</p>
         </header>
 
         {/* Dynamic block grid — edit PROJECT_BLOCKS above to customise */}

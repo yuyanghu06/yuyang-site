@@ -234,9 +234,25 @@
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(6px);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid transparent;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  /* Animate surface, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.story-card:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Full border lights up on all sides */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
 }
 
 .story-card-label {
@@ -368,6 +384,19 @@
   overflow-y: auto;             /* Inner scroll */
   padding: 1.5rem;
   scroll-behavior: smooth;
+  /* Animate surface, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chatbot-window:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Crisp white border trace */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
 }
 
 /* Thin custom scrollbar to match editorial aesthetic */

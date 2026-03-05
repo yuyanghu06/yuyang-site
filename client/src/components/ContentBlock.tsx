@@ -1,3 +1,4 @@
+import React from "react";
 import "../styles/interior.css";
 
 // Block size controls how many grid columns the block spans
@@ -15,6 +16,11 @@ interface ContentBlockProps {
   // Example: "/public/photos/my-photo.jpeg"
   // When photo is set the image fills the card; text overlays at the bottom.
   photo?:   string;
+  // Optional pixel overrides — these stack on top of the size-based grid span.
+  // Example: width: 420, height: 300
+  // Width is applied as min-width so the grid column still clamps it if needed.
+  width?:   number;          // Explicit width in px
+  height?:  number;          // Explicit height in px
 }
 
 /**
@@ -47,6 +53,8 @@ export default function ContentBlock({
   tags,
   link,
   photo,
+  width,
+  height,
 }: ContentBlockProps) {
   // Photo blocks get an extra modifier class that switches the layout to image-fill
   const blockClass = [
@@ -57,8 +65,14 @@ export default function ContentBlock({
     .filter(Boolean)
     .join(" ");
 
+  // Build inline style — only set width/height when explicitly provided
+  const blockStyle: React.CSSProperties = {
+    ...(width  !== undefined && { width:     `${width}px`  }),
+    ...(height !== undefined && { minHeight: `${height}px` }),
+  };
+
   return (
-    <article className={blockClass}>
+    <article className={blockClass} style={blockStyle}>
 
       {/* ── Photo fill ── */}
       {photo && (

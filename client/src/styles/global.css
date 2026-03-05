@@ -69,3 +69,25 @@ body {
     display: none;
   }
 }
+
+/* ── Page transition ──────────────────────────────────────────────────────── */
+
+/* Slide up + fade in from a barely-offset position — editorial and quick */
+@keyframes page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px); /* start slightly below final position */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Wrapper re-keyed on every route change to restart the animation */
+.page-transition {
+  animation: page-slide-in 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  /* Fill the full viewport so layout is unaffected */
+  min-height: 100%;
+  width: 100%;
+}

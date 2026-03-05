@@ -1,0 +1,7 @@
+[build]
+# Install devDependencies too — needed for vite + nest build tools
+buildCommand = "npm install --include=dev && npm run build"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "on_failure"

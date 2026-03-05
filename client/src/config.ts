@@ -25,7 +25,8 @@ export const CONFIG = {
   featuredStory: {
     label:   "FEATURED PROJECT",
     heading: "Journey",
-    body:    "AI-powered journaling app with a Swift/NestJS/PostgreSQL stack featuring a custom on-device Core ML LLM for personalized Big Five personality-based insights.",
+    body:    "AI-powered journaling app with a Swift/NestJS/PostgreSQL stack featuring a custom on-device CoreML LLM for personalized Big Five personality-based insights.\n" + 
+              "Dynamically creates journal entries through simulated conversations with an AI. Uilizes custom-trained small parameter LLMs to modify API ouputs based on user preferences.",
     cta:     "LINK",
   },
 

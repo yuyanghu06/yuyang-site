@@ -10,7 +10,8 @@ async function bootstrap() {
   app.useStaticAssets(join(__dirname, "..", "..", "public"), { prefix: "/public" });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`Server running on http://localhost:${port}`);
+  // Bind to 0.0.0.0 so Railway's reverse proxy can reach the server
+  await app.listen(port, "0.0.0.0");
+  console.log(`Server running on port ${port}`);
 }
 bootstrap();

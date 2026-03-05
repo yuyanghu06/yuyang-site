@@ -81,11 +81,19 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  transition: background 0.25s;
+  /* Animate background, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .content-block:hover {
-  background: rgba(255, 255, 255, 0.09); /* subtle lift on hover */
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Crisp white border trace */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
 }
 
 /* Column-span variants */
@@ -222,6 +230,140 @@
 }
 
 .block-link:hover { opacity: 0.6; }
+
+/* ── Contact page card ───────────────────────────────────────────────────── */
+
+/* Frosted-glass card that holds the form — full width, aligned with page header */
+.contact-card {
+  max-width: 1200px;
+  margin: 2.5rem auto 6rem;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2.5rem 2.5rem 3rem;
+  /* Animate surface, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-card:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Crisp white border trace */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+/* Each label + input pair stacked vertically */
+.contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ALL-CAPS field label */
+.contact-label {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* Shared input / textarea style */
+.contact-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  padding: 0.8rem 1rem;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.contact-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.05em;
+}
+
+.contact-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.contact-input:disabled {
+  opacity: 0.45;
+}
+
+/* Textarea — taller than a single-line input */
+.contact-textarea {
+  resize: vertical;
+  min-height: 220px;
+}
+
+/* Submit button — ghost style matching editorial aesthetic */
+.contact-submit {
+  margin-top: 0.5rem;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.contact-submit:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.contact-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Inline error text */
+.contact-error {
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 300;
+  color: rgba(255, 160, 160, 0.9);
+  margin-bottom: 0.75rem;
+}
+
+/* Success state — centred icon + message */
+.contact-success-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.contact-success-icon {
+  font-size: 1.5rem;
+  opacity: 0.6;
+}
+
+.contact-success-msg {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
 
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
