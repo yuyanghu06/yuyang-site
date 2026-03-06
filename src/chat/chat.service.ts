@@ -1,6 +1,9 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { EmbeddingService } from "../mcp/embedding.service";
+import { PineconeService  } from "../mcp/pinecone.service";
+import { ContextService   } from "../mcp/context.service";
 
 // A single message in the conversation thread
 export interface ChatMessage {
@@ -18,9 +21,27 @@ export class ChatService {
     "utf-8",
   ).trim();
 
+  constructor(
+    // MCP pipeline services injected by McpModule
+    private readonly embedding: EmbeddingService,
+    private readonly pinecone:  PineconeService,
+    private readonly context:   ContextService,
+  ) {}
+
   /**
-   * Forward the conversation to the TogetherAI chat completions endpoint
-   * and return the assistant's reply as a plain string.
+   * Run the full RAG pipeline then call TogetherAI for a final reply.
+   *
+   * Pipeline:
+   *   1. Extract the last user message from history
+   *   2. Embed it via EmbeddingService (OpenAI /v1/embeddings)
+   *   3. Similarity-search Pinecone for the top-K most relevant chunks
+   *   4. Expand each match with its immediate neighbors via ContextService
+   *   5. Inject the resulting context block into the system prompt
+   *   6. Forward the enriched messages array to TogetherAI /v1/chat/completions
+   *
+   * If any step in the RAG pipeline fails (e.g. missing Pinecone key in dev),
+   * the service falls back gracefully to a context-free call — the chat still
+   * works, just without retrieval.
    */
   async chat(history: ChatMessage[]): Promise<string> {
     // Read configuration from environment — fail fast if missing
@@ -30,13 +51,43 @@ export class ChatService {
     if (!apiKey) throw new InternalServerErrorException("TOGETHER_API_KEY not configured");
     if (!model)  throw new InternalServerErrorException("TOGETHER_MODEL not configured");
 
-    // Prepend system prompt so it is always the first message
+    // ── RAG step — build the context block from retrieved knowledge ──────────
+    let contextBlock = "";
+    try {
+      // Step 1: find the most recent user message to use as the retrieval query
+      const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
+
+      if (lastUserMsg) {
+        const topK = parseInt(process.env.PINECONE_TOP_K ?? "5", 10);
+
+        // Step 2: embed the user's query
+        const queryVector = await this.embedding.embed(lastUserMsg.content);
+
+        // Step 3: retrieve the nearest knowledge chunks
+        const matches     = await this.pinecone.queryIndex(queryVector, topK);
+
+        // Step 4: expand neighbors and format into a context string
+        contextBlock      = await this.context.buildContext(matches);
+      }
+    } catch (err) {
+      // Log the RAG failure but continue — the LLM will answer from its own knowledge
+      console.warn("[MCP] RAG pipeline failed, falling back to context-free chat:", (err as Error).message);
+    }
+
+    // ── Build the enriched system prompt ────────────────────────────────────
+    // If context was retrieved, append it directly after the system instructions
+    // so the model treats it as reference material, not as a user turn.
+    const enrichedSystemPrompt = contextBlock
+      ? `${this.SYSTEM_PROMPT}\n\n${contextBlock}`
+      : this.SYSTEM_PROMPT;
+
+    // ── Assemble the final messages array ────────────────────────────────────
     const messages: ChatMessage[] = [
-      { role: "system", content: this.SYSTEM_PROMPT },
+      { role: "system", content: enrichedSystemPrompt },
       ...history,
     ];
 
-    // TogetherAI exposes an OpenAI-compatible chat completions endpoint
+    // ── Call TogetherAI (OpenAI-compatible endpoint) ─────────────────────────
     const response = await fetch("https://api.together.xyz/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -46,7 +97,7 @@ export class ChatService {
       body: JSON.stringify({
         model,
         messages,
-        max_tokens: 512,
+        max_tokens:  512,
         temperature: 0.7,
       }),
     });

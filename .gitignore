@@ -5,3 +5,4 @@ dist
 .env
 planning
 .DS_Store
+.env.example

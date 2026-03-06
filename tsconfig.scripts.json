@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir":  "./dist/scripts"
+  },
+  "include": ["scripts/**/*", "src/**/*"],
+  "exclude": ["client", "dist", "node_modules"]
+}

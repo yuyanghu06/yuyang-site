@@ -12,13 +12,16 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "nest build",
-    "start": "node dist/server/main"
+    "start": "node dist/server/main",
+    "ingest": "ts-node --project tsconfig.scripts.json scripts/ingest.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@pinecone-database/pinecone": "^7.1.0",
+    "dotenv": "^17.3.1",
     "nodemailer": "^8.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
