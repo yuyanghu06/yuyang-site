@@ -88,32 +88,51 @@
 
 /* ── Hero chat bar — pill input, wider, pushed down from the title ── */
 .hero-chat-bar {
+  position: relative;        /* establishes stacking context for ::before */
+  overflow: hidden;          /* clips the blurred ::before slab to the pill border-radius */
   display: flex;
-  width: min(800px, 92vw);       /* wider */
+  width: min(800px, 92vw);
   margin-top: 2.75rem;
-  /* No overflow:hidden — it suppresses backdrop-filter; border-radius is
-     applied to the input/button directly to keep the pill shape */
   border-radius: 50px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  /* Raised opacity so the pill reads clearly even if backdrop-filter is
-     unavailable (e.g. inside a CSS-transform compositing layer) */
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  background: transparent;   /* visual fill lives in ::before so blur stays below text */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Hover: cool-white halo matching the story cards */
+/* Blurred background slab — sits behind all text/content.
+   filter:blur() here only affects this layer; the flex children (input, button)
+   render above it and remain fully sharp. */
+.hero-chat-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.18);
+  filter: blur(4px);
+  pointer-events: none;
+  transition: background 0.3s ease, filter 0.25s ease;
+  /* z-index is intentionally absent — ::before paints behind in-flow flex children */
+}
+
+/* Ensure input and button stay visually above the blurred ::before layer */
+.hero-chat-bar > * {
+  position: relative;
+}
+
+/* Hover: clear blur on the slab, add halo on the container */
 .hero-chat-bar:hover {
-  background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.45);
   box-shadow:
     0 0 18px rgba(255, 255, 255, 0.12),
     0 0 40px rgba(200, 210, 255, 0.08);
 }
 
+.hero-chat-bar:hover::before,
+.hero-chat-bar:focus-within::before {
+  background: rgba(255, 255, 255, 0.25);
+  filter: none;
+}
+
 .hero-chat-bar:focus-within {
-  background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow:
     0 0 18px rgba(255, 255, 255, 0.12),

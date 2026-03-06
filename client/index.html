@@ -7,6 +7,10 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Navbar is portalled here so it lives outside #root entirely.
+         This prevents any transform/filter/overflow on #root or its
+         descendants from breaking position:fixed on the navbar. -->
+    <div id="navbar-root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
