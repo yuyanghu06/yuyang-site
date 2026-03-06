@@ -30,8 +30,9 @@ export default function ChatBot() {
   // Ref used to auto-scroll the message window to the bottom on each new message
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom whenever messages change
+  // Only scroll when a real conversation exchange occurs (more than the initial greeting)
   useEffect(() => {
+    if (messages.length <= 1) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 

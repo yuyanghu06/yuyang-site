@@ -28,8 +28,6 @@ export default function Home() {
           <p className="hero-subtitle">{CONFIG.subText}</p>
         </div>
 
-        <SliderControls />
-
         <footer className="hero-footer">
           <hr className="hero-rule" />
           <div className="hero-socials">

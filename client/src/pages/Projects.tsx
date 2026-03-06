@@ -68,7 +68,7 @@ const PROJECT_BLOCKS = [
   {
     size:    "third" as const,
     label:   "F25 BAC ML",
-    heading: "DAIGNOSIS",
+    heading: "dAIgnosis",
     body:
       "LLM fine-tuned on synthetic datasets to output medical advice to help serve underpriviliged communities. " +
       "Hard-coded COT logic using custom MCP layer built using MongoDB.",
