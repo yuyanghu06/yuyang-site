@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
-from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling
+from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, TrainerCallback
 from datasets import Dataset
 
 # Import our modules
@@ -36,13 +36,13 @@ class PretrainingTrainer(Trainer):
         super().__init__(*args, **kwargs)
         self.step_count = 0
     
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         """Compute loss for causal language modeling."""
         labels = inputs.get("labels")
         outputs = model(**inputs)
         
         # Save past state if it exists
-        if self.args.past_index >= 0:
+        if getattr(self.args, "past_index", -1) >= 0:
             self._past = outputs[self.args.past_index]
         
         # Extract loss
@@ -58,7 +58,7 @@ class PretrainingTrainer(Trainer):
         
         return (loss, outputs) if return_outputs else loss
     
-    def log(self, logs):
+    def log(self, logs=None, *args, **kwargs):
         """Enhanced logging with pretraining-specific metrics."""
         logs = logs or {}
         
@@ -78,7 +78,7 @@ class PretrainingTrainer(Trainer):
         if "eval_loss" in logs:
             logs["eval_perplexity"] = torch.exp(torch.tensor(logs["eval_loss"])).item()
         
-        super().log(logs)
+        super().log(logs, *args, **kwargs)
 
 
 def setup_wandb(config: dict):
@@ -122,6 +122,7 @@ def evaluate_pretraining_progress(model, tokenizer, config: dict):
         for prompt in test_prompts:
             # Tokenize prompt
             inputs = tokenizer(prompt, return_tensors="pt")
+            inputs = {k: v.to(model.device) for k, v in inputs.items()}
             
             # Generate response
             generated = model.generate(
@@ -181,7 +182,7 @@ def save_pretraining_checkpoint(model, tokenizer, output_dir: str, config: dict,
     logger.info("Pretraining checkpoint saved successfully")
 
 
-class PretrainingCallback:
+class PretrainingCallback(TrainerCallback):
     """Custom callback for pretraining monitoring."""
     
     def __init__(self, config, model, tokenizer):
@@ -189,6 +190,9 @@ class PretrainingCallback:
         self.model = model
         self.tokenizer = tokenizer
         self.last_generation_step = 0
+
+    def on_init_end(self, args, state, control, **kwargs):
+        return control
     
     def on_step_end(self, args, state, control, **kwargs):
         """Called at the end of each training step."""
@@ -196,6 +200,7 @@ class PretrainingCallback:
         if state.global_step % 1000 == 0 and state.global_step > self.last_generation_step:
             self.last_generation_step = state.global_step
             evaluate_pretraining_progress(self.model, self.tokenizer, self.config)
+        return control
 
 
 def main():
@@ -235,6 +240,7 @@ def main():
         logger.info("Setting up model and tokenizer for pretraining...")
         setup = ModelSetup(config)
         model, tokenizer, training_args = setup.setup_complete()
+        logger.info(f"Using device: {model.device}")
         
         # Print model info
         model_info = setup.get_model_info()
@@ -257,16 +263,22 @@ def main():
         # Setup callbacks
         callbacks = [PretrainingCallback(config, model, tokenizer)]
         
-        # Setup trainer
-        trainer = PretrainingTrainer(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-            data_collator=data_collator,
-            tokenizer=tokenizer,
-            callbacks=callbacks
-        )
+        # Setup trainer (handle tokenizer arg rename in newer transformers)
+        trainer_kwargs = {
+            "model": model,
+            "args": training_args,
+            "train_dataset": train_dataset,
+            "eval_dataset": eval_dataset,
+            "data_collator": data_collator,
+            "callbacks": callbacks,
+        }
+        import inspect
+        if "processing_class" in inspect.signature(Trainer.__init__).parameters:
+            trainer_kwargs["processing_class"] = tokenizer
+        else:
+            trainer_kwargs["tokenizer"] = tokenizer
+
+        trainer = PretrainingTrainer(**trainer_kwargs)
         
         # Resume from checkpoint if specified
         resume_from_checkpoint = args.resume

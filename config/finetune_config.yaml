@@ -2,9 +2,9 @@
 
 # Model settings
 model:
-  name: "Qwen/Qwen2.5-3B"  # Update to actual Qwen 3.5-4B model name when available
+  name: "Qwen/Qwen3.5-4B"
   trust_remote_code: true
-  use_flash_attention: true
+  use_flash_attention: false
   
 # Quantization settings (for memory efficiency)
 quantization:
@@ -46,7 +46,7 @@ training:
   logging_steps: 10
   save_steps: 500
   save_total_limit: 2
-  evaluation_strategy: "steps"
+  eval_strategy: "steps"
   eval_steps: 500
   load_best_model_at_end: true
   metric_for_best_model: "eval_loss"

@@ -1,0 +1,9 @@
+.env
+copilot-instructions.md
+venv
+data
+__pycache__
+wandb
+qwen-pretrained
+pretrain_results
+.github

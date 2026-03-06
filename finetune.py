@@ -35,13 +35,13 @@ class QwenTrainer(Trainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         """Compute loss with custom handling."""
         labels = inputs.get("labels")
         outputs = model(**inputs)
         
         # Save past state if it exists
-        if self.args.past_index >= 0:
+        if getattr(self.args, "past_index", -1) >= 0:
             self._past = outputs[self.args.past_index]
         
         # Extract loss
@@ -100,6 +100,7 @@ def evaluate_model(model, tokenizer, eval_dataset: Dataset, config: dict):
         
         # Tokenize prompt
         prompt_tokens = tokenizer(prompt, return_tensors="pt")
+        prompt_tokens = {k: v.to(model.device) for k, v in prompt_tokens.items()}
         
         # Generate response
         with torch.no_grad():
@@ -194,6 +195,7 @@ def main():
         logger.info("Setting up model and tokenizer...")
         setup = ModelSetup(config)
         model, tokenizer, training_args = setup.setup_complete()
+        logger.info(f"Using device: {model.device}")
         
         # Print model info
         model_info = setup.get_model_info()
@@ -220,8 +222,12 @@ def main():
             'train_dataset': train_dataset,
             'eval_dataset': eval_dataset,
             'data_collator': data_collator,
-            'tokenizer': tokenizer,
         }
+        import inspect
+        if "processing_class" in inspect.signature(Trainer.__init__).parameters:
+            trainer_kwargs["processing_class"] = tokenizer
+        else:
+            trainer_kwargs["tokenizer"] = tokenizer
         
         # Add early stopping if configured
         callbacks = []

@@ -12,7 +12,13 @@ A complete training infrastructure for fine-tuning and pretraining Qwen 3.5-4B m
 # Or manually:
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install CUDA-enabled PyTorch first (example for CUDA 12.1 on Windows)
+pip install torch==2.1.2+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
+# Then install the rest
 pip install -r requirements.txt
+
+# (Optional) Install flash-attn after torch if your GPU/driver supports it
+# pip install flash-attn --no-build-isolation
 ```
 
 ### 2. Prepare Your Dataset
@@ -59,6 +65,29 @@ python utils.py test --config config/finetune_config.yaml --model results/final_
 ├── pretrain.py               # Pretraining script
 ├── utils.py                  # Utility functions
 └── requirements.txt          # Python dependencies
+```
+
+### Sample file layout on disk
+
+```
+.
+├── config/
+│   ├── finetune_config.yaml
+│   └── pretrain_config.yaml
+├── data/
+│   ├── train.jsonl            # formatted conversations for fine-tuning
+│   ├── validation.jsonl       # optional held-out set
+│   ├── pretrain.jsonl         # raw text with `"text"` field for pretraining
+│   └── pretrain_val.jsonl     # optional pretraining eval set
+├── results/                   # fine-tuning outputs (checkpoints, logs)
+├── pretrain_results/          # pretraining outputs
+├── scripts/
+├── format_dataset.py
+├── data_processing.py
+├── finetune.py
+├── pretrain.py
+├── utils.py
+└── README.md
 ```
 
 ## 🔧 Core Components
@@ -129,7 +158,7 @@ Key settings to customize:
 ```yaml
 # Model settings
 model:
-  name: "Qwen/Qwen2.5-3B"  # Update when Qwen 3.5-4B is available
+  name: "Qwen/Qwen3.5-4B"
   use_flash_attention: true
 
 # LoRA settings
@@ -195,6 +224,18 @@ lora:
 ```
 
 ## 🗃️ Dataset Preparation Examples
+
+### Extract raw documents (PDF/DOCX/MD/TXT) to JSONL for pretraining
+
+Place source files under `data/raw_docs/` (or any folder), then run:
+
+```bash
+python scripts/extract_text.py --input-dir data/raw_docs --output-file data/pretrain.jsonl --chunk-size 2000 --overlap 200
+```
+
+This writes JSONL with `text` (and `source`) fields that can be pointed to by `data.train_file` in `config/pretrain_config.yaml`.
+
+> Note: Ensure your local CUDA toolkit/driver matches the PyTorch build (e.g., cu121) you install above.
 
 ### Example 1: Alpaca-style Instruction Dataset
 Input format:
@@ -288,6 +329,24 @@ echo '{"text": "Your raw text data here..."}' > data/pretrain.jsonl
 python pretrain.py --config config/pretrain_config.yaml --streaming
 ```
 
+## 🧩 Merge LoRA and export
+
+After pretraining or fine-tuning with LoRA, merge the adapter into the base model and save to `qwen-pretrained`:
+
+```bash
+python scripts\merge_lora.py --adapter-path pretrain_results\final_pretrained_model --base-model Qwen/Qwen3.5-4B --output-dir qwen-pretrained
+```
+
+> Note: `--adapter-path` must point to a folder containing `adapter_config.json` (e.g., a LoRA checkpoint directory).
+
+To push the merged weights to Hugging Face Hub for inference elsewhere (after `huggingface-cli login`):
+
+```bash
+python scripts\merge_lora.py --adapter-path pretrain_results\final_pretrained_model --base-model Qwen/Qwen3.5-4B --output-dir qwen-pretrained --push-to-hub --repo-id your-username/qwen3.5-4b-merged --use-auth-token
+```
+
+You can then load the merged model locally or from the Hub with `AutoModelForCausalLM.from_pretrained("qwen-pretrained")` (or the Hub repo id) along with `AutoTokenizer.from_pretrained`.
+
 ## 📊 Evaluation and Monitoring
 
 ### Wandb Integration
@@ -346,13 +405,7 @@ python utils.py tokens data/train.jsonl
 
 ## 📝 Model Updates
 
-When Qwen 3.5-4B becomes available, update the model name in your config:
-```yaml
-model:
-  name: "Qwen/Qwen3.5-4B"  # Update this line
-```
-
-The infrastructure will automatically adapt to the new model architecture.
+The default configuration targets `Qwen/Qwen3.5-4B`. To switch to another variant, update the `model.name` field (e.g., to an Instruct checkpoint) and the rest of the pipeline will adapt automatically.
 
 ## 🤝 Contributing
 

@@ -136,7 +136,7 @@ def run_quick_test():
     # Create a minimal config for testing
     test_config = {
         "model": {
-            "name": "Qwen/Qwen2.5-3B",
+            "name": "Qwen/Qwen3.5-4B",
             "trust_remote_code": True,
             "use_flash_attention": False
         },

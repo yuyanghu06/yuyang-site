@@ -33,8 +33,7 @@ class ModelSetup:
         
         tokenizer = AutoTokenizer.from_pretrained(
             self.config['model']['name'],
-            trust_remote_code=self.config['model'].get('trust_remote_code', True),
-            use_auth_token=self.config['environment'].get('use_auth_token', False)
+            trust_remote_code=self.config['model'].get('trust_remote_code', True)
         )
         
         # Add special tokens if needed
@@ -81,9 +80,10 @@ class ModelSetup:
         """Setup and configure model."""
         logger.info(f"Loading model: {self.config['model']['name']}")
         
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
         model_kwargs = {
             'trust_remote_code': self.config['model'].get('trust_remote_code', True),
-            'use_auth_token': self.config['environment'].get('use_auth_token', False),
             'torch_dtype': torch.bfloat16,
         }
         
@@ -94,10 +94,11 @@ class ModelSetup:
         # Add flash attention if available and requested
         if self.config['model'].get('use_flash_attention', False):
             try:
+                import flash_attn  # noqa: F401
                 model_kwargs['attn_implementation'] = "flash_attention_2"
                 logger.info("Using Flash Attention 2")
             except Exception as e:
-                logger.warning(f"Flash Attention not available: {e}")
+                logger.warning(f"Flash Attention not available, falling back to default attention: {e}")
         
         model = AutoModelForCausalLM.from_pretrained(
             self.config['model']['name'],
@@ -107,7 +108,12 @@ class ModelSetup:
         # Prepare model for training
         if quantization_config is not None:
             model = prepare_model_for_kbit_training(model)
-        
+        elif torch.cuda.is_available():
+            model = model.to(device)
+            logger.info(f"Model moved to CUDA device: {device}")
+        else:
+            logger.info("CUDA not available, using CPU for model.")
+
         # Enable gradient checkpointing if specified
         if self.config['training'].get('gradient_checkpointing', False):
             model.gradient_checkpointing_enable()
@@ -143,18 +149,46 @@ class ModelSetup:
     def setup_training_arguments(self) -> TrainingArguments:
         """Setup training arguments."""
         training_config = self.config['training']
+
+        # Coerce numeric fields to avoid type mismatches from YAML parsing
+        def to_float(val, default=0.0):
+            try:
+                return float(val)
+            except Exception:
+                return default
+
+        def to_int(val, default=0):
+            try:
+                return int(val)
+            except Exception:
+                return default
+
+        learning_rate = to_float(training_config.get('learning_rate', 0.0))
+        weight_decay = to_float(training_config.get('weight_decay', 0.0))
+        warmup_ratio = to_float(training_config.get('warmup_ratio', 0.0))
+        max_grad_norm = to_float(training_config.get('max_grad_norm', 0.0))
+        logging_steps = to_int(training_config.get('logging_steps', 10))
+        save_steps = to_int(training_config.get('save_steps', 500))
+        save_total_limit = to_int(training_config.get('save_total_limit', 2))
+        eval_steps = to_int(training_config.get('eval_steps', 500))
+        num_train_epochs = to_float(training_config.get('num_train_epochs', 1))
+        per_device_train_batch_size = to_int(training_config.get('per_device_train_batch_size', 1))
+        per_device_eval_batch_size = to_int(training_config.get('per_device_eval_batch_size', 1))
+        gradient_accumulation_steps = to_int(training_config.get('gradient_accumulation_steps', 1))
         
+        eval_strategy = training_config.get('eval_strategy', training_config.get('evaluation_strategy', "no"))
+
         training_args = TrainingArguments(
             output_dir=training_config['output_dir'],
-            num_train_epochs=training_config['num_train_epochs'],
-            per_device_train_batch_size=training_config['per_device_train_batch_size'],
-            per_device_eval_batch_size=training_config['per_device_eval_batch_size'],
-            gradient_accumulation_steps=training_config['gradient_accumulation_steps'],
-            learning_rate=training_config['learning_rate'],
-            weight_decay=training_config['weight_decay'],
+            num_train_epochs=num_train_epochs,
+            per_device_train_batch_size=per_device_train_batch_size,
+            per_device_eval_batch_size=per_device_eval_batch_size,
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
             lr_scheduler_type=training_config['lr_scheduler_type'],
-            warmup_ratio=training_config['warmup_ratio'],
-            max_grad_norm=training_config['max_grad_norm'],
+            warmup_ratio=warmup_ratio,
+            max_grad_norm=max_grad_norm,
             
             # Memory optimization
             gradient_checkpointing=training_config.get('gradient_checkpointing', False),
@@ -163,11 +197,11 @@ class ModelSetup:
             bf16=training_config.get('bf16', True),
             
             # Logging and saving
-            logging_steps=training_config.get('logging_steps', 10),
-            save_steps=training_config.get('save_steps', 500),
-            save_total_limit=training_config.get('save_total_limit', 2),
-            evaluation_strategy=training_config.get('evaluation_strategy', "steps"),
-            eval_steps=training_config.get('eval_steps', 500),
+            logging_steps=logging_steps,
+            save_steps=save_steps,
+            save_total_limit=save_total_limit,
+            eval_strategy=eval_strategy,
+            eval_steps=eval_steps,
             load_best_model_at_end=training_config.get('load_best_model_at_end', True),
             metric_for_best_model=training_config.get('metric_for_best_model', "eval_loss"),
             

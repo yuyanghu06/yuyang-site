@@ -103,7 +103,7 @@ def validate_dataset(dataset_path: str):
     return valid_samples == len(samples)
 
 
-def count_tokens(dataset_path: str, model_name: str = "Qwen/Qwen2.5-3B"):
+def count_tokens(dataset_path: str, model_name: str = "Qwen/Qwen3.5-4B"):
     """Count tokens in a dataset."""
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     
@@ -202,7 +202,7 @@ def main():
     # Count tokens
     tokens_parser = subparsers.add_parser('tokens', help='Count tokens in dataset')
     tokens_parser.add_argument('dataset', help='Dataset file path')
-    tokens_parser.add_argument('--model', default='Qwen/Qwen2.5-3B', help='Model for tokenization')
+    tokens_parser.add_argument('--model', default='Qwen/Qwen3.5-4B', help='Model for tokenization')
     
     # Create sample
     sample_parser = subparsers.add_parser('sample', help='Create sample dataset')
