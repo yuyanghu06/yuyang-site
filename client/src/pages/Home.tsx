@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaInstagram, FaLinkedinIn, FaGithub } from "react-icons/fa";
 import { IconType } from "react-icons";
@@ -17,6 +18,7 @@ interface Message {
 }
 
 export default function Home() {
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hi, I'm the AI version of Yuyang. Ask me anything!" },
   ]);
@@ -26,6 +28,18 @@ export default function Home() {
   const [chatActive, setChatActive] = useState(false);
   // Invisible scroll anchor kept at the bottom of the message list
   const heroChatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Reset chat whenever the user navigates to "/" — handles the case where
+  // the user is in fullscreen chat and clicks "Home" in the navbar (same
+  // route, so the component doesn't remount, but location.key always changes).
+  useEffect(() => {
+    setChatActive(false);
+    setInput("");
+    setLoading(false);
+    setMessages([{ role: "assistant", content: "Hi, I'm the AI version of Yuyang. Ask me anything!" }]);
+  // location.key changes on every navigation to this route, even same-path
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   // Auto-scroll to the newest message after every update
   useEffect(() => {
@@ -79,14 +93,6 @@ export default function Home() {
     }
   };
 
-  // Reset everything and return to the normal homepage
-  const resetChat = () => {
-    setChatActive(false);
-    setMessages([{ role: "assistant", content: "Hi, I'm the AI version of Yuyang. Ask me anything!" }]);
-    setInput("");
-    setLoading(false);
-  };
-
   /* ── Slide variants ───────────────────────────────────────────────────────
      Chat rises up from below when opened; the home page settles back down
      from slightly above when returning. mode="wait" ensures the exiting
@@ -106,9 +112,6 @@ export default function Home() {
         >
           <header className="chat-fs-header">
             <span className="chat-fs-brand">{CONFIG.heroText}</span>
-            <button className="chat-fs-back" onClick={resetChat} aria-label="Back to homepage">
-              ← back
-            </button>
           </header>
 
           <div className="chat-fs-messages" aria-live="polite" aria-label="Chat conversation">

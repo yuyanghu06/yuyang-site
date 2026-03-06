@@ -168,19 +168,20 @@
 .chat-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  /* Below navbar (z-index:100) so nav links remain usable as the exit path */
+  z-index: 50;
   display: flex;
   flex-direction: column;
 }
 
-/* Top header: branding + back button */
+/* Top header: brand only — navbar above handles navigation */
 .chat-fs-header {
   position: relative;
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 2rem;
+  /* Extra top padding so the absolute-positioned navbar doesn't overlap the brand */
+  padding: 5rem 2rem 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
@@ -193,23 +194,6 @@
   letter-spacing: 0.15em;
   opacity: 0.9;
 }
-
-.chat-fs-back {
-  background: none;
-  border: none;
-  color: var(--white);
-  font-family: var(--font-ui);
-  font-size: 0.72rem;
-  font-weight: 300;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  opacity: 0.45;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  padding: 0;
-}
-
-.chat-fs-back:hover { opacity: 1; }
 
 /* Scrollable message column — fills all space between header and input */
 .chat-fs-messages {
