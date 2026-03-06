@@ -18,7 +18,7 @@ const ABOUT_BLOCKS = [
     label:   "ABOUT ME",
     heading: "Yuyang Hu",
     body:
-      "I'm a sophomore at New York University doing a dual major in Mathematics and Comptuer Science. " +
+      "I'm a sophomore at New York University doing a dual major in Mathematics and Computer Science. " +
       "I build things at the intersection of machine learning and software engineering, whether that's on-device small parameter LLMs " +
       "capable of running inference on iPhones, or fine-tuned diffusion model pipelines for academic research. " +
       "I'm deeply interested in model size optimization and using mathematics to replicate the human mind.",

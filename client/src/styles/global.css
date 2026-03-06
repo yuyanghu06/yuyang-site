@@ -22,11 +22,12 @@ body {
   font-family: var(--font-ui);
   background: #000;
   color: var(--white);
+  overflow-x: hidden; /* prevents horizontal scrollbar during slide transitions */
 }
 
 /* Navbar */
 .navbar {
-  position: absolute;
+  position: absolute; /* scrolls with page — does not follow user on scroll */
   top: 0;
   left: 0;
   width: 100%;
@@ -34,7 +35,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem 3rem;
-  z-index: 10;
+  z-index: 100; /* above HeroBg(0), BlurOverlay(1), page content(10) */
   background: transparent;
 }
 
@@ -70,24 +71,6 @@ body {
   }
 }
 
-/* ── Page transition ──────────────────────────────────────────────────────── */
-
-/* Slide up + fade in from a barely-offset position — editorial and quick */
-@keyframes page-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px); /* start slightly below final position */
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Wrapper re-keyed on every route change to restart the animation */
-.page-transition {
-  animation: page-slide-in 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  /* Fill the full viewport so layout is unaffected */
-  min-height: 100%;
-  width: 100%;
-}
+/* ── Page transition (handled by framer-motion in PageTransition.tsx) ────── */
+/* The .page-transition class is no longer used — slide variants live in the
+   component. This block is kept as a reference comment only. */

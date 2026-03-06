@@ -16,27 +16,14 @@
 .hero-bg {
   position: fixed;
   inset: 0;
+  background-image: var(--bg-image);
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
   filter: brightness(0.35);
+  pointer-events: none;
   z-index: 0;
 }
 
-/* Cinematic tint overlay */
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(180, 120, 180, 0.07),
-    rgba(80, 80, 120, 0.12)
-  );
-  mix-blend-mode: multiply;
-  pointer-events: none;
-  z-index: 1;
-}
 
 .hero-center {
   position: relative;
@@ -99,6 +86,286 @@
   opacity: 1;
 }
 
+/* ── Hero chat bar — pill input, wider, pushed down from the title ── */
+.hero-chat-bar {
+  display: flex;
+  width: min(800px, 92vw);       /* wider */
+  margin-top: 2.75rem;
+  /* No overflow:hidden — it suppresses backdrop-filter; border-radius is
+     applied to the input/button directly to keep the pill shape */
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Raised opacity so the pill reads clearly even if backdrop-filter is
+     unavailable (e.g. inside a CSS-transform compositing layer) */
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Hover: cool-white halo matching the story cards */
+.hero-chat-bar:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+.hero-chat-bar:focus-within {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+.hero-chat-input {
+  flex: 1;
+  background: none;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  /* Left pill end — mirrors the container's border-radius */
+  border-radius: 50px 0 0 50px;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  padding: 1rem 1.6rem;
+  outline: none;
+}
+
+.hero-chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+}
+
+.hero-chat-input:disabled { opacity: 0.5; }
+
+.hero-chat-send {
+  background: none;
+  border: none;
+  /* Right pill end */
+  border-radius: 0 50px 50px 0;
+  color: var(--white);
+  font-size: 1.1rem;
+  padding: 0 1.5rem;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.hero-chat-send:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hero-chat-send:disabled { opacity: 0.2; cursor: default; }
+
+/* ── Full-screen chat — takes over the entire viewport on first send ── */
+.chat-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top header: branding + back button */
+.chat-fs-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.chat-fs-brand {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: var(--white);
+  letter-spacing: 0.15em;
+  opacity: 0.9;
+}
+
+.chat-fs-back {
+  background: none;
+  border: none;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  padding: 0;
+}
+
+.chat-fs-back:hover { opacity: 1; }
+
+/* Scrollable message column — fills all space between header and input */
+.chat-fs-messages {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  scroll-behavior: smooth;
+}
+
+.chat-fs-messages::-webkit-scrollbar { width: 3px; }
+.chat-fs-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* Inner column: centered, constrained for readability */
+.chat-fs-messages-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Individual message bubble */
+.chat-fs-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 78%;
+}
+
+.chat-fs-bubble--user      { align-self: flex-end;   align-items: flex-end; }
+.chat-fs-bubble--assistant { align-self: flex-start; align-items: flex-start; }
+
+/* Small ALL-CAPS speaker label */
+.chat-fs-bubble-role {
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--white);
+  opacity: 0.4;
+}
+
+/* Bubble text — frosted glass so the background image shows through */
+.chat-fs-bubble-text {
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 300;
+  line-height: 1.78;
+  color: var(--white);
+  margin: 0;
+  padding: 0.85rem 1.15rem;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+/* User bubble — purple-tinted frosted glass */
+.chat-fs-bubble--user .chat-fs-bubble-text {
+  background: rgba(180, 140, 200, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(180, 140, 200, 0.25);
+}
+
+/* Typing indicator (reuses @keyframes chatbot-bounce) */
+.chat-fs-typing {
+  display: flex !important;
+  gap: 5px;
+  align-items: center;
+}
+
+.chat-fs-typing span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: chatbot-bounce 1.2s infinite ease-in-out;
+}
+
+.chat-fs-typing span:nth-child(1) { animation-delay: 0s; }
+.chat-fs-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-fs-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Bottom input strip — pinned to viewport floor */
+.chat-fs-input-wrap {
+  position: relative;
+  z-index: 2;
+  padding: 1rem 1.5rem 2rem;
+  /* Gradient dissolves messages into the input strip */
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.35) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+
+/* Pill-shaped form container */
+.chat-fs-form {
+  max-width: 740px;
+  margin: 0 auto;
+  display: flex;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 0.22s, background 0.22s;
+}
+
+.chat-fs-form:focus-within {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-fs-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  padding: 1rem 1.5rem;
+  outline: none;
+}
+
+.chat-fs-input::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+  letter-spacing: 0.1em;
+}
+
+.chat-fs-input:disabled { opacity: 0.5; }
+
+/* Send button — upward arrow */
+.chat-fs-send {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--white);
+  font-size: 1.1rem;
+  padding: 0 1.3rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-fs-send:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+.chat-fs-send:disabled { opacity: 0.22; cursor: default; }
+
 @media (max-width: 768px) {
   .hero-display {
     font-size: clamp(16vw, 22vw, 30vw);
@@ -109,8 +376,23 @@
     display: none;
   }
 
-  .hero-subtitle {
-    letter-spacing: 0.25em;
+  /* Pill bar spans nearly full width on mobile */
+  .hero-chat-bar {
+    width: 92vw;
+    margin-top: 1.75rem;
+  }
+
+  /* Full-screen chat: tighter padding on small screens */
+  .chat-fs-messages-inner {
+    padding: 1.5rem 1rem;
+  }
+
+  .chat-fs-input-wrap {
+    padding: 0.75rem 1rem 1.5rem;
+  }
+
+  .chat-fs-bubble {
+    max-width: 92%;
   }
 }
 
@@ -231,8 +513,11 @@
 
 .story-card {
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.05);
+  /* Higher base opacity so cards remain visible if backdrop-filter is
+     blocked by a parent CSS transform (Framer Motion animation context) */
+  background: rgba(255, 255, 255, 0.09);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;

@@ -1,30 +1,26 @@
-/* Interior pages — blurred background */
+/* Blur overlay — rendered in App.tsx, fades in on interior pages.
+   Uses the actual background image + CSS filter (not backdrop-filter) to
+   avoid tint/colour artifacts. backgroundImage is set via inline style in App.tsx. */
+.blur-overlay {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(18px) brightness(0.35); /* same brightness as HeroBg — no tone shift */
+  transform: scale(1.05); /* prevents blurred edge bleed at viewport edges */
+  pointer-events: none;
+  z-index: 1; /* above HeroBg (z-index:0), below page content (z-index:10) */
+}
+
 .page-wrapper {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
 }
 
-.page-bg {
-  position: fixed;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  filter: blur(18px) brightness(0.5);
-  transform: scale(1.05);
-  z-index: 0;
-}
-
-.page-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-}
-
 .page-content {
   position: relative;
-  z-index: 1;
+  z-index: 10; /* above blur-overlay (z-index:1) and HeroBg (z-index:0) */
   padding: 8rem 3rem 3rem;
   color: var(--white);
 }

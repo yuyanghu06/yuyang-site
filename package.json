@@ -22,6 +22,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@pinecone-database/pinecone": "^7.1.0",
     "dotenv": "^17.3.1",
+    "framer-motion": "^12.35.0",
     "nodemailer": "^8.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
