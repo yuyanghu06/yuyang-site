@@ -1,0 +1,61 @@
+# Qwen 3.5-4B Pretraining Configuration
+
+# Model settings
+model:
+  name: "Qwen/Qwen2.5-3B"  # Update to actual Qwen 3.5-4B model name when available
+  trust_remote_code: true
+  use_flash_attention: true
+
+# Quantization settings (typically disabled for pretraining)
+quantization:
+  enabled: false
+
+# LoRA settings (typically disabled for full pretraining)
+lora:
+  enabled: false
+
+# Training arguments for pretraining
+training:
+  output_dir: "./pretrain_results"
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 32
+  learning_rate: 1e-4
+  weight_decay: 0.01
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.01
+  max_grad_norm: 1.0
+  
+  # Memory optimization
+  gradient_checkpointing: true
+  dataloader_pin_memory: false
+  fp16: false
+  bf16: true
+  
+  # Logging and saving
+  logging_steps: 50
+  save_steps: 2000
+  save_total_limit: 3
+  evaluation_strategy: "steps"
+  eval_steps: 2000
+  
+  # Advanced settings
+  remove_unused_columns: false
+  report_to: ["wandb"]
+  run_name: "qwen-pretrain"
+
+# Data settings for pretraining
+data:
+  train_file: "data/pretrain.jsonl"
+  validation_file: "data/pretrain_val.jsonl"
+  max_seq_length: 2048
+  preprocessing_num_workers: 8
+  block_size: 2048
+  streaming: true
+
+# Environment settings
+environment:
+  seed: 42
+  wandb_project: "qwen-pretraining"
+  use_auth_token: false
