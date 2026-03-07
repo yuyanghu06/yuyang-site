@@ -43,6 +43,7 @@ const PROJECT_BLOCKS = [
     heading: "PAINT",
     body:
       "Diffusion based MOE pipeline for art restoration, designed to be used as a research aid by academic collaboraters",
+    height: 297,
     tags: ["Stable Diffusion", "MOE", "ART"],
   },
   {
@@ -70,7 +71,7 @@ const PROJECT_BLOCKS = [
     label:   "F25 BAC ML",
     heading: "dAIgnosis",
     body:
-      "LLM fine-tuned on synthetic datasets to output medical advice to help serve underpriviliged communities. " +
+      "LLM fine-tuned on synthetic datasets to output medical advice to help serve unprivileged communities. " +
       "Hard-coded COT logic using custom MCP layer built using MongoDB.",
     tags: ["MongoDB", "Mistral7b", "LORA", "GRPO"],
   },
