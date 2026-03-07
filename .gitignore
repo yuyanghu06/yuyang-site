@@ -7,3 +7,5 @@ wandb
 qwen-pretrained
 pretrain_results
 .github
+data
+model

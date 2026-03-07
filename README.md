@@ -1,416 +1,315 @@
-# Qwen 3.5-4B Fine-tuning Infrastructure
+# yuyangGPT
 
-A complete training infrastructure for fine-tuning and pretraining Qwen 3.5-4B models with custom datasets. Features LoRA/QLoRA optimization, multi-GPU support, and comprehensive evaluation tools.
+A personal training pipeline for pretraining and fine-tuning Qwen 3.5-4B on custom datasets — including iMessages, documents, and structured conversations. Features LoRA/QLoRA optimization, encrypted iPhone backup support, and multi-GPU training.
 
-## 🚀 Quick Start
+---
 
-### 1. Setup Environment
+## Setup
+
 ```bash
-# Run the setup script
 ./scripts/setup.sh
+```
 
-# Or manually:
+Or manually:
+
+```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-# Install CUDA-enabled PyTorch first (example for CUDA 12.1 on Windows)
+source venv/bin/activate
 pip install torch==2.1.2+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
-# Then install the rest
 pip install -r requirements.txt
-
-# (Optional) Install flash-attn after torch if your GPU/driver supports it
-# pip install flash-attn --no-build-isolation
 ```
 
-### 2. Prepare Your Dataset
+---
+
+## Pipeline Overview
+
+```
+Raw data  →  scrape / extract  →  format  →  split  →  pretrain / finetune  →  merge  →  inference
+```
+
+---
+
+## Data Scripts
+
+### `scripts/scrape_imessages.py`
+
+Scrapes your own iMessages into a JSONL file for pretraining. Reads directly from the macOS Messages database or from an iPhone backup (encrypted or unencrypted). Only exports messages sent by you.
+
+**From the live macOS Messages database:**
 ```bash
-# Convert your dataset to conversation format
+python scripts/scrape_imessages.py --output data/imessages.jsonl
+```
+
+**From an iPhone backup (unencrypted):**
+```bash
+python scripts/scrape_imessages.py \
+  --backup-path '~/Library/Application Support/MobileSync/Backup/<device-uuid>/' \
+  --output data/imessages.jsonl
+```
+
+**From an encrypted iPhone backup:**
+```bash
+python scripts/scrape_imessages.py \
+  --backup-path '~/Library/Application Support/MobileSync/Backup/<device-uuid>/' \
+  --backup-password "yourpassword" \
+  --output data/imessages.jsonl
+```
+
+You can pass the path to any file inside the backup and the script will auto-detect the backup root.
+
+| Option | Default | Description |
+|---|---|---|
+| `--db-path` | `~/Library/Messages/chat.db` | Path to a `chat.db` file directly |
+| `--backup-path` | — | Path to an iPhone backup directory (mutually exclusive with `--db-path`) |
+| `--backup-password` | prompted | Password for an encrypted iPhone backup |
+| `--output` | `data/imessages.jsonl` | Output JSONL file |
+| `--since YYYY-MM-DD` | — | Only include messages sent on or after this date |
+| `--min-messages` | `2` | Skip conversations with fewer messages than this |
+
+---
+
+### `scripts/format_imessages.py`
+
+Flattens the iMessages JSONL for pretraining by replacing all newlines inside each record's text with spaces, so every conversation is a single unbroken line.
+
+```bash
+python scripts/format_imessages.py \
+  --input data/imessages.jsonl \
+  --output data/imessages_flat.jsonl
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--input` | `data/imessages.jsonl` | Input JSONL file |
+| `--output` | `data/imessages_flat.jsonl` | Output JSONL file |
+
+---
+
+### `scripts/split_dataset.py`
+
+Randomly splits any JSONL file into train and validation sets. Output files are written alongside the input with `_train` and `_val` suffixes.
+
+```bash
+python scripts/split_dataset.py --input data/imessages_flat.jsonl
+# produces: data/imessages_flat_train.jsonl
+#           data/imessages_flat_val.jsonl
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--input` | *(required)* | Input JSONL file |
+| `--split` | `0.8` | Fraction of data for training (e.g. `0.9` for 90/10) |
+| `--seed` | `0` | Random seed for reproducibility |
+
+---
+
+### `scripts/extract_text.py`
+
+Extracts raw text from PDF, DOCX, Markdown, and TXT files into JSONL chunks for pretraining. Each output record contains the text chunk and the source file path.
+
+```bash
+python scripts/extract_text.py --input-dir data/docs/ --output data/docs.jsonl
+```
+
+Supported file types: `.pdf`, `.docx`, `.md`, `.txt`
+
+| Option | Default | Description |
+|---|---|---|
+| `--input-dir` | *(required)* | Directory of documents to extract |
+| `--output` | *(required)* | Output JSONL file |
+| `--chunk-size` | `1000` | Approximate character length per chunk |
+
+---
+
+### `format_dataset.py`
+
+Converts raw datasets (JSON/CSV) into user-assistant conversation format for fine-tuning.
+
+```bash
 python format_dataset.py input.json data/train.jsonl --format instruction
-
-# Validate the formatted dataset
-python utils.py validate data/train.jsonl
-
-# Count tokens (optional)
-python utils.py tokens data/train.jsonl
 ```
 
-### 3. Fine-tune the Model
-```bash
-# Quick fine-tuning with default settings
-./scripts/launch_finetune.sh
+| Option | Default | Description |
+|---|---|---|
+| `input_file` | *(required)* | Input dataset file |
+| `output_file` | *(required)* | Output JSONL file |
+| `--format` | *(required)* | One of: `instruction`, `qa`, `conversation`, `text_pairs` |
+| `--system-prompt` | — | Custom system prompt to inject |
+| `--instruction-key` | `instruction` | Field name for the instruction |
+| `--input-key` | `input` | Field name for the input |
+| `--output-key` | `output` | Field name for the output |
+| `--question-key` | `question` | Field name for the question |
+| `--answer-key` | `answer` | Field name for the answer |
+| `--conversation-key` | `conversation` | Field name for the conversation |
 
-# Or with custom configuration
+---
+
+## Training
+
+Both training scripts take a YAML config file. Example configs are in `config/`.
+
+### `pretrain.py`
+
+Pretrains the model on raw text using a causal language modelling objective. Use this with iMessages, document dumps, or any unstructured text JSONL.
+
+```bash
+python pretrain.py --config config/pretrain_config.yaml
+```
+
+**Resume from checkpoint:**
+```bash
+python pretrain.py --config config/pretrain_config.yaml --resume results/checkpoint-1000
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--config` | *(required)* | Path to YAML config file |
+| `--resume` | — | Path to a checkpoint to resume from |
+| `--output-dir` | from config | Override the output directory |
+| `--streaming` | off | Use streaming datasets (for very large datasets) |
+| `--wandb-disabled` | off | Disable Weights & Biases logging |
+
+---
+
+### `finetune.py`
+
+Fine-tunes the model on structured conversation data using LoRA/QLoRA. Use this after pretraining, with formatted conversation JSONL.
+
+```bash
 python finetune.py --config config/finetune_config.yaml
 ```
 
-### 4. Test Your Model
+**Resume from checkpoint:**
 ```bash
-# Test generation capabilities
+python finetune.py --config config/finetune_config.yaml --resume results/checkpoint-500
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--config` | *(required)* | Path to YAML config file |
+| `--resume` | — | Path to a checkpoint to resume from |
+| `--output-dir` | from config | Override the output directory |
+| `--wandb-disabled` | off | Disable Weights & Biases logging |
+
+**Launch scripts** (wraps the above with common cluster settings):
+```bash
+./scripts/launch_pretrain.sh
+./scripts/launch_finetune.sh
+```
+
+---
+
+## Inference & Deployment
+
+### `scripts/live_inference.py`
+
+Interactive chat with the trained model, using a system prompt from `prompts/system-prompt.md`.
+
+```bash
+python scripts/live_inference.py
+```
+
+```bash
+python scripts/live_inference.py \
+  --base-model Qwen/Qwen3.5-4B \
+  --adapter-path pretrain_results/final_pretrained_model \
+  --max-new-tokens 512 \
+  --temperature 0.8
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--base-model` | `Qwen/Qwen3.5-4B` | Base model name or local path |
+| `--adapter-path` | `pretrain_results/final_pretrained_model` | Path to the LoRA adapter |
+| `--system-prompt` | `prompts/system-prompt.md` | Path to system prompt file |
+| `--dtype` | `bfloat16` | Model precision: `bfloat16`, `float16`, `float32` |
+| `--max-new-tokens` | `256` | Maximum tokens to generate per response |
+| `--temperature` | `0.7` | Sampling temperature |
+| `--top-p` | `0.9` | Top-p nucleus sampling |
+
+---
+
+### `scripts/merge_lora.py`
+
+Merges a LoRA adapter into the base model weights to produce a single standalone model. Optionally pushes the result to Hugging Face Hub.
+
+```bash
+python scripts/merge_lora.py \
+  --adapter-path pretrain_results/final_pretrained_model \
+  --output-dir qwen-merged
+```
+
+**Push to Hugging Face Hub:**
+```bash
+python scripts/merge_lora.py \
+  --adapter-path pretrain_results/final_pretrained_model \
+  --output-dir qwen-merged \
+  --push-to-hub \
+  --repo-id username/yuyangGPT
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--base-model` | `Qwen/Qwen3.5-4B` | Base model name or local path |
+| `--adapter-path` | `pretrain_results/final_pretrained_model` | Path to the LoRA adapter |
+| `--output-dir` | `qwen-pretrained` | Directory to save the merged model |
+| `--dtype` | `bfloat16` | Model precision: `bfloat16`, `float16`, `float32` |
+| `--push-to-hub` | off | Push merged model to Hugging Face Hub |
+| `--repo-id` | — | Hub repo ID, required with `--push-to-hub` |
+| `--use-auth-token` | off | Use cached HF token for gated models |
+
+---
+
+## Utilities
+
+### `utils.py`
+
+General-purpose utilities: dataset validation, token counting, model testing, and sample generation.
+
+**Validate a dataset:**
+```bash
+python utils.py validate data/train.jsonl
+```
+
+**Count tokens:**
+```bash
+python utils.py tokens data/train.jsonl --model Qwen/Qwen3.5-4B
+```
+
+**Test model generation:**
+```bash
 python utils.py test --config config/finetune_config.yaml --model results/final_model
 ```
 
-## 📁 Project Structure
-
-```
-├── config/                     # Configuration files
-│   ├── finetune_config.yaml   # Fine-tuning configuration
-│   └── pretrain_config.yaml   # Pretraining configuration
-├── scripts/                    # Utility scripts
-│   ├── setup.sh               # Environment setup
-│   ├── launch_finetune.sh     # Fine-tuning launcher
-│   └── launch_pretrain.sh     # Pretraining launcher
-├── format_dataset.py          # Dataset formatting script
-├── model_setup.py             # Model and LoRA configuration
-├── data_processing.py         # Data loading and preprocessing
-├── finetune.py               # Fine-tuning script
-├── pretrain.py               # Pretraining script
-├── utils.py                  # Utility functions
-└── requirements.txt          # Python dependencies
+**Generate a sample dataset:**
+```bash
+python utils.py sample data/sample.jsonl --num-samples 100
 ```
 
-### Sample file layout on disk
+---
+
+## Project Structure
 
 ```
-.
-├── config/
-│   ├── finetune_config.yaml
-│   └── pretrain_config.yaml
-├── data/
-│   ├── train.jsonl            # formatted conversations for fine-tuning
-│   ├── validation.jsonl       # optional held-out set
-│   ├── pretrain.jsonl         # raw text with `"text"` field for pretraining
-│   └── pretrain_val.jsonl     # optional pretraining eval set
-├── results/                   # fine-tuning outputs (checkpoints, logs)
-├── pretrain_results/          # pretraining outputs
+yuyangGPT/
+├── config/                  # YAML training configs
+├── data/                    # Datasets (gitignored)
+├── prompts/                 # System prompts
 ├── scripts/
-├── format_dataset.py
-├── data_processing.py
-├── finetune.py
-├── pretrain.py
-├── utils.py
-└── README.md
+│   ├── scrape_imessages.py  # Export iMessages to JSONL
+│   ├── format_imessages.py  # Flatten newlines in iMessages JSONL
+│   ├── split_dataset.py     # 80/20 train/val split
+│   ├── extract_text.py      # PDF/DOCX/MD/TXT → JSONL
+│   ├── live_inference.py    # Interactive chat with trained model
+│   ├── merge_lora.py        # Merge LoRA adapter into base model
+│   ├── launch_pretrain.sh   # Pretrain launch wrapper
+│   ├── launch_finetune.sh   # Finetune launch wrapper
+│   └── setup.sh             # Environment setup
+├── pretrain.py              # Pretraining entrypoint
+├── finetune.py              # Fine-tuning entrypoint
+├── format_dataset.py        # Dataset format converter
+├── model_setup.py           # Model/tokenizer/LoRA setup
+├── data_processing.py       # Data loading and tokenisation
+├── utils.py                 # Validation, token counting, testing
+└── requirements.txt
 ```
-
-## 🔧 Core Components
-
-### Dataset Formatting (`format_dataset.py`)
-Converts various dataset formats into conversation format:
-
-```bash
-# Instruction-following format (Alpaca-style)
-python format_dataset.py input.json output.jsonl --format instruction
-
-# Q&A format
-python format_dataset.py input.json output.jsonl --format qa --question-key question --answer-key answer
-
-# Existing conversation format
-python format_dataset.py input.json output.jsonl --format conversation
-
-# Simple text pairs
-python format_dataset.py input.json output.jsonl --format text_pairs --input-key input --target-key target
-```
-
-**Expected Input Formats:**
-- **Instruction**: `{"instruction": "...", "input": "...", "output": "..."}`
-- **Q&A**: `{"question": "...", "answer": "..."}`
-- **Conversation**: `{"conversation": [{"role": "user", "content": "..."}, ...]}`
-- **Text pairs**: `{"input": "...", "target": "..."}`
-
-### Fine-tuning (`finetune.py`)
-Complete fine-tuning pipeline with:
-- LoRA/QLoRA for parameter-efficient training
-- 4-bit quantization for memory efficiency
-- Gradient checkpointing and mixed precision
-- Wandb integration for experiment tracking
-- Evaluation and sample generation
-
-```bash
-python finetune.py --config config/finetune_config.yaml [OPTIONS]
-
-Options:
-  --resume CHECKPOINT     # Resume from checkpoint
-  --output-dir DIR        # Override output directory
-  --wandb-disabled        # Disable wandb logging
-```
-
-### Pretraining (`pretrain.py`)
-Continued pretraining on raw text data:
-- Handles large-scale text datasets
-- Streaming dataset support
-- Perplexity monitoring
-- Regular generation sampling
-
-```bash
-python pretrain.py --config config/pretrain_config.yaml [OPTIONS]
-
-Options:
-  --streaming             # Use streaming datasets
-  --resume CHECKPOINT     # Resume from checkpoint
-  --output-dir DIR        # Override output directory
-  --wandb-disabled        # Disable wandb logging
-```
-
-## ⚙️ Configuration
-
-### Fine-tuning Configuration (`config/finetune_config.yaml`)
-
-Key settings to customize:
-
-```yaml
-# Model settings
-model:
-  name: "Qwen/Qwen3.5-4B"
-  use_flash_attention: true
-
-# LoRA settings
-lora:
-  enabled: true
-  r: 64                    # LoRA rank
-  alpha: 16               # LoRA alpha
-  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-
-# Training settings
-training:
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 8
-  learning_rate: 2e-4
-  num_train_epochs: 3
-
-# Data settings
-data:
-  train_file: "data/train.jsonl"
-  max_seq_length: 2048
-```
-
-### Memory Optimization
-
-For different GPU memory configurations:
-
-**Low Memory (8GB)**:
-```yaml
-quantization:
-  enabled: true
-  load_in_4bit: true
-training:
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 8
-lora:
-  r: 32
-  alpha: 8
-```
-
-**Medium Memory (16GB)**:
-```yaml
-quantization:
-  enabled: true
-  load_in_4bit: true
-training:
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 4
-lora:
-  r: 64
-  alpha: 16
-```
-
-**High Memory (24GB+)**:
-```yaml
-quantization:
-  enabled: false
-training:
-  per_device_train_batch_size: 4
-  gradient_accumulation_steps: 2
-lora:
-  r: 128
-  alpha: 32
-```
-
-## 🗃️ Dataset Preparation Examples
-
-### Extract raw documents (PDF/DOCX/MD/TXT) to JSONL for pretraining
-
-Place source files under `data/raw_docs/` (or any folder), then run:
-
-```bash
-python scripts/extract_text.py --input-dir data/raw_docs --output-file data/pretrain.jsonl --chunk-size 2000 --overlap 200
-```
-
-This writes JSONL with `text` (and `source`) fields that can be pointed to by `data.train_file` in `config/pretrain_config.yaml`.
-
-> Note: Ensure your local CUDA toolkit/driver matches the PyTorch build (e.g., cu121) you install above.
-
-### Example 1: Alpaca-style Instruction Dataset
-Input format:
-```json
-[
-  {
-    "instruction": "Explain quantum computing",
-    "input": "",
-    "output": "Quantum computing is a revolutionary approach..."
-  }
-]
-```
-
-Conversion:
-```bash
-python format_dataset.py alpaca_data.json data/train.jsonl --format instruction
-```
-
-### Example 2: Q&A Dataset
-Input format:
-```json
-[
-  {
-    "question": "What is machine learning?",
-    "answer": "Machine learning is a subset of AI..."
-  }
-]
-```
-
-Conversion:
-```bash
-python format_dataset.py qa_data.json data/train.jsonl --format qa
-```
-
-### Example 3: Custom Conversation Dataset
-Input format:
-```json
-[
-  {
-    "conversation": [
-      {"role": "system", "content": "You are a helpful assistant."},
-      {"role": "user", "content": "Hello!"},
-      {"role": "assistant", "content": "Hi! How can I help you today?"}
-    ]
-  }
-]
-```
-
-Conversion:
-```bash
-python format_dataset.py conversation_data.json data/train.jsonl --format conversation
-```
-
-## 🎯 Training Examples
-
-### Basic Fine-tuning
-```bash
-# Prepare sample dataset
-python utils.py sample data/sample_train.jsonl --num-samples 1000
-
-# Fine-tune with default settings
-python finetune.py --config config/finetune_config.yaml
-```
-
-### Advanced Fine-tuning with Custom Settings
-```bash
-# Create custom config
-cp config/finetune_config.yaml config/my_config.yaml
-# Edit my_config.yaml with your settings
-
-# Run training with custom output directory
-python finetune.py --config config/my_config.yaml --output-dir results/my_experiment
-```
-
-### Multi-GPU Training
-For multi-GPU training, use `accelerate`:
-```bash
-# Configure accelerate (run once)
-accelerate config
-
-# Launch multi-GPU training
-accelerate launch finetune.py --config config/finetune_config.yaml
-```
-
-### Pretraining Example
-```bash
-# Prepare text data in JSONL format with "text" field
-echo '{"text": "Your raw text data here..."}' > data/pretrain.jsonl
-
-# Run pretraining
-python pretrain.py --config config/pretrain_config.yaml --streaming
-```
-
-## 🧩 Merge LoRA and export
-
-After pretraining or fine-tuning with LoRA, merge the adapter into the base model and save to `qwen-pretrained`:
-
-```bash
-python scripts\merge_lora.py --adapter-path pretrain_results\final_pretrained_model --base-model Qwen/Qwen3.5-4B --output-dir qwen-pretrained
-```
-
-> Note: `--adapter-path` must point to a folder containing `adapter_config.json` (e.g., a LoRA checkpoint directory).
-
-To push the merged weights to Hugging Face Hub for inference elsewhere (after `huggingface-cli login`):
-
-```bash
-python scripts\merge_lora.py --adapter-path pretrain_results\final_pretrained_model --base-model Qwen/Qwen3.5-4B --output-dir qwen-pretrained --push-to-hub --repo-id your-username/qwen3.5-4b-merged --use-auth-token
-```
-
-You can then load the merged model locally or from the Hub with `AutoModelForCausalLM.from_pretrained("qwen-pretrained")` (or the Hub repo id) along with `AutoTokenizer.from_pretrained`.
-
-## 📊 Evaluation and Monitoring
-
-### Wandb Integration
-1. Install wandb: `pip install wandb`
-2. Login: `wandb login`
-3. Set project name in config:
-```yaml
-environment:
-  wandb_project: "my-qwen-experiments"
-```
-
-### Model Testing
-```bash
-# Test generation with trained model
-python utils.py test --config config/finetune_config.yaml --model results/final_model --prompt "Explain artificial intelligence"
-
-# Validate dataset format
-python utils.py validate data/train.jsonl
-
-# Count tokens in dataset
-python utils.py tokens data/train.jsonl
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**1. CUDA Out of Memory**
-- Reduce `per_device_train_batch_size`
-- Increase `gradient_accumulation_steps`
-- Enable quantization: `quantization.enabled: true`
-- Reduce LoRA rank: `lora.r: 32`
-
-**2. Model Loading Issues**
-- Verify model name in config
-- Check HuggingFace token if using gated models
-- Ensure sufficient disk space
-
-**3. Dataset Format Errors**
-- Validate dataset: `python utils.py validate data/train.jsonl`
-- Check conversation structure in formatted data
-- Ensure UTF-8 encoding
-
-**4. Training Instability**
-- Reduce learning rate: `learning_rate: 1e-4`
-- Add gradient clipping: `max_grad_norm: 1.0`
-- Use warmup: `warmup_ratio: 0.03`
-
-### Performance Tips
-
-1. **Use Flash Attention**: Set `model.use_flash_attention: true`
-2. **Optimize Data Loading**: Increase `preprocessing_num_workers`
-3. **Mixed Precision**: Enable `bf16: true` for newer GPUs
-4. **Gradient Checkpointing**: Enable to save memory
-5. **Streaming Datasets**: Use for very large pretraining datasets
-
-## 📝 Model Updates
-
-The default configuration targets `Qwen/Qwen3.5-4B`. To switch to another variant, update the `model.name` field (e.g., to an Instruct checkpoint) and the rest of the pipeline will adapt automatically.
-
-## 🤝 Contributing
-
-Feel free to submit issues and enhancement requests! This infrastructure is designed to be modular and extensible.
-
-## 📄 License
-
-This project is open source. Please check the individual model licenses (Qwen models have their own licensing terms).
