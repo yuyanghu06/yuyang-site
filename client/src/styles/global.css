@@ -72,10 +72,134 @@ html {
   opacity: 0.6;
 }
 
+/* On mobile viewports, hide the desktop link row entirely — the
+   hamburger + drawer (rendered by useMobileDevice in Navbar.tsx) takes over */
 @media (max-width: 768px) {
   .navbar-links {
     display: none;
   }
+
+  /* Reduce side padding on small screens so logo/hamburger don't crowd */
+  .navbar {
+    padding: 1.25rem 1.5rem;
+  }
+}
+
+/* ── Mobile hamburger button ─────────────────────────────────────────────── */
+
+/* The button is always in the DOM on mobile (controlled by JS), but also
+   surfaced by CSS for any viewport ≤ 768px as a fallback. */
+.navbar-hamburger {
+  display: none; /* hidden on desktop — shown when isMobile is true via JS */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  z-index: 101; /* above navbar z-index (100) so it's always tappable */
+}
+
+/* CSS fallback: always show the button when viewport is narrow */
+@media (max-width: 768px) {
+  .navbar-hamburger {
+    display: flex;
+  }
+}
+
+/* Individual lines that form the hamburger / × icon */
+.hamburger-line {
+  display: block;
+  width: 22px;
+  height: 1.5px;
+  background: var(--white);
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform-origin: center;
+}
+
+/* Animate first line downward + rotate to form the top arm of × */
+.hamburger-line--open:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+
+/* Middle line fades out */
+.hamburger-line--open:nth-child(2) {
+  opacity: 0;
+}
+
+/* Animate last line upward + rotate to form the bottom arm of × */
+.hamburger-line--open:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+/* ── Drawer backdrop ─────────────────────────────────────────────────────── */
+
+/* Full-screen translucent overlay rendered behind the drawer.
+   Tapping it closes the menu — positioned below drawer (z-index 99). */
+.navbar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99;
+  /* No transition needed — it mounts/unmounts with the drawer open state */
+}
+
+/* ── Slide-in drawer panel ───────────────────────────────────────────────── */
+
+/* The drawer slides in from the right edge of the screen.
+   Default state: fully off-screen to the right (transform: translateX(100%)).
+   Open state (.navbar-drawer--open): slides to translateX(0). */
+.navbar-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 72vw;
+  max-width: 300px;
+  height: 100dvh; /* dvh handles mobile browser chrome correctly */
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Open state — slides drawer into view */
+.navbar-drawer--open {
+  transform: translateX(0);
+}
+
+/* Vertical link list inside the drawer */
+.navbar-drawer-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  text-align: center;
+}
+
+/* Drawer link typography — matches desktop navbar style */
+.navbar-drawer-links a {
+  color: var(--white);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  font-size: 1rem;
+  font-family: var(--font-ui);
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+/* Hover and active-route states */
+.navbar-drawer-links a:hover,
+.navbar-drawer-links a.active {
+  opacity: 0.55;
 }
 
 /* ── Page transition (handled by framer-motion in PageTransition.tsx) ────── */
