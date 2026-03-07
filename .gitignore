@@ -9,3 +9,4 @@ pretrain_results
 .github
 data
 model
+.DS_Store
