@@ -14,7 +14,9 @@
 }
 
 html, body, #root {
-  height: 100%;
+  /* min-height instead of height so content can grow beyond the viewport */
+  min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport height — adjusts as mobile browser chrome shows/hides */
   width: 100%;
 }
 
@@ -217,3 +219,325 @@ html {
 /* ── Page transition (handled by framer-motion in PageTransition.tsx) ────── */
 /* The .page-transition class is no longer used — slide variants live in the
    component. This block is kept as a reference comment only. */
+
+/* ── Spotlight chat history button ──────────────────────────────────────── */
+
+/* Root wrapper — fixed to the bottom-left of the viewport, above all content.
+   Contains both the circular button and the slide-up panel. */
+.spotlight-root {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 200; /* above navbar (100), blur overlay (1), page content (10) */
+}
+
+/* Circular liquid-glass trigger button */
+.spotlight-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  /* Liquid glass: translucent cool gradient + strong blur */
+  background: linear-gradient(
+    135deg,
+    rgba(180, 160, 210, 0.18) 0%,
+    rgba(80,  80,  120, 0.22) 100%
+  );
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  /* Outer glow + inset highlight to sell the glass edge */
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.80);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  position: relative; /* anchor for the badge */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover — slight grow + deeper shadow */
+.spotlight-btn:hover {
+  transform: scale(1.10);
+  box-shadow:
+    0 6px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Active (after first message) — brighter border glow */
+.spotlight-btn--active {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Exchange count badge ─────────────────────────────────────────────────── */
+/* Tiny pill anchored to the top-right of the button */
+.spotlight-btn-badge {
+  position: absolute;
+  top:   -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  padding: 0 3px;
+  background: rgba(255, 255, 255, 0.55);
+  color: rgba(0, 0, 0, 0.75);
+  font-size: 0.58rem;
+  font-family: var(--font-ui);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0;
+}
+
+/* ── Slide-up chat log panel ─────────────────────────────────────────────── */
+
+/* Panel anchors above the button with a small gap */
+.spotlight-panel {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: 340px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    160deg,
+    rgba(180, 160, 210, 0.14) 0%,
+    rgba(60,  60,  100, 0.22) 100%
+  );
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  /* Mount animation: rises + fades in */
+  animation: spotlight-panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes spotlight-panel-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* Panel header — title + close button */
+.spotlight-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  flex-shrink: 0; /* never squish the header */
+}
+
+.spotlight-panel-title {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ✕ close button */
+.spotlight-panel-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.spotlight-panel-close:hover {
+  opacity: 0.65;
+}
+
+/* Scrollable message area */
+.spotlight-panel-messages {
+  overflow-y: auto;
+  flex: 1;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  /* Subtle custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+.spotlight-panel-messages::-webkit-scrollbar        { width: 4px; }
+.spotlight-panel-messages::-webkit-scrollbar-track  { background: transparent; }
+.spotlight-panel-messages::-webkit-scrollbar-thumb  {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+}
+
+/* ── Message bubbles ──────────────────────────────────────────────────────── */
+
+.spotlight-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  max-width: 88%;
+}
+
+/* User bubbles flush right */
+.spotlight-bubble--user      { align-self: flex-end;  align-items: flex-end; }
+/* Assistant bubbles flush left */
+.spotlight-bubble--assistant { align-self: flex-start; align-items: flex-start; }
+
+/* Tiny "YOU" / "Yuyang" label above each bubble */
+.spotlight-bubble-role {
+  font-family: var(--font-ui);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.40);
+}
+
+/* Bubble body — frosted glass pill */
+.spotlight-bubble-text {
+  font-family: var(--font-ui);
+  font-size: 0.80rem;
+  font-weight: 300;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+}
+
+/* User bubbles get a slightly brighter fill */
+.spotlight-bubble--user .spotlight-bubble-text {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+/* Action hint — e.g. "→ Navigated to projects" */
+.spotlight-action-hint {
+  font-size: 0.63rem;
+  font-family: var(--font-ui);
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.38);
+  padding-left: 0.3rem;
+}
+
+/* ── Input bar at the bottom of the spotlight panel ─────────────────────── */
+
+/* Wrapper — sits below the message list, never squishes */
+.spotlight-input-wrap {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* Flex row: input + send button */
+.spotlight-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Text input — same liquid-glass feel as the panel */
+.spotlight-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.80rem;
+  font-weight: 300;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.spotlight-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.spotlight-input:focus {
+  border-color: rgba(255, 255, 255, 0.30);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.spotlight-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Send button — compact circle matching the trigger button style */
+.spotlight-send {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.spotlight-send:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.spotlight-send:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Typing indicator — three animated dots (same as hero chat) */
+.spotlight-typing {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0.1rem 0;
+}
+
+.spotlight-typing span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+  animation: spotlight-dot-bounce 1.2s infinite ease-in-out;
+}
+
+.spotlight-typing span:nth-child(1) { animation-delay: 0s;    }
+.spotlight-typing span:nth-child(2) { animation-delay: 0.18s; }
+.spotlight-typing span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes spotlight-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.55; }
+  40%            { transform: translateY(-4px); opacity: 1;    }
+}
+@media (max-width: 768px) {
+  /* Move button up slightly so it clears mobile browser chrome */
+  .spotlight-root {
+    bottom: 1.5rem;
+    left:   1.5rem;
+  }
+
+  /* Panel takes almost full width on narrow screens */
+  .spotlight-panel {
+    width: calc(100vw - 3rem);
+    max-height: 55vh;
+  }
+}

@@ -3,13 +3,25 @@
    avoid tint/colour artifacts. backgroundImage is set via inline style in App.tsx. */
 .blur-overlay {
   position: fixed;
-  inset: 0;
+  /* Explicit top/left instead of inset shorthand for widest mobile compat */
+  top: 0;
+  left: 0;
+  /* 100% of the fixed containing block = viewport */
+  width: 100%;
+  height: 100%;
+  /* dvh cascade: fills screen including areas uncovered as browser chrome hides */
+  min-height: 100vh;
+  min-height: 100dvh;
   background-size: cover;
   background-position: center;
+  /* Prevent tiling on unusual viewport sizes */
+  background-repeat: no-repeat;
   filter: blur(18px) brightness(0.35); /* same brightness as HeroBg — no tone shift */
   transform: scale(1.05); /* prevents blurred edge bleed at viewport edges */
   pointer-events: none;
   z-index: 1; /* above HeroBg (z-index:0), below page content (z-index:10) */
+  /* GPU compositing layer so iOS Safari recalculates cover on orientation change */
+  will-change: transform;
 }
 
 .page-wrapper {

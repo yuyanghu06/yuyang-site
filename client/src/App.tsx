@@ -7,6 +7,8 @@ import Contact from "./pages/Contact";
 import HeroBg from "./components/HeroBg";
 import Navbar from "./components/Navbar";
 import PageTransition from "./components/PageTransition";
+import SpotlightButton from "./components/SpotlightButton";
+import { ChatProvider } from "./context/ChatContext";
 import { CONFIG } from "./config";
 
 /**
@@ -56,18 +58,28 @@ function AnimatedRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      {/*
-        HeroBg, BlurOverlay, and Navbar all live outside every animated container.
-        - position:fixed inside a CSS transform context clips to that element,
-          not the viewport — causing flicker and broken navbar on scroll.
-        - Navbar is position:fixed here so it stays at top on tall interior pages.
-        - BlurOverlay uses a real background-image (not backdrop-filter) — no tint.
-      */}
-      <HeroBg />
-      <BlurOverlay />
-      <Navbar />
-      <AnimatedRoutes />
-    </BrowserRouter>
+    /*
+      ChatProvider wraps the entire app so chat message state is shared across
+      all routes.  Messages persist in sessionStorage (survives navigation,
+      clears on refresh) and are readable by both Home.tsx and SpotlightButton.
+    */
+    <ChatProvider>
+      <BrowserRouter>
+        {/*
+          HeroBg, BlurOverlay, Navbar, and SpotlightButton all live outside every
+          animated container.
+          - position:fixed inside a CSS transform context clips to that element,
+            not the viewport — causing flicker and broken navbar on scroll.
+          - Navbar is position:fixed here so it stays at top on tall interior pages.
+          - BlurOverlay uses a real background-image (not backdrop-filter) — no tint.
+          - SpotlightButton is position:fixed at bottom-left — visible on all pages.
+        */}
+        <HeroBg />
+        <BlurOverlay />
+        <Navbar />
+        <SpotlightButton />
+        <AnimatedRoutes />
+      </BrowserRouter>
+    </ChatProvider>
   );
 }

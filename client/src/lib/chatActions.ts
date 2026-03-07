@@ -2,7 +2,7 @@ import type { NavigateFunction } from "react-router-dom";
 
 // ── External URL map — add project links here ────────────────────────────────
 // Keys must match exactly what the model outputs after [redirect].
-export const REDIRECT_MAP: Record<string, string> = {
+export const REDIRECT_MAP: Record<string, string> = {   
   github:            "https://github.com/yuyanghu06",
   linkedin:          "https://www.linkedin.com/in/yuyanghu06/",
   instagram:         "https://www.instagram.com/yuyanghu06/",

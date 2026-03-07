@@ -6,7 +6,9 @@
 .hero {
   position: relative;
   width: 100vw;
+  /* dvh cascade keeps the hero section sized to the true visible screen on mobile */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -15,13 +17,29 @@
 
 .hero-bg {
   position: fixed;
-  inset: 0;
+  /* Explicit top/left instead of inset shorthand for widest mobile compatibility */
+  top: 0;
+  left: 0;
+  /* 100% of the fixed containing block = viewport, guarantees full coverage */
+  width: 100%;
+  height: 100%;
+  /* dvh = dynamic viewport height: shrinks/grows as mobile browser chrome hides/shows.
+     Cascades: 100vh (all browsers) → 100dvh (modern browsers that support it) */
+  min-height: 100vh;
+  min-height: 100dvh;
   background-image: var(--bg-image);
   background-size: cover;
   background-position: center;
+  /* Prevent any accidental tiling on edge-case viewport sizes */
+  background-repeat: no-repeat;
   filter: brightness(0.35);
   pointer-events: none;
   z-index: 0;
+  /* Force a GPU compositing layer so iOS Safari re-evaluates background-size:cover
+     after orientation changes (without this, cover is cached at initial dimensions) */
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 
