@@ -37,8 +37,10 @@ export default function Navbar() {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    /* Use "click" not "mousedown" — mousedown fires before the button's onClick,
+       causing the toggle to immediately re-open the drawer after closing it. */
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
   }, [isOpen]);
 
   if (!navbarRoot) return null;
@@ -54,7 +56,7 @@ export default function Navbar() {
           {/* Three-line hamburger button — animates to × when drawer is open */}
           <button
             className="navbar-hamburger"
-            onClick={() => setIsOpen((v) => !v)}
+            onClick={(e) => { e.stopPropagation(); setIsOpen((v) => !v); }}
             aria-label={isOpen ? "Close menu" : "Open menu"}
             aria-expanded={isOpen}
           >

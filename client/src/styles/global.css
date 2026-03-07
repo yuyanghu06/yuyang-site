@@ -98,7 +98,8 @@ html {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  z-index: 101; /* above navbar z-index (100) so it's always tappable */
+  position: relative; /* required: z-index has no effect on position:static elements */
+  z-index: 101;       /* above the drawer (z-index 100) so the × is always tappable */
 }
 
 /* CSS fallback: always show the button when viewport is narrow */
@@ -150,17 +151,28 @@ html {
 
 /* The drawer slides in from the right edge of the screen.
    Default state: fully off-screen to the right (transform: translateX(100%)).
-   Open state (.navbar-drawer--open): slides to translateX(0). */
+   Open state (.navbar-drawer--open): slides to translateX(0).
+   Liquid glass style: semi-transparent with strong blur, subtle border, and
+   a faint cool tint — avoids the heavy solid-black look. */
 .navbar-drawer {
   position: fixed;
   top: 0;
   right: 0;
-  width: 72vw;
-  max-width: 300px;
-  height: 100dvh; /* dvh handles mobile browser chrome correctly */
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+  width: 55vw;             /* Narrower — takes up less of the page */
+  max-width: 220px;        /* Tighter cap than the old 300px */
+  height: 100dvh;          /* dvh handles mobile browser chrome correctly */
+  /* Liquid glass: very low opacity background, layered cool tint */
+  background: linear-gradient(
+    160deg,
+    rgba(180, 160, 210, 0.12) 0%,
+    rgba(80,  80,  120, 0.18) 100%
+  );
+  /* Strong blur + a thin highlight border to sell the glass effect */
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  /* Subtle inner glow on the leading edge */
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.25), inset 1px 0 0 rgba(255, 255, 255, 0.08);
   z-index: 100;
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
