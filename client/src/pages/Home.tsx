@@ -35,7 +35,9 @@ interface ContactFlow {
 const INITIAL_CONTACT_FLOW: ContactFlow = { step: "idle", email: "", message: "" };
 
 // ── Initial greeting message ────────────────────────────────────────────────
-const GREETING = "Hi, I'm the AI version of Yuyang. Ask me anything!";
+const GREETING = "Hi, I'm the AI version of Yuyang. Ask me anything about my projects, personal life, etc! " +
+                 "I have access to information about everyone in my life, can help you navigate the site, " +
+                 "or can redirect you to the links to my various projects, social media, etc.";
 
 export default function Home() {
   const location  = useLocation();

@@ -1,6 +1,6 @@
 # Yuyang's Personal Site
 
-A full-stack personal portfolio site built with **NestJS** (server) and **React + Vite** (client), served from a single Node.js process. Features a photography-first editorial hero layout, an AI chatbot powered by RAG (Retrieval-Augmented Generation) over a personal knowledge base in Pinecone, and a contact form that delivers email via SMTP.
+A full-stack personal portfolio site built with **NestJS** (server) and **React + Vite** (client), served from a single Node.js process. Features a photography-first editorial hero layout, an AI chatbot powered by RAG (Retrieval-Augmented Generation) over a personal knowledge base in Pinecone, and a contact form that delivers email via SMTP. Agentic features are implemented to help the user navigate the site and my various projects, and the AI used is a custom LoRA agent based on Qwen 3 235B finetuned by me on datasets containing my personal messages and documents.  
 
 ---
 
@@ -185,10 +185,6 @@ restartPolicyType = "on_failure"
 
 ---
 
-## API Reference
-
-See [`planning/routes.md`](./planning/routes.md) for the full route reference including request/response shapes, external API calls made by the backend, and frontend fetch calls.
-
 ### Quick reference
 
 | Method | Path | Description |
@@ -219,3 +215,10 @@ Top-K nearest knowledge chunks
 
 If `PINECONE_API_KEY` is absent (e.g. in early dev), the RAG step is skipped and the chat falls back to system-prompt-only mode without crashing.
 
+## Agentic Tools Overview
+
+The agent has access to the following tools:
+1. [navigate]: navigates the user to a seperate section of my site.
+2. [contact]: navigates the user specifically to the contact page to allow them to email me. 
+3. [redirect]: redirects the user to predefined URLs with a map listed in chatActions.ts to my various projects, social media pages, etc.
+4. [message]: default tool for all agentic outputs, no action is done and a message is simply displayed. 
