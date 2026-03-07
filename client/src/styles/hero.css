@@ -285,6 +285,19 @@
   border-color: rgba(180, 140, 200, 0.25);
 }
 
+/* Action hint — small label shown beneath a bubble when the model triggered
+   a navigate or redirect action (e.g. "→ Navigated to projects") */
+.chat-fs-action-hint {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+  padding-left: 0.1rem;
+}
+
 /* Typing indicator (reuses @keyframes chatbot-bounce) */
 .chat-fs-typing {
   display: flex !important;

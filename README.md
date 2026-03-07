@@ -1,6 +1,6 @@
-# Yuyang's Personal Site — Backend
+# Yuyang's Personal Site
 
-A full-stack personal editorial site built with **NestJS** (server) and **React + Vite** (client), served from a single Node.js process. The site features a photography-first hero layout and a RAG-powered AI chatbot that answers questions about Yuyang by retrieving context from a personal knowledge base stored in Pinecone.
+A full-stack personal portfolio site built with **NestJS** (server) and **React + Vite** (client), served from a single Node.js process. Features a photography-first editorial hero layout, an AI chatbot powered by RAG (Retrieval-Augmented Generation) over a personal knowledge base in Pinecone, and a contact form that delivers email via SMTP.
 
 ---
 
@@ -10,7 +10,8 @@ A full-stack personal editorial site built with **NestJS** (server) and **React 
 |-----------|------------|
 | Backend   | NestJS 10, TypeScript, Node.js ≥ 20 |
 | Frontend  | React 18, Vite 5, React Router v6, CSS |
-| AI / Chat | TogetherAI (`/v1/chat/completions` + `/v1/embeddings`) |
+| AI / Chat | TogetherAI (`/v1/chat/completions`) |
+| Embeddings | OpenAI (`/v1/embeddings`) |
 | RAG index | Pinecone vector database |
 | Email     | Nodemailer over SMTP (Gmail) |
 | Deploy    | Railway |
@@ -21,29 +22,33 @@ A full-stack personal editorial site built with **NestJS** (server) and **React 
 
 ```
 backend/
-├── src/                  # NestJS backend
-│   ├── main.ts           # Server bootstrap, static asset config
-│   ├── app.module.ts     # Root module
-│   ├── app.controller.ts # SPA fallback — serves index.html for all GET *
-│   ├── chat/             # POST /api/chat — RAG-augmented chat endpoint
-│   ├── contact/          # POST /api/contact — contact form → email
-│   └── mcp/              # RAG pipeline (Embedding, Pinecone, Context services)
-├── client/               # React frontend
+├── src/                    # NestJS backend
+│   ├── main.ts             # Server bootstrap — static asset config, CORS, port binding
+│   ├── app.module.ts       # Root module
+│   ├── app.controller.ts   # SPA fallback — serves index.html for all GET *
+│   ├── chat/               # POST /api/chat — RAG-augmented AI chat endpoint
+│   ├── contact/            # POST /api/contact — contact form → SMTP email
+│   └── mcp/                # RAG pipeline: EmbeddingService, PineconeService, ContextService
+├── client/                 # React frontend
 │   └── src/
-│       ├── pages/        # Home, About, Projects, Contact
-│       ├── components/   # Navbar, ChatBot, PageWrapper, HeroBg, etc.
-│       └── styles/       # global.css, hero.css, interior.css
-├── knowledge/            # Source documents ingested into Pinecone (fill these in)
+│       ├── pages/          # Home, About, Projects, Contact
+│       ├── components/     # Navbar, PageTransition, PageWrapper, HeroBg, ContentBlock, etc.
+│       ├── styles/         # global.css, hero.css, interior.css
+│       ├── App.tsx         # Router setup, BlurOverlay, animated page transitions
+│       └── config.ts       # Global config — background image path, nav links, content
+├── knowledge/              # Source documents ingested into Pinecone (*.md / *.txt)
 ├── scripts/
-│   └── ingest.ts         # Offline pipeline: chunk → embed → upsert to Pinecone
+│   └── ingest.ts           # Offline pipeline: chunk → embed (OpenAI) → upsert to Pinecone
 ├── prompts/
-│   └── SYSTEM_PROMPT.md  # System prompt prepended to every chat completion
+│   └── SYSTEM_PROMPT.md    # System prompt prepended to every chat completion
+├── planning/               # Architecture notes and API reference
 ├── public/
-│   └── photos/
-│       └── BACKGROUND.jpeg
-├── .env.example          # Template for all required environment variables
-├── railway.toml          # Railway build + start config
-└── tsconfig.scripts.json # TypeScript config for running scripts/ingest.ts
+│   └── photos/             # Static image assets served at /public/photos/
+│       └── BACKGROUND.jpeg # Hero background — never moved or renamed
+├── .env                    # Local environment variables (not committed)
+├── .env.example            # Template for all required environment variables
+├── railway.toml            # Railway build + start config
+└── tsconfig.scripts.json   # TypeScript config for scripts/ingest.ts
 ```
 
 ---
@@ -56,23 +61,23 @@ Copy `.env.example` to `.env` and fill in all values before running locally.
 cp .env.example .env
 ```
 
-| Variable            | Required | Description |
-|---------------------|----------|-------------|
-| `PORT`              | No       | Server port (default: `3000`; Railway sets this automatically) |
-| `TOGETHER_API_KEY`  | **Yes**  | TogetherAI API key — [get one here](https://api.together.xyz/settings/api-keys) |
-| `TOGETHER_MODEL`    | **Yes**  | Chat model ID on Together (e.g. `Qwen/Qwen2.5-7B-Instruct-Turbo`) |
-| `OPENAI_API_KEY`         | **Yes**  | OpenAI API key — [get one here](https://platform.openai.com/api-keys) |
-| `OPENAI_EMBEDDING_MODEL` | No       | Embedding model (default: `text-embedding-3-small`; also `text-embedding-3-large`) |
-| `PINECONE_API_KEY`  | **Yes**  | Pinecone API key — [get one here](https://app.pinecone.io) |
-| `PINECONE_INDEX`    | No       | Pinecone index name (default: `yuyang-knowledge`) |
-| `PINECONE_TOP_K`    | No       | Nearest-neighbour chunks to retrieve per query (default: `5`) |
-| `PINECONE_NEIGHBORS`| No       | Neighbor expansion window ±N (default: `1`) |
-| `MCP_MAX_CONTEXT`   | No       | Max characters of context injected into prompt (default: `2000`) |
-| `SMTP_HOST`         | **Yes*** | SMTP server (default: `smtp.gmail.com`) |
-| `SMTP_PORT`         | **Yes*** | SMTP port (default: `587`) |
-| `SMTP_USER`         | **Yes*** | Gmail address used to send mail |
-| `SMTP_PASS`         | **Yes*** | Gmail [app password](https://support.google.com/accounts/answer/185833) |
-| `CONTACT_EMAIL`     | **Yes*** | Your inbox — where contact form submissions are delivered |
+| Variable                  | Required   | Description |
+|---------------------------|------------|-------------|
+| `PORT`                    | No         | Server port (default `3000`; Railway sets this automatically) |
+| `TOGETHER_API_KEY`        | **Yes**    | TogetherAI API key — used for chat completions |
+| `TOGETHER_MODEL`          | **Yes**    | Chat model ID on Together (e.g. `Qwen/Qwen2.5-7B-Instruct-Turbo`) |
+| `OPENAI_API_KEY`          | **Yes**    | OpenAI API key — used for query and document embeddings |
+| `OPENAI_EMBEDDING_MODEL`  | No         | Embedding model (default: `text-embedding-3-small`) |
+| `PINECONE_API_KEY`        | **Yes**    | Pinecone API key |
+| `PINECONE_INDEX`          | No         | Pinecone index name (default: `memories`) |
+| `PINECONE_TOP_K`          | No         | Nearest-neighbour chunks to retrieve per query (default: `5`) |
+| `PINECONE_NEIGHBORS`      | No         | Neighbor expansion window ±N (default: `1`) |
+| `MCP_MAX_CONTEXT`         | No         | Max characters of context injected into prompt (default: `2000`) |
+| `SMTP_HOST`               | Yes*       | SMTP server (default: `smtp.gmail.com`) |
+| `SMTP_PORT`               | Yes*       | SMTP port (default: `587`) |
+| `SMTP_USER`               | Yes*       | Gmail address the server sends mail *from* |
+| `SMTP_PASS`               | Yes*       | Gmail [App Password](https://support.google.com/accounts/answer/185833) (not your login password) |
+| `CONTACT_EMAIL`           | Yes*       | Your inbox — where contact form submissions are delivered |
 
 > \* Required only if you want the contact form to send emails.
 
@@ -92,10 +97,9 @@ npm install
 
 # 2. Copy and fill in environment variables
 cp .env.example .env
-# Edit .env with your API keys
 
 # 3. (Optional) Populate the Pinecone knowledge index
-#    Edit knowledge/bio.md (and any other *.md files you add) with your info, then:
+#    Edit files in knowledge/ with your info, then:
 npm run ingest
 ```
 
@@ -105,14 +109,12 @@ npm run ingest
 npm run dev
 ```
 
-This runs Vite (client, hot-reload) and NestJS watch mode simultaneously via `concurrently`.
+Runs Vite (client, hot-reload on port 5173) and NestJS watch mode (port 3000) in parallel via `concurrently`. The Vite dev server proxies `/api/*` requests to NestJS automatically.
 
 | URL | What it serves |
 |-----|----------------|
 | `http://localhost:5173` | Vite dev server (React, HMR) |
-| `http://localhost:3000` | NestJS API endpoints |
-
-API calls from the Vite dev server proxy to NestJS automatically via the `vite.config.ts` proxy configuration.
+| `http://localhost:3000` | NestJS (API + static in production) |
 
 ### Individual processes
 
@@ -125,7 +127,7 @@ npm run dev:server   # NestJS only (watch mode)
 
 ## Knowledge Base Ingestion
 
-The chatbot uses a RAG pipeline to answer questions about you. Source documents live in `knowledge/`. Edit or add `.md` / `.txt` files there, then run:
+The chatbot uses RAG to answer questions about you. Source documents live in `knowledge/`. Edit or add `.md` / `.txt` files there, then run:
 
 ```bash
 npm run ingest
@@ -133,11 +135,11 @@ npm run ingest
 
 This script:
 1. Reads all `*.md` and `*.txt` files from `knowledge/`
-2. Splits each file into ~300-token overlapping chunks
-3. Embeds every chunk via the TogetherAI embeddings endpoint
+2. Splits each file into overlapping ~300-token chunks
+3. Embeds every chunk via the OpenAI embeddings endpoint
 4. Upserts the vectors + metadata into your Pinecone index
 
-Re-running the script is safe — it overwrites existing vectors by ID.
+Re-running is safe — it overwrites existing vectors by ID.
 
 > **Before ingesting**, create a Pinecone index in the [Pinecone console](https://app.pinecone.io) with the correct vector dimension for your embedding model:
 > - `text-embedding-3-small` → **1536** dimensions
@@ -148,20 +150,17 @@ Re-running the script is safe — it overwrites existing vectors by ID.
 ## Production Build
 
 ```bash
-npm run build
+npm run build   # vite build → dist/client/ then nest build → dist/server/
+npm start       # Run the compiled production server
 ```
 
-This runs `vite build` (outputs to `dist/client/`) then `nest build` (outputs to `dist/server/`). The compiled server serves the React app as static files.
-
-```bash
-npm start   # Runs the compiled production server
-```
+The compiled server serves the React app as static files and handles all API routes from a single process.
 
 ---
 
 ## Deploying to Railway
 
-The `railway.toml` at the repo root configures everything:
+The `railway.toml` at the repo root configures the full build and start:
 
 ```toml
 [build]
@@ -174,59 +173,29 @@ restartPolicyType = "on_failure"
 
 ### Steps
 
-1. **Push to GitHub** — Railway will detect the repo.
-2. **Create a new Railway project** and connect your GitHub repository.
-3. **Set environment variables** in the Railway dashboard under *Variables*:
-   - Add all keys from `.env.example` (do **not** set `PORT` — Railway injects it).
-4. **Deploy** — Railway runs the build command automatically on each push to `main`.
-5. **Ingest** — After deploy, run `npm run ingest` locally (it connects to the same Pinecone index). You do not need to run ingest on Railway itself.
+1. Push to GitHub — Railway detects the repo automatically.
+2. Create a Railway project and connect your GitHub repository.
+3. Set all environment variables in the Railway dashboard under *Variables* (do **not** set `PORT` — Railway injects it).
+4. Deploy — Railway runs the build on every push to `main`.
+5. Ingest — Run `npm run ingest` locally after deploy (it connects to the same Pinecone index; no need to run it on Railway).
 
-### Railway-specific notes
+### Notes
 - The server binds to `0.0.0.0` (required for Railway's reverse proxy).
-- Railway sets `PORT` automatically — do not hardcode it.
-- `devDependencies` are installed during the Railway build because Vite and the NestJS CLI are needed to compile the app; they are not shipped to the final runtime image.
+- `devDependencies` are installed during build because Vite and the NestJS CLI are needed to compile; they are not shipped to the runtime image.
 
 ---
 
 ## API Reference
 
-### `POST /api/chat`
-Accepts a conversation history and returns the AI assistant's reply, augmented with retrieved context from the Pinecone knowledge index.
+See [`planning/routes.md`](./planning/routes.md) for the full route reference including request/response shapes, external API calls made by the backend, and frontend fetch calls.
 
-**Request**
-```json
-{
-  "messages": [
-    { "role": "user",      "content": "What projects have you built?" },
-    { "role": "assistant", "content": "..." },
-    { "role": "user",      "content": "Tell me more about the first one." }
-  ]
-}
-```
+### Quick reference
 
-**Response**
-```json
-{ "reply": "..." }
-```
-
----
-
-### `POST /api/contact`
-Sends the visitor's message to the configured `CONTACT_EMAIL` inbox via SMTP.
-
-**Request**
-```json
-{
-  "name":    "Jane Smith",
-  "email":   "jane@example.com",
-  "message": "Hi Yuyang, I'd love to chat!"
-}
-```
-
-**Response**
-```json
-{ "ok": true }
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/chat` | RAG-augmented AI chat — returns `{ reply: string }` |
+| `POST` | `/api/contact` | Contact form → SMTP email — returns `{ ok: true }` |
+| `GET`  | `*` | SPA fallback — serves `index.html` for all non-API routes |
 
 ---
 
@@ -235,20 +204,18 @@ Sends the visitor's message to the configured `CONTACT_EMAIL` inbox via SMTP.
 ```
 User message
     │
-    ▼ EmbeddingService.embed()
-Dense query vector (OpenAI /v1/embeddings)
+    ▼  EmbeddingService  →  OpenAI /v1/embeddings
+Dense query vector
     │
-    ▼ PineconeService.queryIndex()
-Top-K nearest knowledge chunks + scores
+    ▼  PineconeService   →  Pinecone similarity search
+Top-K nearest knowledge chunks
     │
-    ▼ ContextService.buildContext()
-Neighbor expansion → dedup → format [CONTEXT]...[/CONTEXT]
+    ▼  ContextService    →  neighbor expansion + dedup + truncation
+[CONTEXT]...[/CONTEXT] block
     │
-    ▼ ChatService.chat()
-Enriched system prompt + history → TogetherAI /v1/chat/completions
-    │
-    ▼
+    ▼  ChatService       →  TogetherAI /v1/chat/completions
 { reply: string }
 ```
 
-If `PINECONE_API_KEY` is not set, the pipeline is skipped and the chat falls back to the system-prompt-only mode gracefully.
+If `PINECONE_API_KEY` is absent (e.g. in early dev), the RAG step is skipped and the chat falls back to system-prompt-only mode without crashing.
+

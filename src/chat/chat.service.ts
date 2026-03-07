@@ -11,6 +11,38 @@ export interface ChatMessage {
   content: string;
 }
 
+/**
+ * sanitizeHistory
+ * ---------------
+ * Ensures the message array sent to TogetherAI is valid:
+ *   1. Strips any leading assistant messages (the UI greeting, contact-flow prompts, etc.)
+ *      because the first non-system message must be from the user.
+ *   2. Merges consecutive same-role messages so the conversation strictly alternates.
+ *      Consecutive assistant messages can occur when the contact-flow state machine
+ *      appends a local prompt right after the AI's reply.
+ */
+function sanitizeHistory(history: ChatMessage[]): ChatMessage[] {
+  // 1. Drop leading assistant messages
+  let start = 0;
+  while (start < history.length && history[start].role !== "user") start++;
+  const trimmed = history.slice(start);
+  if (trimmed.length === 0) return [];
+
+  // 2. Merge consecutive messages with the same role, and drop empty-content messages
+  //    (empty content can occur if the model replies with only an action tag and nothing
+  //    else — parseActions strips the tag leaving an empty string that TogetherAI rejects)
+  const out: ChatMessage[] = [{ ...trimmed[0] }];
+  for (let i = 1; i < trimmed.length; i++) {
+    const last = out[out.length - 1];
+    if (last.role === trimmed[i].role) {
+      last.content += "\n\n" + trimmed[i].content;
+    } else {
+      out.push({ ...trimmed[i] });
+    }
+  }
+  return out.filter((m) => m.content.trim().length > 0);
+}
+
 @Injectable()
 export class ChatService {
   // Load the system prompt once at startup from prompts/SYSTEM_PROMPT.md.
@@ -81,30 +113,47 @@ export class ChatService {
       ? `${this.SYSTEM_PROMPT}\n\n${contextBlock}`
       : this.SYSTEM_PROMPT;
 
+    // ── Sanitize history before assembling the final messages array ─────────
+    // TogetherAI (like most OpenAI-compatible APIs) requires:
+    //   1. First non-system message must be from the user
+    //   2. Messages must strictly alternate user / assistant
+    //
+    // The frontend history may violate both rules because:
+    //   - The UI shows an assistant greeting as the first message
+    //   - The contact-flow state machine injects consecutive assistant messages
+    //     (AI reply + local "What's your email?" prompt) without user turns in between
+    const sanitizedHistory = sanitizeHistory(history);
+
     // ── Assemble the final messages array ────────────────────────────────────
     const messages: ChatMessage[] = [
       { role: "system", content: enrichedSystemPrompt },
-      ...history,
+      ...sanitizedHistory,
     ];
 
     // ── Call TogetherAI (OpenAI-compatible endpoint) ─────────────────────────
+    const requestBody = {
+      model,
+      messages,
+      max_tokens:  512,
+      temperature: 0.7,
+    };
+
+    // Log the sanitized message roles so we can confirm the history is valid
+    console.log("[Chat] Sending to TogetherAI — model:", model, "| message roles:", messages.map((m) => m.role));
+
     const response = await fetch("https://api.together.xyz/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type":  "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens:  512,
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const text = await response.text();
-      throw new InternalServerErrorException(`TogetherAI error: ${text}`);
+      console.error("[Chat] TogetherAI returned", response.status, text);
+      throw new InternalServerErrorException(`TogetherAI error ${response.status}: ${text}`);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
