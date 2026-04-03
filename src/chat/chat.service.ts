@@ -341,11 +341,28 @@ export class ChatService {
       day: "numeric",
     });
 
-    // Build the base system prompt (no pre-fetched RAG context — model retrieves on demand)
+    // ── Auto pre-fetch: embed the latest user message and retrieve context ──
+    // This seeds the model with relevant context before the first inference call.
+    // The model can still issue additional [retrieve] or [web_search] calls to
+    // dig deeper — this is just the baseline context injection.
+    let autoContext = "";
+    const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
+    if (lastUserMsg?.content) {
+      try {
+        const queryText = lastUserMsg.content.trim();
+        console.log("[Chat] Auto pre-fetch context for:", queryText.slice(0, 80));
+        autoContext = await this.executeRetrieve(queryText);
+      } catch (err) {
+        console.warn("[Chat] Auto pre-fetch failed:", (err as Error).message);
+      }
+    }
+
+    // Build the base system prompt with pre-fetched context injected
     const systemPrompt = [
       this.SYSTEM_PROMPT,
       this.TOOLS_PROMPT,
       `Today is ${currentDate}.`,
+      ...(autoContext ? [`Initial context from memory:\n\n${autoContext}`] : []),
       ...(imageDescription ? [`[IMAGE]\n${imageDescription}\n[/IMAGE]`] : []),
     ].join("\n\n");
 
@@ -354,7 +371,7 @@ export class ChatService {
       ...sanitizeHistory(history),
     ];
 
-    const MAX_ITERATIONS = 3;
+    const MAX_ITERATIONS = 10;
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       // Call TogetherAI with streaming
