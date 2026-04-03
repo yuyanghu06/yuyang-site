@@ -268,6 +268,18 @@
 .chat-fs-bubble--user      { align-self: flex-end;   align-items: flex-end; }
 .chat-fs-bubble--assistant { align-self: flex-start; align-items: flex-start; }
 
+/* Fix alignment when bubbles are wrapped by an extra map() wrapper div */
+.chat-fs-messages-inner > div > .chat-fs-bubble--user {
+  align-self: flex-end;
+  align-items: flex-end;
+  margin-left: auto;
+}
+.chat-fs-messages-inner > div > .chat-fs-bubble--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+
 /* Small ALL-CAPS speaker label */
 .chat-fs-bubble-role {
   font-family: var(--font-ui);
@@ -834,18 +846,26 @@
   gap: 1.5rem;
 }
 
+/* Row wrapper — must be flex column so align-self works on bubbles inside */
+.chatbot-msg-row {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Individual message bubble */
 .chatbot-bubble {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   max-width: 80%;               /* Bubbles don't span the full window width */
+  width: fit-content;           /* shrink to content so margin-left: auto works */
 }
 
 /* User messages pushed to the right */
 .chatbot-bubble--user {
   align-self: flex-end;
   align-items: flex-end;
+  margin-left: auto;
 }
 
 /* Assistant messages sit on the left */
