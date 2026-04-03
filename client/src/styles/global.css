@@ -48,6 +48,27 @@ html {
   background: transparent;
 }
 
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navbar-admin-link {
+  color: var(--white);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  font-size: 0.75rem;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+}
+
+.navbar-admin-link:hover {
+  opacity: 1;
+}
+
 .navbar-logo {
   font-size: 2rem;
   color: var(--white);
@@ -81,9 +102,22 @@ html {
     display: none;
   }
 
-  /* Reduce side padding on small screens so logo/hamburger don't crowd */
+  /* Show admin link on mobile, positioned below other elements */
   .navbar {
+    flex-wrap: wrap;
     padding: 1.25rem 1.5rem;
+  }
+
+  .navbar-left {
+    order: 10; /* push to the end */
+    flex-basis: 100%;
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .navbar-admin-link {
+    font-size: 0.7rem;
   }
 }
 

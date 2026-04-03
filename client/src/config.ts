@@ -5,7 +5,7 @@ export const CONFIG = {
   heroText: "I AM YUYANG",
   subText: "Get to know the real me",
 
-  // ── Navigation links ─────────────────────────────────────────────────────────
+  // ── Navigation links ─────────────────────────────────────────────────────
   navLinks: [
     { label: "Home",     path: "/" },
     { label: "About",    path: "/about" },

@@ -28,6 +28,9 @@ export default function AdminIngest() {
   // PDF input state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
+  // Markdown input state
+  const [markdownFile, setMarkdownFile] = useState<File | null>(null);
+
   // On mount, restore key from localStorage and auto-unlock if present
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -124,6 +127,42 @@ export default function AdminIngest() {
     }
   };
 
+  const handleMarkdownSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!markdownFile) return;
+
+    setLoading(true);
+    setStatus(null);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", markdownFile);
+
+      const res = await fetch("/api/ingest/markdown", {
+        method:  "POST",
+        headers: { "x-admin-key": adminKey },
+        body:    formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: "Request failed" }));
+        throw new Error(data.message || `Error ${res.status}`);
+      }
+
+      const data = await res.json();
+      setStatus(`Markdown ingested successfully. ${data.chunksCreated} chunks created.`);
+      setMarkdownFile(null);
+      // Reset the file input
+      const input = document.getElementById("markdown-input") as HTMLInputElement;
+      if (input) input.value = "";
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── Key gate ──────────────────────────────────────────────────────────────
   if (!unlocked) {
     return (
@@ -156,7 +195,7 @@ export default function AdminIngest() {
         <div className="admin-header-row">
           <div>
             <h1 className="admin-title">Ingest Data</h1>
-            <p className="admin-subtitle">Upload PDFs or paste raw text to index in Pinecone.</p>
+            <p className="admin-subtitle">Upload PDFs, Markdown files, or paste raw text to index in Pinecone.</p>
           </div>
           <button type="button" className="admin-btn admin-btn--lock" onClick={handleLock}>
             Lock
@@ -180,6 +219,23 @@ export default function AdminIngest() {
                 onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
               />
               <button type="submit" className="admin-btn" disabled={!pdfFile || loading}>
+                {loading ? "Uploading..." : "Upload & Ingest"}
+              </button>
+            </form>
+          </section>
+
+          {/* ── Markdown Upload ──────────────────────────────────────────── */}
+          <section className="admin-section">
+            <h2 className="admin-section-title">Markdown Upload</h2>
+            <form onSubmit={handleMarkdownSubmit} className="admin-form">
+              <input
+                id="markdown-input"
+                type="file"
+                accept=".md,.markdown"
+                className="admin-file-input"
+                onChange={(e) => setMarkdownFile(e.target.files?.[0] ?? null)}
+              />
+              <button type="submit" className="admin-btn" disabled={!markdownFile || loading}>
                 {loading ? "Uploading..." : "Upload & Ingest"}
               </button>
             </form>

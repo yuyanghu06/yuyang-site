@@ -21,22 +21,47 @@ export class IngestController {
    * Accepts a single PDF file as multipart/form-data.
    * Extracts text, chunks, embeds, and upserts to Pinecone.
    */
-  @Post("pdf")
-  @UseInterceptors(FileInterceptor("file"))
-  async ingestPdf(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<{ success: boolean; chunksCreated: number }> {
-    if (!file) {
-      throw new BadRequestException("No file uploaded — expected a 'file' field with a PDF");
-    }
+   @Post("pdf")
+   @UseInterceptors(FileInterceptor("file"))
+   async ingestPdf(
+     @UploadedFile() file: Express.Multer.File,
+   ): Promise<{ success: boolean; chunksCreated: number }> {
+     if (!file) {
+       throw new BadRequestException("No file uploaded — expected a 'file' field with a PDF");
+     }
 
-    if (!file.originalname.toLowerCase().endsWith(".pdf")) {
-      throw new BadRequestException("Only PDF files are accepted");
-    }
+     if (!file.originalname.toLowerCase().endsWith(".pdf")) {
+       throw new BadRequestException("Only PDF files are accepted");
+     }
 
-    const chunksCreated = await this.ingestService.ingestPdf(file.buffer, file.originalname);
-    return { success: true, chunksCreated };
-  }
+     const chunksCreated = await this.ingestService.ingestPdf(file.buffer, file.originalname);
+     return { success: true, chunksCreated };
+   }
+
+   /**
+    * POST /api/ingest/markdown
+    * Accepts a single Markdown file as multipart/form-data.
+    * Extracts text, chunks, embeds, and upserts to Pinecone.
+    */
+   @Post("markdown")
+   @UseInterceptors(FileInterceptor("file"))
+   async ingestMarkdown(
+     @UploadedFile() file: Express.Multer.File,
+   ): Promise<{ success: boolean; chunksCreated: number }> {
+     if (!file) {
+       throw new BadRequestException("No file uploaded — expected a 'file' field with a Markdown file");
+     }
+
+     const filename = file.originalname.toLowerCase();
+     if (!filename.endsWith(".md") && !filename.endsWith(".markdown")) {
+       throw new BadRequestException("Only Markdown files (.md or .markdown) are accepted");
+     }
+
+     // Markdown is just plain text — decode buffer to string
+     const text = file.buffer.toString("utf-8");
+     const chunksCreated = await this.ingestService.ingestText(text, file.originalname);
+     return { success: true, chunksCreated };
+   }
 
   /**
    * POST /api/ingest/text

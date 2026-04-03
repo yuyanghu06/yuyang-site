@@ -47,7 +47,12 @@ export default function Navbar() {
 
   return createPortal(
     <nav className="navbar">
-      {/* Brand mark — left side on all breakpoints */}
+      {/* Left section — admin link */}
+      <div className="navbar-left">
+        <a href="/admin/ingest" className="navbar-admin-link">Admin</a>
+      </div>
+
+      {/* Brand mark — center-left on desktop, hidden on mobile */}
       <span className="navbar-logo"></span>
 
       {isMobile ? (
