@@ -27,7 +27,7 @@ Search the web for real-time or general knowledge information. Use this when the
 
 You will receive the search results as a system message and can then respond using them.
 
-When to use: Questions about the outside world, current events, technical concepts, or anything not specific to Yuyang.
+When to use: Questions about the outside world, requests by the user to perform web searches, current events, technical concepts, or anything not specific to Yuyang.
 When NOT to use: Questions about Yuyang himself (use [retrieve] instead), greetings, navigation/contact/redirect requests.
 
 Example:

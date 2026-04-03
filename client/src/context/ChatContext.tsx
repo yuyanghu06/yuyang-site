@@ -53,6 +53,11 @@ export const CHAT_GREETING: ChatMessage = {
 };
 
 // ── SSE event types from the backend ──────────────────────────────────────────
+interface SSETokenEvent {
+  type:    "token";
+  content: string;
+}
+
 interface SSEToolCallEvent {
   type:    "tool_call";
   tool:    string;
@@ -73,7 +78,7 @@ interface SSEErrorEvent {
   type: "error";
 }
 
-type SSEEvent = SSEToolCallEvent | SSEResponseEvent | SSEDoneEvent | SSEErrorEvent;
+type SSEEvent = SSETokenEvent | SSEToolCallEvent | SSEResponseEvent | SSEDoneEvent | SSEErrorEvent;
 
 // ── Context shape ─────────────────────────────────────────────────────────────
 interface ChatContextValue {
@@ -216,7 +221,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           let event: SSEEvent;
           try { event = JSON.parse(payload); } catch { continue; }
 
-          if (event.type === "tool_call") {
+          if (event.type === "token") {
+            // Stream token directly into the last assistant message
+            setMessages((prev) => {
+              const next = [...prev];
+              const lastIdx = next.length - 1;
+              if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                next[lastIdx] = {
+                  ...next[lastIdx],
+                  content: (next[lastIdx].content || "") + event.content,
+                };
+              }
+              return next;
+            });
+          } else if (event.type === "tool_call") {
             // Accumulate tool call for display as status bubble
             const toolCall: ToolCall = {
               id:        `tc-${Date.now()}-${toolCallCounter++}`,

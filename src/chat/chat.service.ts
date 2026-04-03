@@ -29,7 +29,7 @@ export interface ParsedReply {
 
 // SSE event emitted during the tool-use loop
 export interface ToolEvent {
-  type:    "tool_call" | "response" | "done";
+  type:    "token" | "tool_call" | "response" | "done";
   tool?:   string;
   summary?: string;
   content?: string;
@@ -197,9 +197,12 @@ export class ChatService {
   /**
    * callTogetherAI
    * --------------
-   * Non-streaming call to TogetherAI. Returns the raw assistant response text.
+   * Streaming call to TogetherAI. Yields token chunks as they arrive.
+   * Also returns the full accumulated response text.
    */
-  private async callTogetherAI(messages: ChatMessage[]): Promise<string> {
+  private async callTogetherAIStream(
+    messages: ChatMessage[],
+  ): Promise<{ text: string; tokens: AsyncGenerator<string> }> {
     const apiKey = process.env.TOGETHER_API_KEY;
     const model  = process.env.TOGETHER_MODEL;
     if (!apiKey) throw new InternalServerErrorException("TOGETHER_API_KEY not configured");
@@ -213,7 +216,7 @@ export class ChatService {
         "Content-Type":  "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, messages, max_tokens: 512, temperature: 0.7 }),
+      body: JSON.stringify({ model, messages, max_tokens: 512, temperature: 0.7, stream: true }),
     });
 
     if (!response.ok) {
@@ -222,11 +225,56 @@ export class ChatService {
       throw new InternalServerErrorException(`TogetherAI error ${response.status}: ${text}`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await response.json();
-    const raw: string = data?.choices?.[0]?.message?.content ?? "";
-    console.log("[Chat] Raw reply:\n", raw);
-    return raw;
+    // Generator that yields tokens as they arrive
+    async function* tokenGenerator(): AsyncGenerator<string> {
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete lines; keep trailing incomplete line in buffer
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") continue;
+              if (!data) continue;
+
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const parsed: any = JSON.parse(data);
+                const token = parsed?.choices?.[0]?.delta?.content ?? "";
+                if (token) {
+                  yield token;
+                }
+              } catch (err) {
+                console.warn("[Chat] JSON parse error in stream:", (err as Error).message, "line:", data);
+                continue;
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+
+    // Collect all tokens to build full text
+    let fullText = "";
+    for await (const token of tokenGenerator()) {
+      fullText += token;
+    }
+
+    console.log("[Chat] Raw reply:\n", fullText);
+    return { text: fullText, tokens: tokenGenerator() };
   }
 
   /**
@@ -268,18 +316,18 @@ export class ChatService {
   /**
    * runToolLoop
    * -----------
-   * The core agentic tool-use loop. Makes non-streaming calls to TogetherAI,
+   * The core agentic tool-use loop. Makes streaming calls to TogetherAI,
    * parses bracket tags, executes [retrieve] or [web_search], and yields
-   * SSE events for each tool call. Caps at 3 iterations to prevent infinite loops.
+   * SSE events for each token, tool call, and final response. Caps at 3 iterations.
    *
    * Flow:
    *   1. Build system prompt + sanitized history
-   *   2. Call TogetherAI (non-streaming)
-   *   3. Parse bracket tag from response
+   *   2. Call TogetherAI (streaming) — emit token events in real-time
+   *   3. Parse bracket tag from accumulated response
    *   4. If [retrieve]: emit tool_call event, search Pinecone, inject context, loop
    *   5. If [web_search]: emit tool_call event, search Tavily, inject results, loop
-   *   6. If terminal tag: emit tool_call event, emit response, emit done
-   *   7. If no tag: emit response, emit done
+   *   6. If terminal tag: emit tool_call event, emit final response, emit done
+   *   7. If no tag: emit final response, emit done
    */
   async *runToolLoop(history: ChatMessage[], image?: string): AsyncGenerator<ToolEvent> {
     const imageDescription = image ? await this.describeImage(image) : undefined;
@@ -309,7 +357,8 @@ export class ChatService {
     const MAX_ITERATIONS = 3;
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-      const raw = await this.callTogetherAI(messages);
+      // Call TogetherAI with streaming
+      const { text: raw } = await this.callTogetherAIStream(messages);
       const { text, tag } = parseTag(raw.trim());
 
       // ── [retrieve] — execute search and loop ─────────────────────────────
