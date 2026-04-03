@@ -6,6 +6,7 @@ import { IconType } from "react-icons";
 import { CONFIG } from "../config";
 import { useChatContext, INITIAL_CONTACT_FLOW } from "../context/ChatContext";
 import MessageContent from "../components/MessageContent";
+import ToolStatusBubble from "../components/ToolStatusBubble";
 import "../styles/hero.css";
 
 const SOCIAL_ICONS: Record<string, IconType> = {
@@ -102,28 +103,26 @@ export default function Home() {
           <div className="chat-fs-messages" aria-live="polite" aria-label="Chat conversation">
             <div className="chat-fs-messages-inner">
               {messages.map((msg, i) => (
-                <div key={i} className={`chat-fs-bubble chat-fs-bubble--${msg.role}`}>
-                  <span className="chat-fs-bubble-role">
-                    {msg.role === "user" ? "YOU" : "Yuyang"}
-                  </span>
-                  {msg.imageUrl && (
-                    <img src={msg.imageUrl} alt="Attached" className="chat-bubble-img" />
-                  )}
-                  <p className="chat-fs-bubble-text"><MessageContent content={msg.content} /></p>
-                  {/* Subtle action indicator — shown when the model triggered a navigate/redirect */}
-                  {msg.searches && msg.searches.length > 0 && (
-                    <details className="chat-fs-searches">
-                      <summary className="chat-fs-searches-summary">
-                        🔍 {msg.searches.length} web search{msg.searches.length > 1 ? "es" : ""}
-                      </summary>
-                      <ul className="chat-fs-searches-list">
-                        {msg.searches.map((q, i) => <li key={i}>{q}</li>)}
-                      </ul>
-                    </details>
-                  )}
-                  {msg.actionHint && (
-                    <span className="chat-fs-action-hint">{msg.actionHint}</span>
-                  )}
+                <div key={i}>
+                  {/* Tool call status bubbles — shown above the assistant message */}
+                  {msg.toolCalls?.map((tc) => (
+                    <ToolStatusBubble key={tc.id} toolCall={tc} />
+                  ))}
+                  {/* Skip rendering empty placeholder messages (tool calls only, no content yet) */}
+                  {msg.content ? (
+                    <div className={`chat-fs-bubble chat-fs-bubble--${msg.role}`}>
+                      <span className="chat-fs-bubble-role">
+                        {msg.role === "user" ? "YOU" : "Yuyang"}
+                      </span>
+                      {msg.imageUrl && (
+                        <img src={msg.imageUrl} alt="Attached" className="chat-bubble-img" />
+                      )}
+                      <p className="chat-fs-bubble-text"><MessageContent content={msg.content} /></p>
+                      {msg.actionHint && (
+                        <span className="chat-fs-action-hint">{msg.actionHint}</span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ))}
 

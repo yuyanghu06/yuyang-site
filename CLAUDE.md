@@ -103,7 +103,7 @@ backend/
 - **NEVER** add a CSS framework (no Tailwind, no Bootstrap, no styled-components)
 - **NEVER** add a UI component library — build all UI with plain React + CSS
 - **NEVER** persist chat history to a database — messages live in `ChatContext` and reset on refresh
-- **NEVER** stream TogetherAI responses — use simple request/response
+- **NEVER** use TogetherAI's token-streaming API (`stream: true`) — always call TogetherAI with standard request/response (`response.json()`). The SSE stream is only from the NestJS backend to the React frontend (for tool call events) — this SSE event loop is required and must NOT be disabled or removed
 - **NEVER** hardcode API keys — all secrets come from environment variables
 - **NEVER** put action-tag parsing on the backend — it is always done on the frontend
 - All backend code lives in `src/`

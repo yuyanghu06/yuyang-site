@@ -381,6 +381,14 @@ html {
   border-radius: 2px;
 }
 
+/* ── Message row wrapper — flex column so align-self works on bubbles ────── */
+/* The map() wrapper <div> must be a flex container for align-self: flex-end
+   to take effect on .spotlight-bubble--user inside it.                       */
+.spotlight-msg-row {
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── Message bubbles ──────────────────────────────────────────────────────── */
 
 .spotlight-bubble {
@@ -388,10 +396,11 @@ html {
   flex-direction: column;
   gap: 0.22rem;
   max-width: 88%;
+  width: fit-content; /* shrink to content so align-self + margin work correctly */
 }
 
 /* User bubbles flush right */
-.spotlight-bubble--user      { align-self: flex-end;  align-items: flex-end; }
+.spotlight-bubble--user      { align-self: flex-end;  align-items: flex-end;  margin-left: auto; }
 /* Assistant bubbles flush left */
 .spotlight-bubble--assistant { align-self: flex-start; align-items: flex-start; }
 
@@ -593,4 +602,56 @@ html {
     width: calc(100vw - 3rem);
     max-height: 55vh;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TOOL STATUS BUBBLES
+   Compact status indicators for tool calls in the chat stream.
+   Used in all three chat rendering contexts (fullscreen, spotlight, chatbot).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tool-status-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  margin: 0.25rem 0;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  width: fit-content;
+  max-width: 90%;
+  animation: tool-bubble-in 0.3s ease-out;
+}
+
+.tool-bubble-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  animation: tool-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.tool-bubble--retrieve .tool-bubble-dot { background: rgba(120, 180, 255, 0.6); }
+.tool-bubble--navigate .tool-bubble-dot { background: rgba(120, 255, 180, 0.6); }
+.tool-bubble--contact  .tool-bubble-dot { background: rgba(255, 200, 120, 0.6); }
+.tool-bubble--redirect .tool-bubble-dot { background: rgba(200, 160, 255, 0.6); }
+
+.tool-bubble-text {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-body, sans-serif);
+  line-height: 1.3;
+}
+
+@keyframes tool-bubble-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tool-dot-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.3); }
 }

@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Projects from "./pages/Projects";
 import Contact from "./pages/Contact";
+import AdminIngest from "./pages/AdminIngest";
 import HeroBg from "./components/HeroBg";
 import Navbar from "./components/Navbar";
 import PageTransition from "./components/PageTransition";
@@ -50,6 +51,7 @@ function AnimatedRoutes() {
           <Route path="/about" element={<About />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/admin/ingest" element={<AdminIngest />} />
         </Routes>
       </PageTransition>
     </AnimatePresence>

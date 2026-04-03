@@ -1,26 +1,12 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { tavily } from "@tavily/core";
 import { EmbeddingService } from "../mcp/embedding.service";
 import { PineconeService  } from "../mcp/pinecone.service";
 import { ContextService   } from "../mcp/context.service";
 
-// ── Tavily web search tool definition (OpenAI function-calling schema) ────────
-const WEB_SEARCH_TOOL = {
-  type: "function",
-  function: {
-    name:        "web_search",
-    description: "Search the web for current information. Use when the user asks about recent events, live data, or anything that may not be in your training knowledge.",
-    parameters: {
-      type:       "object",
-      properties: {
-        query: { type: "string", description: "The search query" },
-      },
-      required: ["query"],
-    },
-  },
-} as const;
+// ── Bracket-tag regex — matches [toolName] optional params at end of response ─
+const TAG_REGEX = /^\[(\w+)\]\s*(.*)$/;
 
 // A single message in the conversation thread
 export interface ChatMessage {
@@ -28,59 +14,85 @@ export interface ChatMessage {
   content: string;
 }
 
-// Structured reply returned to the controller — tool call already parsed out
+// Parsed bracket tag from model output
+export interface ParsedTag {
+  tool:   string;           // "retrieve" | "navigate" | "contact" | "redirect" | "message"
+  params: string;           // raw parameter string (e.g. "projects", "Yuyang projects portfolio")
+}
+
+// Structured reply returned to the controller
 export interface ParsedReply {
   text:   string;
   action: { tool: string; parameters: string[] } | null;
 }
 
+// SSE event emitted during the tool-use loop
+export interface ToolEvent {
+  type:    "tool_call" | "response" | "done";
+  tool?:   string;
+  summary?: string;
+  content?: string;
+  action?:  { tool: string; parameters: string[] } | null;
+}
+
 /**
- * parseReply
- * ----------
+ * parseTag
+ * --------
  * Scan the raw model output from the bottom up, find the first line that is a
- * valid JSON tool call, strip it from the text, and return both separately.
- * Exported so the streaming controller can call it after accumulating the full text.
+ * bracket-tag tool call, strip it from the text, and return both.
  */
-export function parseReply(raw: string): ParsedReply {
-  const lines = raw.split("\n");
+export function parseTag(raw: string): { text: string; tag: ParsedTag | null } {
+  const lines = raw.trim().split("\n");
 
   for (let i = lines.length - 1; i >= 0; i--) {
-    // Strip surrounding quotes the model may add due to prompt example formatting
-    const line = lines[i].trim().replace(/^["']|["']$/g, "");
-    if (!line.startsWith("{") || !line.endsWith("}")) continue;
-
-    try {
-      const parsed = JSON.parse(line) as unknown;
-      if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        typeof (parsed as Record<string, unknown>).tool === "string" &&
-        Array.isArray((parsed as Record<string, unknown>).parameters)
-      ) {
-        lines.splice(i, 1);
-        const text = lines
-          .filter((l) => !/^```/.test(l.trim()))
-          .join("\n")
-          .trim();
-
-        const fallbacks: Record<string, string> = {
-          navigate: "On it.",
-          redirect: "Here you go.",
-          contact:  "Let's get you in touch.",
-          message:  "",
-        };
-        const toolName = (parsed as { tool: string }).tool;
-        return {
-          text:   text || fallbacks[toolName] || ".",
-          action: parsed as { tool: string; parameters: string[] },
-        };
-      }
-    } catch {
-      // Not valid JSON — keep scanning upward
+    const line = lines[i].trim();
+    const match = line.match(TAG_REGEX);
+    if (match) {
+      const tool   = match[1].toLowerCase();
+      const params = match[2].trim();
+      lines.splice(i, 1);
+      const text = lines.join("\n").trim();
+      return { text, tag: { tool, params } };
     }
   }
 
-  return { text: raw.trim(), action: null };
+  return { text: raw.trim(), tag: null };
+}
+
+/**
+ * tagToAction
+ * -----------
+ * Convert a parsed bracket tag into the action format the frontend expects.
+ * Returns null for [retrieve] and [message] (no frontend action needed).
+ */
+function tagToAction(tag: ParsedTag | null): { tool: string; parameters: string[] } | null {
+  if (!tag) return null;
+  switch (tag.tool) {
+    case "navigate":
+    case "redirect":
+      return { tool: tag.tool, parameters: tag.params ? [tag.params] : [] };
+    case "contact":
+      return { tool: "contact", parameters: [] };
+    case "message":
+    default:
+      return null;
+  }
+}
+
+/**
+ * toolCallSummary
+ * ---------------
+ * Generate a human-readable summary for a tool call SSE event.
+ */
+function toolCallSummary(tag: ParsedTag): string {
+  switch (tag.tool) {
+    case "retrieve":  return `Searching memory for: ${tag.params}`;
+    case "navigate":  return `Navigating to ${tag.params} page`;
+    case "contact":   return "Opening contact flow";
+    case "redirect":  return `Opening ${tag.params}`;
+    case "message":   return "";
+    default:          return "";
+  }
 }
 
 /**
@@ -178,53 +190,17 @@ export class ChatService {
   }
 
   /**
-   * buildMessages
-   * -------------
-   * Shared helper: runs the RAG pipeline, assembles the enriched system prompt,
-   * and returns the final messages array ready to send to TogetherAI.
+   * callTogetherAI
+   * --------------
+   * Non-streaming call to TogetherAI. Returns the raw assistant response text.
    */
-  private async buildMessages(history: ChatMessage[], imageDescription?: string): Promise<ChatMessage[]> {
-    let contextBlock = "";
-    try {
-      const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
-      if (lastUserMsg) {
-        const topK        = parseInt(process.env.PINECONE_TOP_K ?? "5", 10);
-        const queryVector = await this.embedding.embed(lastUserMsg.content);
-        const matches     = await this.pinecone.queryIndex(queryVector, topK);
-        contextBlock      = await this.context.buildContext(matches);
-      }
-    } catch (err) {
-      console.warn("[MCP] RAG pipeline failed, falling back to context-free chat:", (err as Error).message);
-    }
-
-    const enrichedSystemPrompt = [
-      this.SYSTEM_PROMPT,
-      this.TOOLS_PROMPT,
-      ...(contextBlock ? [contextBlock] : []),
-      ...(imageDescription ? [`[IMAGE]\n${imageDescription}\n[/IMAGE]`] : []),
-    ].join("\n\n");
-
-    return [
-      { role: "system", content: enrichedSystemPrompt },
-      ...sanitizeHistory(history),
-    ];
-  }
-
-  /**
-   * chat
-   * ----
-   * Non-streaming path: waits for the full TogetherAI response, then parses
-   * and returns it as a ParsedReply.
-   */
-  async chat(history: ChatMessage[], image?: string): Promise<ParsedReply> {
+  private async callTogetherAI(messages: ChatMessage[]): Promise<string> {
     const apiKey = process.env.TOGETHER_API_KEY;
     const model  = process.env.TOGETHER_MODEL;
     if (!apiKey) throw new InternalServerErrorException("TOGETHER_API_KEY not configured");
     if (!model)  throw new InternalServerErrorException("TOGETHER_MODEL not configured");
 
-    const imageDescription = image ? await this.describeImage(image) : undefined;
-    const messages = await this.buildMessages(history, imageDescription);
-    console.log("[Chat] Sending to TogetherAI — model:", model, "| message roles:", messages.map((m) => m.role));
+    console.log("[Chat] Calling TogetherAI — model:", model, "| roles:", messages.map((m) => m.role));
 
     const response = await fetch("https://api.together.xyz/v1/chat/completions", {
       method: "POST",
@@ -237,175 +213,118 @@ export class ChatService {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("[Chat] TogetherAI returned", response.status, text);
+      console.error("[Chat] TogetherAI error", response.status, text);
       throw new InternalServerErrorException(`TogetherAI error ${response.status}: ${text}`);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await response.json();
     const raw: string = data?.choices?.[0]?.message?.content ?? "";
-    console.log("[Chat] Raw reply from TogetherAI:\n", raw);
-    const parsed = parseReply(raw.trim());
-    console.log("[Chat] Parsed reply — text:", parsed.text, "| action:", parsed.action);
-    return parsed;
+    console.log("[Chat] Raw reply:\n", raw);
+    return raw;
   }
 
   /**
-   * streamChunks
-   * ------------
-   * Streaming agentic loop:
-   *   1. Sends messages to TogetherAI with stream:true and the web_search tool available.
-   *   2. Yields text chunks as they arrive.
-   *   3. If the model calls web_search, the stream pauses, Tavily executes the query,
-   *      and a { type: "search", query } sentinel is yielded so the controller can
-   *      forward a "searching…" event to the client. The result is injected as a
-   *      tool message and the loop continues.
-   *   4. Repeats until finish_reason is "stop" with no pending tool calls.
-   *
-   * Sentinel format (not shown to the user — controller strips it before display):
-   *   "\x00SEARCH:" + query + "\x00"
+   * executeRetrieve
+   * ---------------
+   * Runs the Pinecone retrieval pipeline for a [retrieve] query and returns
+   * formatted context to inject back into the conversation.
    */
-  async *streamChunks(history: ChatMessage[], image?: string): AsyncGenerator<string> {
-    const apiKey    = process.env.TOGETHER_API_KEY;
-    const model     = process.env.TOGETHER_MODEL;
-    const tavilyKey = process.env.TAVILY_API_KEY;
-    if (!apiKey) throw new InternalServerErrorException("TOGETHER_API_KEY not configured");
-    if (!model)  throw new InternalServerErrorException("TOGETHER_MODEL not configured");
+  private async executeRetrieve(query: string): Promise<string> {
+    const topK        = parseInt(process.env.PINECONE_TOP_K ?? "5", 10);
+    const queryVector = await this.embedding.embed(query);
+    const matches     = await this.pinecone.queryIndex(queryVector, topK);
+    const contextBlock = await this.context.buildContext(matches);
 
-    const imageDescription = image ? await this.describeImage(image) : undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messages: any[] = await this.buildMessages(history, imageDescription);
-
-    // Only attach the search tool when a Tavily key is present
-    const tools = tavilyKey ? [WEB_SEARCH_TOOL] : undefined;
-
-    let iterations = 0;
-    const MAX_TOOL_ITERATIONS = 5; // guard against infinite tool-call loops
-
-    while (iterations++ < MAX_TOOL_ITERATIONS) {
-      console.log("[Chat] Streaming to TogetherAI — model:", model, "| roles:", messages.map((m: { role: string }) => m.role));
-
-      const response = await fetch("https://api.together.xyz/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type":  "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          tools,
-          tool_choice:  tools ? "auto" : undefined,
-          max_tokens:   512,
-          temperature:  0,
-          stream:       true,
-        }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.error("[Chat] TogetherAI stream error", response.status, text);
-        throw new InternalServerErrorException(`TogetherAI error ${response.status}: ${text}`);
-      }
-
-      const reader  = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let   buffer  = "";
-
-      // Accumulate tool call data across chunks (arguments arrive in fragments)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let   pendingToolCall: { id: string; name: string; arguments: string } | null = null;
-      let   finishReason   = "";
-      // Accumulate the full assistant text for this turn so we can push it
-      // back into the message history before the next loop iteration
-      let   assistantText  = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6).trim();
-          if (payload === "[DONE]") break;
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let delta: any;
-          try { delta = JSON.parse(payload); } catch { continue; }
-
-          const choice       = delta?.choices?.[0];
-          const content: string = choice?.delta?.content ?? "";
-          const toolCalls       = choice?.delta?.tool_calls;
-          finishReason          = choice?.finish_reason ?? finishReason;
-
-          // ── Text chunk ──────────────────────────────────────────────────
-          if (content) {
-            assistantText += content;
-            yield content;
-          }
-
-          // ── Tool call delta — accumulate fragmented arguments ───────────
-          if (toolCalls?.[0]) {
-            const tc = toolCalls[0];
-            if (tc.id) {
-              // First fragment — initialise the pending call
-              pendingToolCall = { id: tc.id, name: tc.function?.name ?? "", arguments: "" };
-            }
-            if (pendingToolCall && tc.function?.arguments) {
-              pendingToolCall.arguments += tc.function.arguments;
-            }
-          }
-        }
-      }
-
-      // ── No tool call — we're done streaming ──────────────────────────────
-      if (!pendingToolCall || finishReason === "stop") return;
-
-      // ── Tool call requested — execute Tavily and loop ────────────────────
-      if (pendingToolCall.name === "web_search" && tavilyKey) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let query = "";
-        try { query = (JSON.parse(pendingToolCall.arguments) as { query: string }).query; } catch {}
-
-        console.log("[Chat] Model requested web_search:", query);
-
-        // Yield a sentinel so the controller can emit a "searching…" event to the client
-        yield `\x00SEARCH:${query}\x00`;
-
-        // Execute the Tavily search
-        let searchResult = "";
-        try {
-          const client  = tavily({ apiKey: tavilyKey });
-          const results = await client.search(query, { maxResults: 5 });
-          searchResult  = results.results
-            .map((r: { title: string; url: string; content: string }) =>
-              `### ${r.title}\n${r.url}\n${r.content}`)
-            .join("\n\n");
-        } catch (err) {
-          console.warn("[Chat] Tavily search failed:", (err as Error).message);
-          searchResult = "Search unavailable.";
-        }
-
-        // Push the assistant tool-call message and the tool result into history
-        messages.push({
-          role:       "assistant",
-          content:    assistantText || null,
-          tool_calls: [{
-            id:       pendingToolCall.id,
-            type:     "function",
-            function: { name: "web_search", arguments: pendingToolCall.arguments },
-          }],
-        });
-        messages.push({
-          role:         "tool",
-          tool_call_id: pendingToolCall.id,
-          content:      searchResult,
-        });
-      }
+    if (!contextBlock) {
+      return "Retrieved context:\n\nNo relevant information found. If the context doesn't contain the answer, say you don't know.";
     }
+
+    // Strip the existing [CONTEXT]...[/CONTEXT] wrapper and use the new format
+    const inner = contextBlock.replace(/^\[CONTEXT\]\n?/, "").replace(/\n?\[\/CONTEXT\]$/, "");
+    return `Retrieved context:\n\n${inner}\n\nUse this context to inform your response. If the context doesn't contain the answer, say you don't know.`;
+  }
+
+  /**
+   * runToolLoop
+   * -----------
+   * The core agentic tool-use loop. Makes non-streaming calls to TogetherAI,
+   * parses bracket tags, executes [retrieve] by querying Pinecone, and yields
+   * SSE events for each tool call. Caps at 3 iterations to prevent infinite loops.
+   *
+   * Flow:
+   *   1. Build system prompt + sanitized history
+   *   2. Call TogetherAI (non-streaming)
+   *   3. Parse bracket tag from response
+   *   4. If [retrieve]: emit tool_call event, search Pinecone, inject context, loop
+   *   5. If terminal tag: emit tool_call event, emit response, emit done
+   *   6. If no tag: emit response, emit done
+   */
+  async *runToolLoop(history: ChatMessage[], image?: string): AsyncGenerator<ToolEvent> {
+    const imageDescription = image ? await this.describeImage(image) : undefined;
+
+    // Build the base system prompt (no pre-fetched RAG context — model retrieves on demand)
+    const systemPrompt = [
+      this.SYSTEM_PROMPT,
+      this.TOOLS_PROMPT,
+      ...(imageDescription ? [`[IMAGE]\n${imageDescription}\n[/IMAGE]`] : []),
+    ].join("\n\n");
+
+    const messages: ChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...sanitizeHistory(history),
+    ];
+
+    const MAX_ITERATIONS = 3;
+
+    for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+      const raw = await this.callTogetherAI(messages);
+      const { text, tag } = parseTag(raw.trim());
+
+      // ── [retrieve] — execute search and loop ─────────────────────────────
+      if (tag?.tool === "retrieve" && tag.params) {
+        const summary = toolCallSummary(tag);
+        console.log("[Chat] Tool call: [retrieve]", tag.params);
+        yield { type: "tool_call", tool: "retrieve", summary };
+
+        let contextContent: string;
+        try {
+          contextContent = await this.executeRetrieve(tag.params);
+        } catch (err) {
+          console.warn("[Chat] Retrieve failed:", (err as Error).message);
+          contextContent = "Retrieved context:\n\nRetrieval failed. Respond based on what you already know, or say you don't know.";
+        }
+
+        // Push the assistant's partial response and the retrieved context
+        messages.push({ role: "assistant", content: raw.trim() });
+        messages.push({ role: "system", content: contextContent });
+        continue; // loop back for another inference call
+      }
+
+      // ── Terminal tag (navigate, contact, redirect, message) or no tag ────
+      if (tag && tag.tool !== "message") {
+        const summary = toolCallSummary(tag);
+        if (summary) {
+          yield { type: "tool_call", tool: tag.tool, summary };
+        }
+      }
+
+      const action = tagToAction(tag);
+      const fallbacks: Record<string, string> = {
+        navigate: "On it.",
+        redirect: "Here you go.",
+        contact:  "Let's get you in touch.",
+      };
+      const finalText = text || (tag ? fallbacks[tag.tool] ?? "" : "") || ".";
+
+      yield { type: "response", content: finalText, action };
+      yield { type: "done" };
+      return;
+    }
+
+    // Max iterations reached — force return whatever we have
+    console.warn("[Chat] Max tool-use iterations reached, force-returning");
+    yield { type: "response", content: "I wasn't able to find that information. Could you try rephrasing?", action: null };
+    yield { type: "done" };
   }
 }

@@ -2,14 +2,22 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode,
 import type { NavigateFunction } from "react-router-dom";
 import { buildAction, executeAction, actionLabel, type AgentAction } from "../lib/chatActions";
 
+// ── Tool call metadata ────────────────────────────────────────────────────────
+export interface ToolCall {
+  id:        string;   // unique key for React rendering
+  tool:      string;   // "retrieve" | "navigate" | "contact" | "redirect"
+  summary:   string;   // human-readable description
+  timestamp: number;
+}
+
 // ── Shared message type ───────────────────────────────────────────────────────
 export interface ChatMessage {
   role:        "user" | "assistant";
   content:     string;
   // Optional label shown beneath a bubble when the model triggered a navigate/redirect
   actionHint?: string;
-  // Queries the model executed via web_search during this response
-  searches?:   string[];
+  // Tool calls that preceded this assistant message (shown as status bubbles)
+  toolCalls?:  ToolCall[];
   // Data URL of an image attached by the user
   imageUrl?:   string;
 }
@@ -44,6 +52,29 @@ export const CHAT_GREETING: ChatMessage = {
            "or can redirect you to the links to my various projects, social media, etc.",
 };
 
+// ── SSE event types from the backend ──────────────────────────────────────────
+interface SSEToolCallEvent {
+  type:    "tool_call";
+  tool:    string;
+  summary: string;
+}
+
+interface SSEResponseEvent {
+  type:    "response";
+  content: string;
+  action:  { tool: string; parameters: string[] } | null;
+}
+
+interface SSEDoneEvent {
+  type: "done";
+}
+
+interface SSEErrorEvent {
+  type: "error";
+}
+
+type SSEEvent = SSEToolCallEvent | SSEResponseEvent | SSEDoneEvent | SSEErrorEvent;
+
 // ── Context shape ─────────────────────────────────────────────────────────────
 interface ChatContextValue {
   messages:     ChatMessage[];
@@ -71,17 +102,11 @@ const ChatContext = createContext<ChatContextValue | null>(null);
  */
 export function ChatProvider({ children }: { children: ReactNode }) {
   // Restore from sessionStorage on first mount; fall back to greeting only.
-  // Strip any raw tool call JSON from stored messages — handles sessions that
-  // were stored before server-side parsing was introduced.
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as ChatMessage[];
-        return parsed.map((msg) => ({
-          ...msg,
-          content: msg.content.replace(/\{[^}]*"tool"[^}]*\}/g, "").trim() || msg.content,
-        }));
+        return JSON.parse(saved) as ChatMessage[];
       }
       return [CHAT_GREETING];
     } catch {
@@ -149,18 +174,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // ── Normal AI chat flow (streaming) ─────────────────────────────────────
+    // ── Normal AI chat flow (SSE tool-use loop) ─────────────────────────────
     const userMessage: ChatMessage = { role: "user", content: trimmed, ...(image ? { imageUrl: image } : {}) };
     const nextHistory = [...messages, userMessage];
-    // Add user message only — loading indicator shows until the first chunk arrives,
-    // at which point the assistant bubble is added and loading is turned off.
     setMessages(nextHistory);
     setLoading(true);
-    let streamStarted    = false;
-    const pendingSearches: string[] = [];
+
+    // Accumulate tool calls as they arrive via SSE
+    const pendingToolCalls: ToolCall[] = [];
+    let   toolCallCounter = 0;
 
     try {
-      const res = await fetch("/api/chat/stream", {
+      const res = await fetch("/api/chat", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -188,45 +213,84 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (!line.startsWith("data: ")) continue;
           const payload = line.slice(6).trim();
 
-          let event: { type: string; text?: string; query?: string; reply?: string; action?: { tool: string; parameters: string[] } | null };
+          let event: SSEEvent;
           try { event = JSON.parse(payload); } catch { continue; }
 
-          if (event.type === "searching" && event.query) {
-            // Accumulate search queries — attached to the message on "done"
-            pendingSearches.push(event.query);
-          } else if (event.type === "chunk" && event.text) {
-            if (!streamStarted) {
-              // First chunk — hide loading indicator and create the assistant bubble
-              streamStarted = true;
-              setLoading(false);
-              setMessages((prev) => [...prev, { role: "assistant", content: event.text! }]);
-            } else {
-              // Subsequent chunks — append to the existing assistant bubble
-              setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                next[next.length - 1] = { ...last, content: last.content + event.text };
-                return next;
-              });
-            }
-          } else if (event.type === "done") {
-            // Replace streaming content with final clean text and attach action hint
+          if (event.type === "tool_call") {
+            // Accumulate tool call for display as status bubble
+            const toolCall: ToolCall = {
+              id:        `tc-${Date.now()}-${toolCallCounter++}`,
+              tool:      event.tool,
+              summary:   event.summary,
+              timestamp: Date.now(),
+            };
+            pendingToolCalls.push(toolCall);
+
+            // Update the UI immediately — add a placeholder assistant message with tool calls
+            setMessages((prev) => {
+              const next = [...prev];
+              // If the last message is already our placeholder, update it
+              const last = next[next.length - 1];
+              if (last.role === "assistant" && last.content === "" && last.toolCalls) {
+                next[next.length - 1] = { ...last, toolCalls: [...pendingToolCalls] };
+              } else {
+                // First tool call — create a placeholder assistant message
+                next.push({ role: "assistant", content: "", toolCalls: [...pendingToolCalls] });
+              }
+              return next;
+            });
+          } else if (event.type === "response") {
+            // Final response — animate text in character-by-character (typewriter effect)
             const action = buildAction(event.action ?? null);
             const hintAction =
               action?.type === "navigate" || action?.type === "redirect"
                 ? (action as Exclude<AgentAction, { type: "contact" }>)
                 : undefined;
 
+            const fullContent = event.content || ".";
+            const baseMsg = {
+              role:       "assistant" as const,
+              actionHint: hintAction ? actionLabel(hintAction) : undefined,
+              toolCalls:  pendingToolCalls.length > 0 ? [...pendingToolCalls] : undefined,
+            };
+
+            // Hide loading immediately — the typing animation serves as the in-progress indicator
+            setLoading(false);
+
+            // Place an empty assistant message (or replace existing placeholder)
             setMessages((prev) => {
               const next = [...prev];
-              next[next.length - 1] = {
-                role:       "assistant",
-                content:    event.reply || "—",
-                actionHint: hintAction ? actionLabel(hintAction) : undefined,
-                searches:   pendingSearches.length ? [...pendingSearches] : undefined,
-              };
+              const lastIdx = next.length - 1;
+              const last = next[lastIdx];
+              if (last.role === "assistant" && last.content === "" && last.toolCalls) {
+                next[lastIdx] = { ...baseMsg, content: "" };
+              } else {
+                next.push({ ...baseMsg, content: "" });
+              }
               return next;
             });
+
+            // Typewriter: reveal ~4 characters per animation frame (~60fps → ~240 chars/sec)
+            let charIdx = 0;
+            const CHARS_PER_TICK = 4;
+            const TICK_MS = 16;
+
+            const tick = () => {
+              charIdx = Math.min(charIdx + CHARS_PER_TICK, fullContent.length);
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                // Guard: only update if the last message is still our assistant message
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: fullContent.slice(0, charIdx) };
+                }
+                return next;
+              });
+              if (charIdx < fullContent.length) {
+                setTimeout(tick, TICK_MS);
+              }
+            };
+            setTimeout(tick, TICK_MS);
 
             if (action) {
               if (action.type === "contact") {
@@ -239,6 +303,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 executeAction(action, navigate);
               }
             }
+          } else if (event.type === "done") {
+            // SSE stream complete — loading was already cleared when response arrived.
+            // This is a safety net in case the response event was never received.
+            setLoading(false);
           } else if (event.type === "error") {
             setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
           }

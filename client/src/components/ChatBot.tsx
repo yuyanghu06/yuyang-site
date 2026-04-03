@@ -1,9 +1,12 @@
 import { useRef, useEffect, FormEvent, KeyboardEvent, RefObject } from "react";
 import MessageContent from "./MessageContent";
+import ToolStatusBubble from "./ToolStatusBubble";
+import type { ToolCall } from "../context/ChatContext";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  toolCalls?: ToolCall[];
 }
 
 interface ChatBotProps {
@@ -49,11 +52,19 @@ export default function ChatBot({ sectionRef, messages, input, loading, setInput
         <div className="chatbot-window" aria-live="polite" aria-label="Chat conversation">
           <div className="chatbot-messages">
             {messages.map((msg, i) => (
-              <div key={i} className={`chatbot-bubble chatbot-bubble--${msg.role}`}>
-                <span className="chatbot-bubble-role">
-                  {msg.role === "user" ? "YOU" : "Yuyang"}
-                </span>
-                <p className="chatbot-bubble-text"><MessageContent content={msg.content} /></p>
+              <div key={i} className="chatbot-msg-row">
+                {/* Tool call status bubbles — shown above the assistant message */}
+                {msg.toolCalls?.map((tc) => (
+                  <ToolStatusBubble key={tc.id} toolCall={tc} />
+                ))}
+                {msg.content ? (
+                  <div className={`chatbot-bubble chatbot-bubble--${msg.role}`}>
+                    <span className="chatbot-bubble-role">
+                      {msg.role === "user" ? "YOU" : "Yuyang"}
+                    </span>
+                    <p className="chatbot-bubble-text"><MessageContent content={msg.content} /></p>
+                  </div>
+                ) : null}
               </div>
             ))}
 

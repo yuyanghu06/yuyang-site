@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaCommentDots, FaCamera } from "react-icons/fa";
 import { useChatContext } from "../context/ChatContext";
 import MessageContent from "./MessageContent";
+import ToolStatusBubble from "./ToolStatusBubble";
 
 /**
  * SpotlightButton — a fixed liquid-glass circular icon at the bottom-left of
@@ -121,30 +122,26 @@ export default function SpotlightButton() {
           {/* Scrollable message list */}
           <div className="spotlight-panel-messages">
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`spotlight-bubble spotlight-bubble--${msg.role}`}
-              >
-                <span className="spotlight-bubble-role">
-                  {msg.role === "user" ? "YOU" : "Yuyang"}
-                </span>
-                {msg.imageUrl && (
-                  <img src={msg.imageUrl} alt="Attached" className="chat-bubble-img" />
-                )}
-                <p className="spotlight-bubble-text"><MessageContent content={msg.content} /></p>
-                {msg.searches && msg.searches.length > 0 && (
-                  <details className="spotlight-searches">
-                    <summary className="spotlight-searches-summary">
-                      🔍 {msg.searches.length} web search{msg.searches.length > 1 ? "es" : ""}
-                    </summary>
-                    <ul className="spotlight-searches-list">
-                      {msg.searches.map((q, i) => <li key={i}>{q}</li>)}
-                    </ul>
-                  </details>
-                )}
-                {msg.actionHint && (
-                  <span className="spotlight-action-hint">{msg.actionHint}</span>
-                )}
+              <div key={i} className="spotlight-msg-row">
+                {/* Tool call status bubbles — shown above the assistant message */}
+                {msg.toolCalls?.map((tc) => (
+                  <ToolStatusBubble key={tc.id} toolCall={tc} />
+                ))}
+                {/* Skip rendering empty placeholder messages (tool calls only, no content yet) */}
+                {msg.content ? (
+                  <div className={`spotlight-bubble spotlight-bubble--${msg.role}`}>
+                    <span className="spotlight-bubble-role">
+                      {msg.role === "user" ? "YOU" : "Yuyang"}
+                    </span>
+                    {msg.imageUrl && (
+                      <img src={msg.imageUrl} alt="Attached" className="chat-bubble-img" />
+                    )}
+                    <p className="spotlight-bubble-text"><MessageContent content={msg.content} /></p>
+                    {msg.actionHint && (
+                      <span className="spotlight-action-hint">{msg.actionHint}</span>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ))}
 
