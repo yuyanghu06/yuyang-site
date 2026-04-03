@@ -1,6 +1,14 @@
 # Yuyang's Personal Site
 
-A full-stack personal portfolio site built with **NestJS** (server) and **React + Vite** (client), served from a single Node.js process. Features a photography-first editorial hero layout, an AI chatbot powered by RAG (Retrieval-Augmented Generation) over a personal knowledge base in Pinecone, and a contact form that delivers email via SMTP. Agentic features are implemented to help the user navigate the site and my various projects, and the AI used is a custom LoRA agent based on Qwen 3 235B finetuned by me on datasets containing my personal messages and documents.  
+A full-stack personal portfolio site built with **NestJS** (server) and **React + Vite** (client), served from a single Node.js process. Features a photography-first editorial hero layout, an AI chatbot powered by a **multi-tool agentic system**:
+
+- **Streaming model responses** — tokens appear in real-time as the model generates text
+- **Dual retrieval** — `[retrieve]` searches your personal knowledge base in Pinecone, `[web_search]` searches the internet via Tavily
+- **Recursive context** — model can loop up to 3 times to retrieve information before answering
+- **Navigation & contact flows** — smart action tags route users to pages or collect emails
+- **Time-aware** — current date injected into context for relevant, current responses
+
+Built with **TogetherAI** for inference, **OpenAI** for embeddings, **Pinecone** for vector storage, **Tavily** for web search, and **SMTP** for contact emails.  
 
 ---
 
@@ -9,10 +17,11 @@ A full-stack personal portfolio site built with **NestJS** (server) and **React 
 | Layer     | Technology |
 |-----------|------------|
 | Backend   | NestJS 10, TypeScript, Node.js ≥ 20 |
-| Frontend  | React 18, Vite 5, React Router v6, CSS |
-| AI / Chat | TogetherAI (`/v1/chat/completions`) |
+| Frontend  | React 18, Vite 5, React Router v6, Framer Motion, CSS |
+| AI / Chat | TogetherAI (`/v1/chat/completions` with streaming) |
 | Embeddings | OpenAI (`/v1/embeddings`) |
 | RAG index | Pinecone vector database |
+| Web search | Tavily API (`@tavily/core`) |
 | Email     | Nodemailer over SMTP (Gmail) |
 | Deploy    | Railway |
 
@@ -26,21 +35,26 @@ backend/
 │   ├── main.ts             # Server bootstrap — static asset config, CORS, port binding
 │   ├── app.module.ts       # Root module
 │   ├── app.controller.ts   # SPA fallback — serves index.html for all GET *
-│   ├── chat/               # POST /api/chat — RAG-augmented AI chat endpoint
+│   ├── chat/               # POST /api/chat — agentic RAG + streaming endpoint
 │   ├── contact/            # POST /api/contact — contact form → SMTP email
-│   └── mcp/                # RAG pipeline: EmbeddingService, PineconeService, ContextService
+│   ├── ingest/             # POST /api/ingest/* — admin endpoint for knowledge upload
+│   └── mcp/                # RAG pipeline: EmbeddingService, PineconeService, ContextService, TavilyService
 ├── client/                 # React frontend
 │   └── src/
 │       ├── pages/          # Home, About, Projects, Contact
-│       ├── components/     # Navbar, PageTransition, PageWrapper, HeroBg, ContentBlock, etc.
+│       ├── components/     # Navbar, PageTransition, PageWrapper, HeroBg, ToolStatusBubble, ChatBot, SpotlightButton
+│       ├── context/        # ChatContext — chat state, contact flow machine, SSE handler
+│       ├── lib/            # chatActions.ts — action builders and link/page maps
 │       ├── styles/         # global.css, hero.css, interior.css
-│       ├── App.tsx         # Router setup, BlurOverlay, animated page transitions
+│       ├── App.tsx         # Router setup, animated page transitions
 │       └── config.ts       # Global config — background image path, nav links, content
 ├── knowledge/              # Source documents ingested into Pinecone (*.md / *.txt)
 ├── scripts/
 │   └── ingest.ts           # Offline pipeline: chunk → embed (OpenAI) → upsert to Pinecone
 ├── prompts/
-│   └── SYSTEM_PROMPT.md    # System prompt prepended to every chat completion
+│   ├── SYSTEM_PROMPT.md    # System prompt prepended to every chat completion
+│   ├── TOOLS.md            # Tool definitions: [retrieve], [web_search], [navigate], [contact], [redirect], [message]
+│   └── IMAGE_ANALYSIS_PROMPT.md # Vision prompt for image attachments
 ├── planning/               # Architecture notes and API reference
 ├── public/
 │   └── photos/             # Static image assets served at /public/photos/
@@ -65,14 +79,16 @@ cp .env.example .env
 |---------------------------|------------|-------------|
 | `PORT`                    | No         | Server port (default `3000`; Railway sets this automatically) |
 | `TOGETHER_API_KEY`        | **Yes**    | TogetherAI API key — used for chat completions |
-| `TOGETHER_MODEL`          | **Yes**    | Chat model ID on Together (e.g. `Qwen/Qwen2.5-7B-Instruct-Turbo`) |
-| `OPENAI_API_KEY`          | **Yes**    | OpenAI API key — used for query and document embeddings |
+| `TOGETHER_MODEL`          | **Yes**    | Chat model ID on Together (e.g. `Qwen/Qwen2.5-72B-Instruct-Turbo`) |
+| `OPENAI_API_KEY`          | **Yes**    | OpenAI API key — used for query and document embeddings, image analysis |
 | `OPENAI_EMBEDDING_MODEL`  | No         | Embedding model (default: `text-embedding-3-small`) |
 | `PINECONE_API_KEY`        | **Yes**    | Pinecone API key |
 | `PINECONE_INDEX`          | No         | Pinecone index name (default: `memories`) |
 | `PINECONE_TOP_K`          | No         | Nearest-neighbour chunks to retrieve per query (default: `5`) |
 | `PINECONE_NEIGHBORS`      | No         | Neighbor expansion window ±N (default: `1`) |
 | `MCP_MAX_CONTEXT`         | No         | Max characters of context injected into prompt (default: `2000`) |
+| `TAVILY_API_KEY`          | No         | Tavily API key — required for `[web_search]` tool |
+| `ADMIN_INGEST_KEY`        | No         | Secret key for protecting `/api/ingest/*` endpoints |
 | `SMTP_HOST`               | Yes*       | SMTP server (default: `smtp.gmail.com`) |
 | `SMTP_PORT`               | Yes*       | SMTP port (default: `587`) |
 | `SMTP_USER`               | Yes*       | Gmail address the server sends mail *from* |
@@ -189,36 +205,70 @@ restartPolicyType = "on_failure"
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/chat` | RAG-augmented AI chat — returns `{ reply: string }` |
+| `POST` | `/api/chat` | Agentic RAG chat with streaming tokens — SSE stream of events |
 | `POST` | `/api/contact` | Contact form → SMTP email — returns `{ ok: true }` |
+| `POST` | `/api/ingest/pdf` | Admin: upload PDF and ingest to Pinecone — requires `x-admin-key` header |
+| `POST` | `/api/ingest/text` | Admin: upload raw text and ingest to Pinecone — requires `x-admin-key` header |
 | `GET`  | `*` | SPA fallback — serves `index.html` for all non-API routes |
 
 ---
 
-## RAG Pipeline Overview
+## Agentic Tool System
+
+The chatbot runs a **3-iteration tool-use loop** where the model can:
+
+1. **`[retrieve] <query>`** — Search your personal knowledge base in Pinecone
+   - Use for factual questions about you: projects, experience, education, etc.
+   - Results are injected as system context, loop continues
+
+2. **`[web_search] <query>`** — Search the internet via Tavily
+   - Use for current events, technical concepts, or world knowledge
+   - Results are injected as system context, loop continues
+
+3. **`[navigate] <page>`** — Navigate the visitor to a site section
+   - Valid pages: `home`, `about`, `projects`, `contact`
+   - Frontend handles navigation
+
+4. **`[contact]`** — Initiate contact flow
+   - Frontend collects email + message locally
+   - Backend sends via SMTP
+
+5. **`[redirect] <key>`** — Open external link in a new tab
+   - Mapped keys: `github`, `linkedin`, `instagram`, `project:journey`, `project:nootes`, `project:cronicl`, etc.
+   - Links defined in `client/src/lib/chatActions.ts`
+
+6. **`[message]`** — Default tool for plain conversational replies
+   - No action taken, just a regular message
+
+---
+
+## Chat Streaming Architecture
 
 ```
-User message
-    │
-    ▼  EmbeddingService  →  OpenAI /v1/embeddings
-Dense query vector
-    │
-    ▼  PineconeService   →  Pinecone similarity search
-Top-K nearest knowledge chunks
-    │
-    ▼  ContextService    →  neighbor expansion + dedup + truncation
-[CONTEXT]...[/CONTEXT] block
-    │
-    ▼  ChatService       →  TogetherAI /v1/chat/completions
-{ reply: string }
+User sends message
+       │
+       ▼  SSE stream from /api/chat backend
+   ┌───────────────────────┐
+   │ SSE Event: token      │  ← real-time token from TogetherAI
+   │ SSE Event: tool_call  │  ← model invoked [retrieve], [web_search], etc.
+   │ SSE Event: response   │  ← final reply text + action
+   │ SSE Event: done       │  ← stream complete
+   └───────────────────────┘
+       │
+       ▼  Frontend (ChatContext)
+   ├─ Append tokens to message as they arrive
+   ├─ Show status bubbles for tool calls
+   ├─ Execute navigation/redirect/contact actions
+   └─ Update UI in real-time
 ```
 
-If `PINECONE_API_KEY` is absent (e.g. in early dev), the RAG step is skipped and the chat falls back to system-prompt-only mode without crashing.
+### Token Streaming
+- TogetherAI model completions stream tokens directly to the frontend
+- Frontend appends each token to the assistant message in real-time
+- Users see text appearing instantly instead of waiting for full response
 
-## Agentic Tools Overview
-
-The agent has access to the following tools:
-1. [navigate]: navigates the user to a seperate section of my site.
-2. [contact]: navigates the user specifically to the contact page to allow them to email me. 
-3. [redirect]: redirects the user to predefined URLs with a map listed in chatActions.ts to my various projects, social media pages, etc.
-4. [message]: default tool for all agentic outputs, no action is done and a message is simply displayed. 
+### Tool-Use Loop
+- If model outputs `[retrieve]` or `[web_search]`, backend executes the tool
+- Results injected back into conversation as a system message
+- Model loops up to 3 times total before returning final answer
+- Each tool call emitted as an SSE event with status summary 
