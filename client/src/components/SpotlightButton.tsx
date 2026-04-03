@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaCommentDots } from "react-icons/fa";
+import { FaCommentDots, FaCamera } from "react-icons/fa";
 import { useChatContext } from "../context/ChatContext";
+import MessageContent from "./MessageContent";
 
 /**
  * SpotlightButton — a fixed liquid-glass circular icon at the bottom-left of
@@ -19,13 +20,16 @@ export default function SpotlightButton() {
   const [open,  setOpen]  = useState(false);
   // Local input value — scoped to this component, not shared with Home's input
   const [input, setInput] = useState("");
+  const [image, setImage] = useState<string | undefined>(undefined);
 
   // Wraps the button + panel for outside-click detection
-  const rootRef   = useRef<HTMLDivElement>(null);
+  const rootRef    = useRef<HTMLDivElement>(null);
   // Keeps the message list scrolled to the bottom
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef  = useRef<HTMLDivElement>(null);
   // Focuses the input field when the panel opens
-  const inputRef  = useRef<HTMLInputElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
+  // Hidden file input for image uploads
+  const fileRef    = useRef<HTMLInputElement>(null);
 
   // Scroll to newest message when the panel opens or a new message arrives
   useEffect(() => {
@@ -58,9 +62,20 @@ export default function SpotlightButton() {
 
   const handleSend = async (text: string) => {
     if (!text.trim() || loading) return;
+    const pendingImage = image;
     setInput("");
+    setImage(undefined);
     // Pass the router's navigate so the model can execute [navigate] actions
-    await sendMessage(text, navigate);
+    await sendMessage(text, navigate, pendingImage);
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -113,7 +128,20 @@ export default function SpotlightButton() {
                 <span className="spotlight-bubble-role">
                   {msg.role === "user" ? "YOU" : "Yuyang"}
                 </span>
-                <p className="spotlight-bubble-text">{msg.content}</p>
+                {msg.imageUrl && (
+                  <img src={msg.imageUrl} alt="Attached" className="chat-bubble-img" />
+                )}
+                <p className="spotlight-bubble-text"><MessageContent content={msg.content} /></p>
+                {msg.searches && msg.searches.length > 0 && (
+                  <details className="spotlight-searches">
+                    <summary className="spotlight-searches-summary">
+                      🔍 {msg.searches.length} web search{msg.searches.length > 1 ? "es" : ""}
+                    </summary>
+                    <ul className="spotlight-searches-list">
+                      {msg.searches.map((q, i) => <li key={i}>{q}</li>)}
+                    </ul>
+                  </details>
+                )}
                 {msg.actionHint && (
                   <span className="spotlight-action-hint">{msg.actionHint}</span>
                 )}
@@ -136,6 +164,33 @@ export default function SpotlightButton() {
           {/* ── Input bar ── */}
           <div className="spotlight-input-wrap">
             <form className="spotlight-form" onSubmit={handleSubmit}>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="chat-file-input"
+                onChange={handleFileChange}
+                aria-label="Attach image"
+              />
+              <button
+                type="button"
+                className="spotlight-attach"
+                onClick={() => fileRef.current?.click()}
+                aria-label="Attach image"
+              >
+                <FaCamera />
+              </button>
+              {image && (
+                <div className="chat-input-thumb">
+                  <img src={image} alt="Preview" />
+                  <button
+                    type="button"
+                    className="chat-input-thumb-clear"
+                    onClick={() => setImage(undefined)}
+                    aria-label="Remove image"
+                  >✕</button>
+                </div>
+              )}
               <input
                 ref={inputRef}
                 className="spotlight-input"

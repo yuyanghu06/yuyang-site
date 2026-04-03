@@ -1,4 +1,5 @@
 import { useRef, useEffect, FormEvent, KeyboardEvent, RefObject } from "react";
+import MessageContent from "./MessageContent";
 
 interface Message {
   role: "user" | "assistant";
@@ -52,7 +53,7 @@ export default function ChatBot({ sectionRef, messages, input, loading, setInput
                 <span className="chatbot-bubble-role">
                   {msg.role === "user" ? "YOU" : "Yuyang"}
                 </span>
-                <p className="chatbot-bubble-text">{msg.content}</p>
+                <p className="chatbot-bubble-text"><MessageContent content={msg.content} /></p>
               </div>
             ))}
 

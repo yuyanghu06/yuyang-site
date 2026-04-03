@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { FaInstagram, FaLinkedinIn, FaGithub } from "react-icons/fa";
+import { FaInstagram, FaLinkedinIn, FaGithub, FaCamera } from "react-icons/fa";
 import { IconType } from "react-icons";
 import { CONFIG } from "../config";
 import { useChatContext, INITIAL_CONTACT_FLOW } from "../context/ChatContext";
+import MessageContent from "../components/MessageContent";
 import "../styles/hero.css";
 
 const SOCIAL_ICONS: Record<string, IconType> = {
@@ -22,10 +23,12 @@ export default function Home() {
   const { messages, loading, contactFlow, setContactFlow, sendMessage } = useChatContext();
 
   const [input,      setInput]      = useState("");
+  const [image,      setImage]      = useState<string | undefined>(undefined);
   // True once the user sends a first message — triggers the full-screen chat layout
   const [chatActive, setChatActive] = useState(false);
   // Invisible scroll anchor kept at the bottom of the message list
   const heroChatBottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef      = useRef<HTMLInputElement>(null);
 
   // Reset local UI state on every navigation to "/" (location.key changes even
   // for same-path navigations).  Messages are NOT reset — they persist in
@@ -33,6 +36,7 @@ export default function Home() {
   useEffect(() => {
     setChatActive(false);
     setInput("");
+    setImage(undefined);
     setContactFlow(INITIAL_CONTACT_FLOW);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
@@ -46,8 +50,20 @@ export default function Home() {
     if (!text.trim() || loading) return;
     // Expand into full chat mode on the very first send
     setChatActive(true);
+    const pendingImage = image;
     setInput("");
-    await sendMessage(text, navigate);
+    setImage(undefined);
+    await sendMessage(text, navigate, pendingImage);
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result as string);
+    reader.readAsDataURL(file);
+    // Reset so the same file can be re-selected if cleared then re-attached
+    e.target.value = "";
   };
 
   const handleHeroSubmit = (e: FormEvent) => {
@@ -90,8 +106,21 @@ export default function Home() {
                   <span className="chat-fs-bubble-role">
                     {msg.role === "user" ? "YOU" : "Yuyang"}
                   </span>
-                  <p className="chat-fs-bubble-text">{msg.content}</p>
+                  {msg.imageUrl && (
+                    <img src={msg.imageUrl} alt="Attached" className="chat-bubble-img" />
+                  )}
+                  <p className="chat-fs-bubble-text"><MessageContent content={msg.content} /></p>
                   {/* Subtle action indicator — shown when the model triggered a navigate/redirect */}
+                  {msg.searches && msg.searches.length > 0 && (
+                    <details className="chat-fs-searches">
+                      <summary className="chat-fs-searches-summary">
+                        🔍 {msg.searches.length} web search{msg.searches.length > 1 ? "es" : ""}
+                      </summary>
+                      <ul className="chat-fs-searches-list">
+                        {msg.searches.map((q, i) => <li key={i}>{q}</li>)}
+                      </ul>
+                    </details>
+                  )}
                   {msg.actionHint && (
                     <span className="chat-fs-action-hint">{msg.actionHint}</span>
                   )}
@@ -113,6 +142,33 @@ export default function Home() {
 
           <div className="chat-fs-input-wrap">
             <form className="chat-fs-form" onSubmit={handleHeroSubmit}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="chat-file-input"
+                onChange={handleFileChange}
+                aria-label="Attach image"
+              />
+              <button
+                type="button"
+                className="chat-fs-attach"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Attach image"
+              >
+                <FaCamera />
+              </button>
+              {image && (
+                <div className="chat-input-thumb">
+                  <img src={image} alt="Preview" />
+                  <button
+                    type="button"
+                    className="chat-input-thumb-clear"
+                    onClick={() => setImage(undefined)}
+                    aria-label="Remove image"
+                  >✕</button>
+                </div>
+              )}
               <input
                   className="chat-fs-input"
                   type="text"
@@ -157,6 +213,33 @@ export default function Home() {
               <h1 className="hero-display">{CONFIG.heroText}</h1>
 
               <form className="hero-chat-bar" onSubmit={handleHeroSubmit}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="chat-file-input"
+                  onChange={handleFileChange}
+                  aria-label="Attach image"
+                />
+                <button
+                  type="button"
+                  className="hero-chat-attach"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Attach image"
+                >
+                  <FaCamera />
+                </button>
+                {image && (
+                  <div className="chat-input-thumb">
+                    <img src={image} alt="Preview" />
+                    <button
+                      type="button"
+                      className="chat-input-thumb-clear"
+                      onClick={() => setImage(undefined)}
+                      aria-label="Remove image"
+                    >✕</button>
+                  </div>
+                )}
                 <input
                   className="hero-chat-input"
                   type="text"

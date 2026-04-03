@@ -424,12 +424,49 @@ html {
 }
 
 /* Action hint — e.g. "→ Navigated to projects" */
+/* KaTeX color override for dark backgrounds */
+.katex { color: inherit; }
+.math-block { display: block; margin: 0.4rem 0; overflow-x: auto; }
+.math-inline { display: inline; }
+
 .spotlight-action-hint {
   font-size: 0.63rem;
   font-family: var(--font-ui);
   font-weight: 300;
   color: rgba(255, 255, 255, 0.38);
   padding-left: 0.3rem;
+}
+
+/* Web search sources — collapsible, shown below assistant bubbles */
+.spotlight-searches {
+  margin-top: 0.35rem;
+  padding-left: 0.3rem;
+}
+.spotlight-searches-summary {
+  font-family: var(--font-ui);
+  font-size: 0.63rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.38);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.spotlight-searches-summary::-webkit-details-marker { display: none; }
+.spotlight-searches-summary:hover { color: rgba(255, 255, 255, 0.6); }
+.spotlight-searches-list {
+  margin: 0.25rem 0 0 0.2rem;
+  padding: 0;
+  list-style: none;
+}
+.spotlight-searches-list li {
+  font-family: var(--font-ui);
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.28);
+  padding: 0.1rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 26ch;
 }
 
 /* ── Input bar at the bottom of the spotlight panel ─────────────────────── */
@@ -502,6 +539,22 @@ html {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* Attach button in spotlight panel */
+.spotlight-attach {
+  background: none;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 10px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.spotlight-attach:hover { color: rgba(255, 255, 255, 0.9); }
 
 /* Typing indicator — three animated dots (same as hero chat) */
 .spotlight-typing {

@@ -1,8 +1,10 @@
 import type { NavigateFunction } from "react-router-dom";
 
+console.log("[chatActions] module loaded");
+
 // ── External URL map — add project links here ────────────────────────────────
-// Keys must match exactly what the model outputs after [redirect].
-export const REDIRECT_MAP: Record<string, string> = {   
+// Keys must match exactly what the model outputs in the redirect parameters array.
+export const REDIRECT_MAP: Record<string, string> = {
   github:            "https://github.com/yuyanghu06",
   linkedin:          "https://www.linkedin.com/in/yuyanghu06/",
   instagram:         "https://www.instagram.com/yuyanghu06/",
@@ -10,7 +12,7 @@ export const REDIRECT_MAP: Record<string, string> = {
   "project:nootes":  "https://nootes-beryl.vercel.app/",
   "project:cronicl": "https://cronicl-production.up.railway.app/",
   "project:presidential speech analysis": "https://github.com/yuyanghu06/presidentialSpeechAnalysis",
-  "project:all others":"https://github.com/yuyanghu06"
+  "project:all others": "https://github.com/yuyanghu06",
 };
 
 // ── Internal page map — maps model page names to React Router paths ──────────
@@ -28,71 +30,68 @@ export type AgentAction =
   | { type: "contact" };
 
 /**
- * parseActions
- * ------------
- * Strip action tags from the raw model output and collect them as structured
- * AgentAction objects. Tags are always at the end of the response on their
- * own line (e.g. "[navigate] projects" or "[redirect] github").
- *
- * Returns:
- *   display  — cleaned text shown in the chat bubble (no tags)
- *   actions  — ordered list of actions to execute after displaying the message
+ * buildAction
+ * -----------
+ * Convert the raw `{ tool, parameters }` object sent by the backend into a
+ * typed AgentAction, resolving page/URL lookups in the process.
+ * Returns null for unknown tools or missing map entries.
  */
-export function parseActions(raw: string): { display: string; actions: AgentAction[] } {
-  const actions: AgentAction[] = [];
-  let display = raw;
+export function buildAction(
+  raw: { tool: string; parameters: string[] } | null,
+): AgentAction | null {
+  console.log("[buildAction] called with:", raw);
+  if (!raw) return null;
 
-  // [navigate] <page> — route the user to an internal page
-  display = display.replace(/\[navigate\]\s+(\w+)/gi, (_, page) => {
-    const p = page.toLowerCase();
-    const path = PAGE_MAP[p];
-    if (path) actions.push({ type: "navigate", page: p, path });
-    return "";
-  });
+  const params = raw.parameters.map((p) => p.toLowerCase());
 
-  // [contact] — trigger the frontend contact-collection flow
-  display = display.replace(/\[contact\]/gi, () => {
-    actions.push({ type: "contact" });
-    return "";
-  });
-
-  // [redirect] <key> — open an external URL in a new tab
-  display = display.replace(/\[redirect\]\s+([\w:./-]+)/gi, (_, key) => {
-    const k = key.toLowerCase();
-    const url = REDIRECT_MAP[k];
-    if (url) actions.push({ type: "redirect", key: k, url });
-    return "";
-  });
-
-  // [message] — explicit "no action" tag; strip it so it never appears in the bubble
-  display = display.replace(/\[message\]/gi, "");
-
-  // Trim any trailing whitespace / blank lines left behind after tag removal
-  return { display: display.trim(), actions };
+  switch (raw.tool) {
+    case "navigate": {
+      const page = params[0];
+      const path = page ? PAGE_MAP[page] : undefined;
+      console.log("[buildAction] navigate — page:", page, "| path:", path);
+      if (page && path) return { type: "navigate", page, path };
+      return null;
+    }
+    case "redirect": {
+      const key = params[0];
+      const url = key ? REDIRECT_MAP[key] : undefined;
+      console.log("[buildAction] redirect — key:", key, "| url:", url);
+      if (key && url) return { type: "redirect", key, url };
+      return null;
+    }
+    case "contact":
+      return { type: "contact" };
+    case "message":
+    default:
+      return null;
+  }
 }
 
 /**
  * executeAction
  * -------------
- * Execute a single parsed action. Navigate and redirect are handled here.
- * Contact actions are deliberately NOT handled here — the caller (Home.tsx)
- * manages that state machine to keep UI logic in one place.
+ * Execute a single AgentAction. Contact is NOT handled here — ChatContext
+ * owns that state machine.
  */
 export function executeAction(action: AgentAction, navigate: NavigateFunction): void {
+  console.log("[executeAction] executing:", action);
   if (action.type === "navigate") {
-    // Small delay so the assistant message renders before the page changes
+    console.log("[executeAction] calling navigate to", action.path);
     setTimeout(() => navigate(action.path), 420);
   } else if (action.type === "redirect") {
-    window.open(action.url, "_blank", "noopener,noreferrer");
+    console.log("[executeAction] opening url", action.url);
+    const a = document.createElement("a");
+    a.href = action.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.click();
   }
-  // contact: handled by caller
 }
 
 /**
  * actionLabel
  * -----------
- * Human-readable indicator appended to a bubble when an action fires,
- * so the user knows what happened (e.g. "→ Navigated to projects").
+ * Human-readable hint shown beneath a bubble when an action fired.
  */
 export function actionLabel(action: AgentAction): string {
   if (action.type === "navigate") return `→ Navigated to ${action.page}`;

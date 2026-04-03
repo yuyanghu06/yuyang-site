@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
 import type { NavigateFunction } from "react-router-dom";
-import { parseActions, executeAction, actionLabel, type AgentAction } from "../lib/chatActions";
+import { buildAction, executeAction, actionLabel, type AgentAction } from "../lib/chatActions";
 
 // ── Shared message type ───────────────────────────────────────────────────────
 export interface ChatMessage {
@@ -8,6 +8,10 @@ export interface ChatMessage {
   content:     string;
   // Optional label shown beneath a bubble when the model triggered a navigate/redirect
   actionHint?: string;
+  // Queries the model executed via web_search during this response
+  searches?:   string[];
+  // Data URL of an image attached by the user
+  imageUrl?:   string;
 }
 
 // ── Contact-collection flow ───────────────────────────────────────────────────
@@ -52,8 +56,9 @@ interface ChatContextValue {
    * @param text     The raw user input to send.
    * @param navigate React Router navigate function from the calling component,
    *                 required to execute [navigate] action tags from the model.
+   * @param image    Optional base64 data URL of an image to include.
    */
-  sendMessage:  (text: string, navigate: NavigateFunction) => Promise<void>;
+  sendMessage:  (text: string, navigate: NavigateFunction, image?: string) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -65,11 +70,20 @@ const ChatContext = createContext<ChatContextValue | null>(null);
  * Accessible from any page so the SpotlightButton can chat from any route.
  */
 export function ChatProvider({ children }: { children: ReactNode }) {
-  // Restore from sessionStorage on first mount; fall back to greeting only
+  // Restore from sessionStorage on first mount; fall back to greeting only.
+  // Strip any raw tool call JSON from stored messages — handles sessions that
+  // were stored before server-side parsing was introduced.
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as ChatMessage[]) : [CHAT_GREETING];
+      if (saved) {
+        const parsed = JSON.parse(saved) as ChatMessage[];
+        return parsed.map((msg) => ({
+          ...msg,
+          content: msg.content.replace(/\{[^}]*"tool"[^}]*\}/g, "").trim() || msg.content,
+        }));
+      }
+      return [CHAT_GREETING];
     } catch {
       return [CHAT_GREETING];
     }
@@ -90,7 +104,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
    * navigate is passed in rather than called via a hook because ChatProvider
    * wraps BrowserRouter — useNavigate() is only available inside the router tree.
    */
-  const sendMessage = useCallback(async (text: string, navigate: NavigateFunction) => {
+  const sendMessage = useCallback(async (text: string, navigate: NavigateFunction, image?: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
@@ -135,55 +149,103 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // ── Normal AI chat flow ──────────────────────────────────────────────────
-    const nextHistory = [...messages, { role: "user" as const, content: trimmed }];
+    // ── Normal AI chat flow (streaming) ─────────────────────────────────────
+    const userMessage: ChatMessage = { role: "user", content: trimmed, ...(image ? { imageUrl: image } : {}) };
+    const nextHistory = [...messages, userMessage];
+    // Add user message only — loading indicator shows until the first chunk arrives,
+    // at which point the assistant bubble is added and loading is turned off.
     setMessages(nextHistory);
     setLoading(true);
+    let streamStarted    = false;
+    const pendingSearches: string[] = [];
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/chat/stream", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextHistory.map(({ role, content }) => ({ role, content })),
+          ...(image ? { image } : {}),
         }),
       });
-      if (!res.ok) throw new Error("API error");
+      if (!res.ok || !res.body) throw new Error("Stream error");
 
-      const data: { reply: string } = await res.json();
-      const { display, actions } = parseActions(data.reply);
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = "";
 
-      // Surface the first navigate/redirect as a visible action hint
-      const hintAction = actions.find((a): a is Exclude<AgentAction, { type: "contact" }> =>
-        a.type === "navigate" || a.type === "redirect"
-      );
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role:       "assistant",
-          content:    display || "—",
-          actionHint: hintAction ? actionLabel(hintAction) : undefined,
-        },
-      ]);
+        buffer += decoder.decode(value, { stream: true });
 
-      // Execute all parsed action tags
-      for (const action of actions) {
-        if (action.type === "contact") {
-          setContactFlow({ step: "collecting_email", email: "", message: "" });
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: "What's your email address?" },
-          ]);
-        } else {
-          executeAction(action, navigate);
+        // Process complete SSE lines; keep trailing incomplete line in buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+
+          let event: { type: string; text?: string; query?: string; reply?: string; action?: { tool: string; parameters: string[] } | null };
+          try { event = JSON.parse(payload); } catch { continue; }
+
+          if (event.type === "searching" && event.query) {
+            // Accumulate search queries — attached to the message on "done"
+            pendingSearches.push(event.query);
+          } else if (event.type === "chunk" && event.text) {
+            if (!streamStarted) {
+              // First chunk — hide loading indicator and create the assistant bubble
+              streamStarted = true;
+              setLoading(false);
+              setMessages((prev) => [...prev, { role: "assistant", content: event.text! }]);
+            } else {
+              // Subsequent chunks — append to the existing assistant bubble
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                next[next.length - 1] = { ...last, content: last.content + event.text };
+                return next;
+              });
+            }
+          } else if (event.type === "done") {
+            // Replace streaming content with final clean text and attach action hint
+            const action = buildAction(event.action ?? null);
+            const hintAction =
+              action?.type === "navigate" || action?.type === "redirect"
+                ? (action as Exclude<AgentAction, { type: "contact" }>)
+                : undefined;
+
+            setMessages((prev) => {
+              const next = [...prev];
+              next[next.length - 1] = {
+                role:       "assistant",
+                content:    event.reply || "—",
+                actionHint: hintAction ? actionLabel(hintAction) : undefined,
+                searches:   pendingSearches.length ? [...pendingSearches] : undefined,
+              };
+              return next;
+            });
+
+            if (action) {
+              if (action.type === "contact") {
+                setContactFlow({ step: "collecting_email", email: "", message: "" });
+                setMessages((prev) => [
+                  ...prev,
+                  { role: "assistant", content: "What's your email address?" },
+                ]);
+              } else {
+                executeAction(action, navigate);
+              }
+            }
+          } else if (event.type === "error") {
+            setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+          }
         }
       }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
     } finally {
       setLoading(false);
     }
