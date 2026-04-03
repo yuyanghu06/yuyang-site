@@ -7,7 +7,7 @@ Every response must contain at least one sentence of natural language before the
 ---
 
 ### [retrieve] <query>
-Search your memory for context relevant to a query. Use this whenever a visitor asks about Yuyang's background, projects, experience, interests, skills, education, or anything factual about him (family members, friends, contacts, etc.). Rephrase the visitor's question into focused search terms.
+Search your memory for context relevant to a query. Use this to retrieve anything regarding Yuyang's personal information, including his background, projects, experience, interests, skills, education, work history, achievements, hobbies, family members, friends, social circles, contacts, and any other factual information about him. Rephrase the visitor's question into focused search terms.
 
 You will receive the retrieved context as a system message and can then respond using it.
 
