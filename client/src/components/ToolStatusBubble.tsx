@@ -10,10 +10,11 @@ import type { ToolCall } from "../context/ChatContext";
 
 // Map tool names to CSS class modifiers for the pulsing dot color
 const TOOL_CLASSES: Record<string, string> = {
-  retrieve: "tool-bubble--retrieve",
-  navigate: "tool-bubble--navigate",
-  contact:  "tool-bubble--contact",
-  redirect: "tool-bubble--redirect",
+  retrieve:   "tool-bubble--retrieve",
+  web_search: "tool-bubble--web-search",
+  navigate:   "tool-bubble--navigate",
+  contact:    "tool-bubble--contact",
+  redirect:   "tool-bubble--redirect",
 };
 
 export default function ToolStatusBubble({ toolCall }: { toolCall: ToolCall }) {

@@ -4,6 +4,7 @@ import { join } from "path";
 import { EmbeddingService } from "../mcp/embedding.service";
 import { PineconeService  } from "../mcp/pinecone.service";
 import { ContextService   } from "../mcp/context.service";
+import { TavilyService    } from "../mcp/tavily.service";
 
 // ── Bracket-tag regex — matches [toolName] optional params at end of response ─
 const TAG_REGEX = /^\[(\w+)\]\s*(.*)$/;
@@ -49,7 +50,9 @@ export function parseTag(raw: string): { text: string; tag: ParsedTag | null } {
     const match = line.match(TAG_REGEX);
     if (match) {
       const tool   = match[1].toLowerCase();
-      const params = match[2].trim();
+      let params = match[2].trim();
+      // Strip any trailing closing bracket that the model may have accidentally included
+      params = params.replace(/\]$/, "").trim();
       lines.splice(i, 1);
       const text = lines.join("\n").trim();
       return { text, tag: { tool, params } };
@@ -86,12 +89,13 @@ function tagToAction(tag: ParsedTag | null): { tool: string; parameters: string[
  */
 function toolCallSummary(tag: ParsedTag): string {
   switch (tag.tool) {
-    case "retrieve":  return `Searching memory for: ${tag.params}`;
-    case "navigate":  return `Navigating to ${tag.params} page`;
-    case "contact":   return "Opening contact flow";
-    case "redirect":  return `Opening ${tag.params}`;
-    case "message":   return "";
-    default:          return "";
+    case "retrieve":    return `Searching memory for: ${tag.params}`;
+    case "web_search":  return `Searching the web for: ${tag.params}`;
+    case "navigate":    return `Navigating to ${tag.params} page`;
+    case "contact":     return "Opening contact flow";
+    case "redirect":    return `Opening ${tag.params}`;
+    case "message":     return "";
+    default:            return "";
   }
 }
 
@@ -142,6 +146,7 @@ export class ChatService {
     private readonly embedding: EmbeddingService,
     private readonly pinecone:  PineconeService,
     private readonly context:   ContextService,
+    private readonly tavily:    TavilyService,
   ) {}
 
   /**
@@ -246,10 +251,25 @@ export class ChatService {
   }
 
   /**
+   * executeWebSearch
+   * ----------------
+   * Runs a Tavily web search and returns formatted results to inject back
+   * into the conversation — same pattern as executeRetrieve().
+   */
+  private async executeWebSearch(query: string): Promise<string> {
+    try {
+      return await this.tavily.search(query);
+    } catch (err) {
+      console.warn("[Chat] Web search failed:", (err as Error).message);
+      return "Web search results:\n\nSearch failed. Respond based on what you already know, or say you don't know.";
+    }
+  }
+
+  /**
    * runToolLoop
    * -----------
    * The core agentic tool-use loop. Makes non-streaming calls to TogetherAI,
-   * parses bracket tags, executes [retrieve] by querying Pinecone, and yields
+   * parses bracket tags, executes [retrieve] or [web_search], and yields
    * SSE events for each tool call. Caps at 3 iterations to prevent infinite loops.
    *
    * Flow:
@@ -257,16 +277,27 @@ export class ChatService {
    *   2. Call TogetherAI (non-streaming)
    *   3. Parse bracket tag from response
    *   4. If [retrieve]: emit tool_call event, search Pinecone, inject context, loop
-   *   5. If terminal tag: emit tool_call event, emit response, emit done
-   *   6. If no tag: emit response, emit done
+   *   5. If [web_search]: emit tool_call event, search Tavily, inject results, loop
+   *   6. If terminal tag: emit tool_call event, emit response, emit done
+   *   7. If no tag: emit response, emit done
    */
   async *runToolLoop(history: ChatMessage[], image?: string): AsyncGenerator<ToolEvent> {
     const imageDescription = image ? await this.describeImage(image) : undefined;
+
+    // Get current date in ISO format for the model's context
+    const now = new Date();
+    const currentDate = now.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
     // Build the base system prompt (no pre-fetched RAG context — model retrieves on demand)
     const systemPrompt = [
       this.SYSTEM_PROMPT,
       this.TOOLS_PROMPT,
+      `Today is ${currentDate}.`,
       ...(imageDescription ? [`[IMAGE]\n${imageDescription}\n[/IMAGE]`] : []),
     ].join("\n\n");
 
@@ -298,6 +329,20 @@ export class ChatService {
         // Push the assistant's partial response and the retrieved context
         messages.push({ role: "assistant", content: raw.trim() });
         messages.push({ role: "system", content: contextContent });
+        continue; // loop back for another inference call
+      }
+
+      // ── [web_search] — search the web via Tavily and loop ────────────────
+      if (tag?.tool === "web_search" && tag.params) {
+        const summary = toolCallSummary(tag);
+        console.log("[Chat] Tool call: [web_search]", tag.params);
+        yield { type: "tool_call", tool: "web_search", summary };
+
+        const searchResults = await this.executeWebSearch(tag.params);
+
+        // Push the assistant's partial response and the web search results
+        messages.push({ role: "assistant", content: raw.trim() });
+        messages.push({ role: "system", content: searchResults });
         continue; // loop back for another inference call
       }
 

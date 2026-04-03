@@ -633,10 +633,11 @@ html {
   animation: tool-dot-pulse 1.5s ease-in-out infinite;
 }
 
-.tool-bubble--retrieve .tool-bubble-dot { background: rgba(120, 180, 255, 0.6); }
-.tool-bubble--navigate .tool-bubble-dot { background: rgba(120, 255, 180, 0.6); }
-.tool-bubble--contact  .tool-bubble-dot { background: rgba(255, 200, 120, 0.6); }
-.tool-bubble--redirect .tool-bubble-dot { background: rgba(200, 160, 255, 0.6); }
+.tool-bubble--retrieve .tool-bubble-dot    { background: rgba(120, 180, 255, 0.6); }
+.tool-bubble--web-search .tool-bubble-dot  { background: rgba(100, 220, 200, 0.6); }
+.tool-bubble--navigate .tool-bubble-dot    { background: rgba(120, 255, 180, 0.6); }
+.tool-bubble--contact  .tool-bubble-dot    { background: rgba(255, 200, 120, 0.6); }
+.tool-bubble--redirect .tool-bubble-dot    { background: rgba(200, 160, 255, 0.6); }
 
 .tool-bubble-text {
   font-size: 0.72rem;

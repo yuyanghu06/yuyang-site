@@ -21,6 +21,7 @@
 | AI inference | TogetherAI (`POST https://api.together.xyz/v1/chat/completions`) |
 | RAG embedding | OpenAI Embeddings API |
 | Vector store | Pinecone SDK |
+| Web search | Tavily API (`@tavily/core`) |
 | Email | Nodemailer (SMTP) |
 | Package manager | npm — single `package.json` at repo root |
 
@@ -166,6 +167,8 @@ The site has an embedded AI assistant powered by TogetherAI with a RAG context l
 
 | Tag | Action |
 |---|---|
+| `[retrieve] <query>` | Search Pinecone knowledge base — loops back in tool-use loop |
+| `[web_search] <query>` | Search the web via Tavily — loops back in tool-use loop |
 | `[navigate] <page>` | React Router navigate to `/`, `/about`, `/projects`, or `/contact` |
 | `[contact]` | Trigger multi-step contact collection flow in frontend state |
 | `[redirect] <key>` | Open mapped external URL in new tab |
@@ -202,6 +205,9 @@ PINECONE_INDEX=
 PINECONE_TOP_K=                # optional
 PINECONE_NEIGHBORS=            # optional
 MCP_MAX_CONTEXT=               # optional
+
+# Web search
+TAVILY_API_KEY=
 
 # Email
 SMTP_HOST=
