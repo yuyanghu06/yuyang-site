@@ -636,6 +636,11 @@ html {
     width: calc(100vw - 3rem);
     max-height: 55vh;
   }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .spotlight-input {
+    font-size: 1rem;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════

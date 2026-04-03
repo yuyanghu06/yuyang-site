@@ -1011,4 +1011,10 @@
   .chatbot-bubble {
     max-width: 95%;
   }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .chatbot-input,
+  .contact-input {
+    font-size: 1rem;
+  }
 }

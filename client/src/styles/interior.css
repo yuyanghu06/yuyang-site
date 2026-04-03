@@ -406,6 +406,11 @@
   .content-block--third {
     grid-column: span 1;
   }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .contact-input {
+    font-size: 1rem;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -603,8 +608,70 @@
 }
 
 @media (max-width: 768px) {
+  .admin-ingest-page {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 4rem;   /* clear navbar */
+  }
+
+  .admin-card {
+    padding: 1.25rem;
+    border-radius: 0.9rem;
+  }
+
   .admin-card--wide {
     max-width: 100%;
+  }
+
+  .admin-title {
+    font-size: 1.2rem;
+  }
+
+  .admin-subtitle {
+    font-size: 0.78rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-sections {
+    gap: 1.25rem;
+  }
+
+  .admin-section {
+    padding-top: 0.75rem;
+  }
+
+  .admin-section-title {
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-header-row {
+    margin-bottom: 1rem;
+  }
+
+  .admin-form {
+    gap: 0.5rem;
+  }
+
+  /* Prevent iOS from auto-zooming when focusing inputs with small font-size */
+  .admin-input,
+  .admin-textarea {
+    font-size: 1rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .admin-textarea {
+    min-height: 80px;
+  }
+
+  .admin-btn {
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .admin-banner {
+    font-size: 0.78rem;
+    padding: 0.5rem 0.75rem;
   }
 }
 
