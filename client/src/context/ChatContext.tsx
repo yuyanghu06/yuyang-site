@@ -222,15 +222,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           try { event = JSON.parse(payload); } catch { continue; }
 
           if (event.type === "token") {
-            // Stream token directly into the last assistant message
+            // Stream token directly into the last assistant message in real-time.
+            // If there's no assistant message yet (or the last one is a completed
+            // message from a previous turn), create a fresh one for this stream.
+            // Clear loading on first token so the loading indicator doesn't overlap.
+            setLoading(false);
             setMessages((prev) => {
               const next = [...prev];
               const lastIdx = next.length - 1;
-              if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+              const last = next[lastIdx];
+              if (lastIdx >= 0 && last.role === "assistant" && !last.actionHint) {
+                // Append token to the current streaming assistant message
                 next[lastIdx] = {
-                  ...next[lastIdx],
-                  content: (next[lastIdx].content || "") + event.content,
+                  ...last,
+                  content: (last.content || "") + event.content,
                 };
+              } else {
+                // First token of this response — create a new assistant message
+                next.push({ role: "assistant", content: event.content });
               }
               return next;
             });
@@ -244,71 +253,56 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             };
             pendingToolCalls.push(toolCall);
 
-            // Update the UI immediately — add a placeholder assistant message with tool calls
+            // Update the UI — clear any streamed tokens from intermediate iterations
+            // and show tool call status bubbles instead
             setMessages((prev) => {
               const next = [...prev];
-              // If the last message is already our placeholder, update it
               const last = next[next.length - 1];
-              if (last.role === "assistant" && last.content === "" && last.toolCalls) {
-                next[next.length - 1] = { ...last, toolCalls: [...pendingToolCalls] };
+              if (last.role === "assistant" && !last.actionHint) {
+                // Replace the streamed content with tool call placeholder
+                next[next.length - 1] = { ...last, content: "", toolCalls: [...pendingToolCalls] };
               } else {
-                // First tool call — create a placeholder assistant message
                 next.push({ role: "assistant", content: "", toolCalls: [...pendingToolCalls] });
               }
               return next;
             });
           } else if (event.type === "response") {
-            // Final response — animate text in character-by-character (typewriter effect)
+            // Final response — tokens were already streamed live, so just
+            // finalize the message with action metadata and tool calls.
             const action = buildAction(event.action ?? null);
             const hintAction =
               action?.type === "navigate" || action?.type === "redirect"
                 ? (action as Exclude<AgentAction, { type: "contact" }>)
                 : undefined;
 
-            const fullContent = event.content || ".";
-            const baseMsg = {
-              role:       "assistant" as const,
-              actionHint: hintAction ? actionLabel(hintAction) : undefined,
-              toolCalls:  pendingToolCalls.length > 0 ? [...pendingToolCalls] : undefined,
-            };
+            const finalContent = event.content || ".";
 
-            // Hide loading immediately — the typing animation serves as the in-progress indicator
-            setLoading(false);
-
-            // Place an empty assistant message (or replace existing placeholder)
+            // Finalize the existing streamed assistant message with metadata
             setMessages((prev) => {
               const next = [...prev];
               const lastIdx = next.length - 1;
               const last = next[lastIdx];
-              if (last.role === "assistant" && last.content === "" && last.toolCalls) {
-                next[lastIdx] = { ...baseMsg, content: "" };
+              if (last?.role === "assistant" && !last.actionHint) {
+                // Update the streamed message with final content + metadata
+                next[lastIdx] = {
+                  ...last,
+                  content:    finalContent,
+                  actionHint: hintAction ? actionLabel(hintAction) : undefined,
+                  toolCalls:  pendingToolCalls.length > 0 ? [...pendingToolCalls] : undefined,
+                };
               } else {
-                next.push({ ...baseMsg, content: "" });
+                // Fallback: no streamed message exists, create one
+                next.push({
+                  role:       "assistant",
+                  content:    finalContent,
+                  actionHint: hintAction ? actionLabel(hintAction) : undefined,
+                  toolCalls:  pendingToolCalls.length > 0 ? [...pendingToolCalls] : undefined,
+                });
               }
               return next;
             });
 
-            // Typewriter: reveal ~4 characters per animation frame (~60fps → ~240 chars/sec)
-            let charIdx = 0;
-            const CHARS_PER_TICK = 4;
-            const TICK_MS = 16;
-
-            const tick = () => {
-              charIdx = Math.min(charIdx + CHARS_PER_TICK, fullContent.length);
-              setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                // Guard: only update if the last message is still our assistant message
-                if (last?.role === "assistant") {
-                  next[next.length - 1] = { ...last, content: fullContent.slice(0, charIdx) };
-                }
-                return next;
-              });
-              if (charIdx < fullContent.length) {
-                setTimeout(tick, TICK_MS);
-              }
-            };
-            setTimeout(tick, TICK_MS);
+            setLoading(false);
 
             if (action) {
               if (action.type === "contact") {

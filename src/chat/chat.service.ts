@@ -195,14 +195,15 @@ export class ChatService {
   }
 
   /**
-   * callTogetherAI
-   * --------------
-   * Streaming call to TogetherAI. Yields token chunks as they arrive.
-   * Also returns the full accumulated response text.
+   * callTogetherAIStream
+   * --------------------
+   * Streaming call to TogetherAI. Returns an async generator that yields
+   * individual token chunks as they arrive from the API. The caller is
+   * responsible for iterating the generator and collecting the full text.
    */
-  private async callTogetherAIStream(
+  private async *callTogetherAIStream(
     messages: ChatMessage[],
-  ): Promise<{ text: string; tokens: AsyncGenerator<string> }> {
+  ): AsyncGenerator<string> {
     const apiKey = process.env.TOGETHER_API_KEY;
     const model  = process.env.TOGETHER_MODEL;
     if (!apiKey) throw new InternalServerErrorException("TOGETHER_API_KEY not configured");
@@ -225,56 +226,44 @@ export class ChatService {
       throw new InternalServerErrorException(`TogetherAI error ${response.status}: ${text}`);
     }
 
-    // Generator that yields tokens as they arrive
-    async function* tokenGenerator(): AsyncGenerator<string> {
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, { stream: true });
 
-          // Process complete lines; keep trailing incomplete line in buffer
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+        // Process complete lines; keep trailing incomplete line in buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") continue;
-              if (!data) continue;
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
+            if (!data) continue;
 
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const parsed: any = JSON.parse(data);
-                const token = parsed?.choices?.[0]?.delta?.content ?? "";
-                if (token) {
-                  yield token;
-                }
-              } catch (err) {
-                console.warn("[Chat] JSON parse error in stream:", (err as Error).message, "line:", data);
-                continue;
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const parsed: any = JSON.parse(data);
+              const token = parsed?.choices?.[0]?.delta?.content ?? "";
+              if (token) {
+                yield token;
               }
+            } catch (err) {
+              console.warn("[Chat] JSON parse error in stream:", (err as Error).message, "line:", data);
+              continue;
             }
           }
         }
-      } finally {
-        reader.releaseLock();
       }
+    } finally {
+      reader.releaseLock();
     }
-
-    // Collect all tokens to build full text
-    let fullText = "";
-    for await (const token of tokenGenerator()) {
-      fullText += token;
-    }
-
-    console.log("[Chat] Raw reply:\n", fullText);
-    return { text: fullText, tokens: tokenGenerator() };
   }
 
   /**
@@ -374,8 +363,13 @@ export class ChatService {
     const MAX_ITERATIONS = 10;
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-      // Call TogetherAI with streaming
-      const { text: raw } = await this.callTogetherAIStream(messages);
+      // Call TogetherAI with streaming — yield token events in real-time
+      let raw = "";
+      for await (const token of this.callTogetherAIStream(messages)) {
+        raw += token;
+        yield { type: "token", content: token };
+      }
+      console.log("[Chat] Raw reply:\n", raw);
       const { text, tag } = parseTag(raw.trim());
 
       // ── [retrieve] — execute search and loop ─────────────────────────────
