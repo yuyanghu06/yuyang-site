@@ -1,5 +1,7 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import "../styles/interior.css";
+
+const STORAGE_KEY = "admin_ingest_key";
 
 /**
  * AdminIngest
@@ -8,7 +10,7 @@ import "../styles/interior.css";
  * Accessible only at /admin/ingest (not linked from site navigation).
  *
  * Flow:
- *   1. User enters admin key → stored in component state
+ *   1. User enters admin key → stored in localStorage for persistence
  *   2. PDF upload or text input → POST to /api/ingest/pdf or /api/ingest/text
  *   3. Key sent in x-admin-key header on every request
  */
@@ -26,12 +28,30 @@ export default function AdminIngest() {
   // PDF input state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
+  // On mount, restore key from localStorage and auto-unlock if present
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      setAdminKey(stored);
+      setUnlocked(true);
+    }
+  }, []);
+
   const handleUnlock = (e: FormEvent) => {
     e.preventDefault();
     if (adminKey.trim()) {
+      localStorage.setItem(STORAGE_KEY, adminKey.trim());
       setUnlocked(true);
       setError(null);
     }
+  };
+
+  const handleLock = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setAdminKey("");
+    setUnlocked(false);
+    setStatus(null);
+    setError(null);
   };
 
   const handleTextSubmit = async (e: FormEvent) => {
@@ -133,8 +153,15 @@ export default function AdminIngest() {
   return (
     <div className="admin-ingest-page">
       <div className="admin-card admin-card--wide">
-        <h1 className="admin-title">Ingest Data</h1>
-        <p className="admin-subtitle">Upload PDFs or paste raw text to index in Pinecone.</p>
+        <div className="admin-header-row">
+          <div>
+            <h1 className="admin-title">Ingest Data</h1>
+            <p className="admin-subtitle">Upload PDFs or paste raw text to index in Pinecone.</p>
+          </div>
+          <button type="button" className="admin-btn admin-btn--lock" onClick={handleLock}>
+            Lock
+          </button>
+        </div>
 
         {/* Status / Error banners */}
         {status && <div className="admin-banner admin-banner--success">{status}</div>}

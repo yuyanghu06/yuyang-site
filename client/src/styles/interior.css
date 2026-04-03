@@ -570,6 +570,38 @@
   text-transform: uppercase;
 }
 
+/* Header row — title + lock button side by side */
+.admin-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-header-row .admin-title {
+  margin-bottom: 0.3rem;
+}
+
+.admin-header-row .admin-subtitle {
+  margin-bottom: 0;
+}
+
+.admin-btn--lock {
+  flex-shrink: 0;
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 80, 80, 0.2);
+  color: rgba(255, 140, 140, 0.85);
+  font-size: 0.78rem;
+  padding: 0.45rem 1rem;
+  letter-spacing: 0.06em;
+}
+
+.admin-btn--lock:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.16);
+  border-color: rgba(255, 80, 80, 0.35);
+}
+
 @media (max-width: 768px) {
   .admin-card--wide {
     max-width: 100%;
