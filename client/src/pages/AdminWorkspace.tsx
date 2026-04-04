@@ -98,6 +98,13 @@ export default function AdminWorkspace() {
     setUnlocked(false);
   };
 
+  // Called whenever the server returns 401 — clears the stored key and locks.
+  const lockOut = () => {
+    localStorage.removeItem(KEY_STORAGE);
+    setAdminKey("");
+    setUnlocked(false);
+  };
+
   // ── Image handling ──────────────────────────────────────────────────────────
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,6 +156,7 @@ export default function AdminWorkspace() {
       if (!res.ok || !res.body) {
         const body = await res.text().catch(() => "");
         console.error("[Workspace] Request failed | status:", res.status, "| body:", body);
+        if (res.status === 401) { lockOut(); return; }
         throw new Error(`HTTP ${res.status}`);
       }
 

@@ -57,6 +57,15 @@ export default function AdminIngest() {
     setError(null);
   };
 
+  // Called whenever the server returns 401 — clears the stored key and locks.
+  const lockOut = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setAdminKey("");
+    setUnlocked(false);
+    setStatus(null);
+    setError("Invalid key. Access revoked.");
+  };
+
   const handleTextSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
@@ -76,6 +85,7 @@ export default function AdminIngest() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) { lockOut(); return; }
         const data = await res.json().catch(() => ({ message: "Request failed" }));
         throw new Error(data.message || `Error ${res.status}`);
       }
@@ -110,6 +120,7 @@ export default function AdminIngest() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) { lockOut(); return; }
         const data = await res.json().catch(() => ({ message: "Request failed" }));
         throw new Error(data.message || `Error ${res.status}`);
       }
@@ -146,6 +157,7 @@ export default function AdminIngest() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) { lockOut(); return; }
         const data = await res.json().catch(() => ({ message: "Request failed" }));
         throw new Error(data.message || `Error ${res.status}`);
       }
