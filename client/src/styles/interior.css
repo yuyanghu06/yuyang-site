@@ -685,13 +685,16 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .ws-page {
-  position: relative;
+  /* Fixed below the navbar — same pattern as .admin-ingest-page.
+     Never overflows into the nav regardless of content height. */
+  position: fixed;
+  top: 72px; /* matches navbar height */
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 10;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  min-height: 100vh;
-  padding-top: 80px; /* navbar clearance */
 }
 
 /* ── Header bar ─────────────────────────────────────────────────────────────── */
@@ -1024,6 +1027,10 @@
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
+  .ws-page {
+    top: 60px; /* mobile navbar is shorter */
+  }
+
   .ws-header {
     padding: 0.6rem 1rem;
   }
@@ -1037,17 +1044,46 @@
     font-size: 1rem;
   }
 
+  .ws-subtitle {
+    display: none; /* too cramped alongside the action buttons */
+  }
+
+  .ws-header-actions {
+    gap: 0.35rem;
+  }
+
+  .ws-header-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
   .ws-messages {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
   }
 
   .ws-bubble {
     max-width: 92%;
     font-size: 0.88rem;
+    padding: 0.75rem 1rem;
   }
 
   .ws-input-area {
-    padding: 0.5rem 1rem 0.75rem;
+    padding: 0.5rem 0.75rem 0.75rem;
+  }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .ws-textarea {
+    font-size: 1rem;
+  }
+
+  .ws-attach-btn,
+  .ws-send-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ws-send-btn {
+    padding: 0 1rem;
   }
 }
 
