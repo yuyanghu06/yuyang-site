@@ -10,17 +10,27 @@ export interface ContactPayload {
 @Injectable()
 export class ContactService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private transporter = nodemailer.createTransport({
-    host:   process.env.SMTP_HOST ?? "smtp.gmail.com",
-    port:   Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
-    family: 4, // force IPv4 — production hosts often lack outbound IPv6 routing
-               // (valid nodemailer option but missing from @types/nodemailer)
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  } as any);
+  private transporter: any;
+
+  constructor() {
+    const port   = Number(process.env.SMTP_PORT ?? 587);
+    const secure = port === 465; // SSL on 465, STARTTLS on 587
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.transporter = nodemailer.createTransport({
+      host:   process.env.SMTP_HOST ?? "smtp.gmail.com",
+      port,
+      secure,
+      family:            4,      // force IPv4 — prod hosts often can't route IPv6
+      connectionTimeout: 10_000, // fail fast instead of hanging for 60+ seconds
+      greetingTimeout:   5_000,
+      socketTimeout:     15_000,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    } as any);
+  }
 
   async send({ name, email, message }: ContactPayload): Promise<void> {
     const to = process.env.CONTACT_EMAIL;

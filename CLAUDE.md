@@ -1,11 +1,11 @@
-# CLAUDE.md — nature-editorial (Yuyang's Personal Website)
+# CLAUDE.md: nature-editorial (Yuyang's Personal Website)
 
 ## Project Identity
 
 - **Name:** nature-editorial
 - **Type:** Full-stack personal portfolio with an embedded AI chatbot
 - **Architecture:** NestJS backend + Vite/React frontend in a single unified package
-- **Design aesthetic:** Photography-first, editorial magazine — cinematic, minimal, luxury
+- **Design aesthetic:** Photography-first editorial magazine. Cinematic, minimal, luxury.
 
 ---
 
@@ -15,7 +15,7 @@
 |---|---|
 | Backend | NestJS v10, Node.js ≥20, TypeScript |
 | Frontend | React 18, Vite 5, TypeScript/TSX |
-| Styling | Plain CSS — no Tailwind, no Bootstrap, no CSS-in-JS |
+| Styling | Plain CSS (no Tailwind, no Bootstrap, no CSS-in-JS) |
 | Routing (FE) | React Router v6 |
 | Animation | Framer Motion |
 | AI inference | TogetherAI (`POST https://api.together.xyz/v1/chat/completions`) |
@@ -23,7 +23,7 @@
 | Vector store | Pinecone SDK |
 | Web search | Tavily API (`@tavily/core`) |
 | Email | Nodemailer (SMTP) |
-| Package manager | npm — single `package.json` at repo root |
+| Package manager | npm, single `package.json` at repo root |
 
 ---
 
@@ -35,8 +35,8 @@
 | `npm run dev:client` | Vite only |
 | `npm run dev:server` | NestJS only |
 | `npm run build` | Build client then server |
-| `npm run build:client` | Vite → `dist/client/` |
-| `npm run build:server` | NestJS → `dist/server/` |
+| `npm run build:client` | Vite to `dist/client/` |
+| `npm run build:server` | NestJS to `dist/server/` |
 | `npm start` | Run compiled production server |
 | `npm run ingest` | Run `scripts/ingest.ts` to embed and upload data to Pinecone |
 
@@ -53,18 +53,18 @@ backend/
 ├── tsconfig.client.json            # Frontend TypeScript config
 ├── vite.config.ts
 ├── nest-cli.json
-├── .env                            # Env vars — never commit
+├── .env                            # Env vars, do not commit
 │
 ├── public/
 │   └── photos/
-│       └── BACKGROUND.jpeg         # ← THE background image — never move, never rename
+│       └── BACKGROUND.jpeg         # THE background image, never move or rename
 │
 ├── src/                            # NestJS backend
-│   ├── main.ts                     # Bootstrap — static asset serving config
+│   ├── main.ts                     # Bootstrap, static asset serving config
 │   ├── app.module.ts
 │   ├── app.controller.ts           # Wildcard GET * → serves index.html
-│   ├── chat/                       # POST /api/chat — RAG pipeline → TogetherAI
-│   ├── contact/                    # POST /api/contact — SMTP email via Nodemailer
+│   ├── chat/                       # POST /api/chat: RAG pipeline to TogetherAI
+│   ├── contact/                    # POST /api/contact: SMTP email via Nodemailer
 │   └── mcp/                        # Embedding, Pinecone, context services
 │
 ├── client/                         # React frontend
@@ -81,32 +81,32 @@ backend/
 │       ├── hooks/
 │       └── styles/
 │           ├── global.css           # :root variables, resets, font imports
-│           ├── hero.css             # Landing page — full bleed, blend modes
-│           └── interior.css         # Interior pages — blurred bg, frosted glass
+│           ├── hero.css             # Landing page: full bleed, blend modes
+│           └── interior.css         # Interior pages: blurred bg, frosted glass
 │
 ├── planning/
 │   ├── routes.md                    # All implemented API routes (keep up to date)
 │   ├── agent.md                     # Chatbot agent architecture spec
 │   └── mcp.md
 │
-└── dist/                            # Build output — gitignored
+└── dist/                            # Build output, gitignored
     ├── client/
     └── server/
 ```
 
 ---
 
-## Absolute Rules
+## Hard Rules
 
 - **NEVER** create a separate `package.json` inside `client/` or `src/`
 - **NEVER** move or rename `public/photos/BACKGROUND.jpeg`
-- **NEVER** import the background image via JS — always reference it as a static path string (`"/public/photos/BACKGROUND.jpeg"`)
+- **NEVER** import the background image via JS. Always reference it as a static path string (`"/public/photos/BACKGROUND.jpeg"`)
 - **NEVER** add a CSS framework (no Tailwind, no Bootstrap, no styled-components)
-- **NEVER** add a UI component library — build all UI with plain React + CSS
-- **NEVER** persist chat history to a database — messages live in `ChatContext` and reset on refresh
-- **ALWAYS** use TogetherAI's token-streaming API (`stream: true`) — stream tokens from TogetherAI and forward them over the SSE connection to the React frontend. The SSE event loop is required and must NOT be disabled or removed
-- **NEVER** hardcode API keys — all secrets come from environment variables
-- **NEVER** put action-tag parsing on the backend — it is always done on the frontend
+- **NEVER** add a UI component library. Build all UI with plain React + CSS
+- **NEVER** persist chat history to a database. Messages live in `ChatContext` and reset on refresh
+- **ALWAYS** use TogetherAI's token-streaming API (`stream: true`). Stream tokens from TogetherAI and forward them over the SSE connection to the React frontend. The SSE event loop is required and must NOT be disabled or removed
+- **NEVER** hardcode API keys. All secrets come from environment variables
+- **NEVER** put action-tag parsing on the backend. It is always done on the frontend
 - All backend code lives in `src/`
 - All frontend code lives in `client/`
 - All static assets live in `public/`
@@ -121,7 +121,7 @@ backend/
 |---|---|---|
 | `POST` | `/api/chat` | RAG pipeline: embed → Pinecone → TogetherAI |
 | `POST` | `/api/contact` | Send visitor message via SMTP/Nodemailer |
-| `GET` | `*` | SPA wildcard → serves `dist/client/index.html` |
+| `GET` | `*` | SPA wildcard, serves `dist/client/index.html` |
 
 All API endpoints must be prefixed with `/api/` to avoid collision with React Router.
 
@@ -129,12 +129,12 @@ All API endpoints must be prefixed with `/api/` to avoid collision with React Ro
 
 | Path | Component | Background |
 |---|---|---|
-| `/` | `pages/Home.tsx` | Full-bleed, no blur — hero layout |
+| `/` | `pages/Home.tsx` | Full-bleed, no blur (hero layout) |
 | `/about` | `pages/About.tsx` | `blur(18px) + scale(1.05)` |
 | `/projects` | `pages/Projects.tsx` | `blur(18px) + scale(1.05)` |
 | `/contact` | `pages/Contact.tsx` | `blur(18px) + scale(1.05)` |
 
-When adding a new page: register it in `App.tsx` (React Router). The NestJS wildcard catches all non-`/api/*` routes automatically — no changes to `app.controller.ts` needed.
+When adding a new page: register it in `App.tsx` (React Router). The NestJS wildcard catches all non-`/api/*` routes automatically, so no changes to `app.controller.ts` are needed.
 
 ---
 
@@ -153,7 +153,7 @@ When adding a new page: register it in `App.tsx` (React Router). The NestJS wild
 | All interior pages | `PageWrapper` | `filter: blur(18px)` + `transform: scale(1.05)` |
 | Any modal | inline | `filter: blur(24px)` |
 
-`PageWrapper` applies blur automatically. `HeroBg` never applies blur. No page sets its own blur directly — always delegate to the component.
+`PageWrapper` applies blur automatically. `HeroBg` never applies blur. No page sets its own blur directly. Always delegate to the component.
 
 ---
 
@@ -167,8 +167,8 @@ The site has an embedded AI assistant powered by TogetherAI with a RAG context l
 
 | Tag | Action |
 |---|---|
-| `[retrieve] <query>` | Search Pinecone knowledge base — loops back in tool-use loop |
-| `[web_search] <query>` | Search the web via Tavily — loops back in tool-use loop |
+| `[retrieve] <query>` | Search Pinecone knowledge base, loops back in tool-use loop |
+| `[web_search] <query>` | Search the web via Tavily, loops back in tool-use loop |
 | `[navigate] <page>` | React Router navigate to `/`, `/about`, `/projects`, or `/contact` |
 | `[contact]` | Trigger multi-step contact collection flow in frontend state |
 | `[redirect] <key>` | Open mapped external URL in new tab |
@@ -179,10 +179,10 @@ The contact flow state machine (`idle → collecting_email → collecting_messag
 
 ## CSS Rules
 
-- Changes global to all pages → `global.css`
-- Changes specific to landing/hero → `hero.css`
-- Changes specific to interior pages → `interior.css`
-- No text shadows — use blend modes on landing, overlay darkness on interior pages
+- Changes global to all pages go in `global.css`
+- Changes specific to landing/hero go in `hero.css`
+- Changes specific to interior pages go in `interior.css`
+- No text shadows. Use blend modes on landing, overlay darkness on interior pages
 - No solid panels, opaque surfaces, colored CTA buttons, or box outlines on nav
 - Navbar is always fully transparent
 - Maximum 2 font families: one serif display + one geometric sans
@@ -223,6 +223,6 @@ CONTACT_EMAIL=
 
 - Add detailed comments for all non-trivial logic
 - All new API routes added to `planning/routes.md`
-- New React pages → `client/src/pages/`
-- New reusable components → `client/src/components/`
-- New backend routes → `src/` as a new NestJS module + controller
+- New React pages go in `client/src/pages/`
+- New reusable components go in `client/src/components/`
+- New backend routes go in `src/` as a new NestJS module + controller
