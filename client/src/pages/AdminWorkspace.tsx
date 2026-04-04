@@ -146,7 +146,11 @@ export default function AdminWorkspace() {
         }),
       });
 
-      if (!res.ok || !res.body) throw new Error("Stream error");
+      if (!res.ok || !res.body) {
+        const body = await res.text().catch(() => "");
+        console.error("[Workspace] Request failed | status:", res.status, "| body:", body);
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -227,7 +231,8 @@ export default function AdminWorkspace() {
           }
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[Workspace] sendMessage error:", err);
       setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Try again." }]);
     } finally {
       setLoading(false);
