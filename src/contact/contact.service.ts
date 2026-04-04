@@ -26,7 +26,7 @@ export class ContactService {
     const from = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
     const subject = `New message from ${name || email}`;
 
-    console.log(`[Contact] Sending email via Resend — from: ${email}, to: ${to}`);
+    console.log(`[Contact] Sending email via Resend | from: ${from} | replyTo: ${email} | to: ${to}`);
 
     const { error } = await this.resend.emails.send({
       from,
