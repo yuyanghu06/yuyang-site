@@ -210,11 +210,9 @@ MCP_MAX_CONTEXT=               # optional
 TAVILY_API_KEY=
 
 # Email
-SMTP_HOST=
-SMTP_PORT=
-SMTP_USER=
-SMTP_PASS=
-CONTACT_EMAIL=
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=     # sender address verified in Resend dashboard
+CONTACT_EMAIL=         # recipient address (where messages get delivered)
 ```
 
 ---
