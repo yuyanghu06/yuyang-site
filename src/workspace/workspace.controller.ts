@@ -40,12 +40,14 @@ export class WorkspaceController {
     res.setHeader("Connection",    "keep-alive");
     res.flushHeaders();
 
+    console.log("[Workspace] POST /api/workspace | messages:", body.messages.length, "| image:", !!body.image);
+
     try {
       for await (const event of this.workspaceService.runToolLoop(body.messages, body.image)) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
     } catch (err) {
-      console.error("[Workspace] SSE stream error:", (err as Error).message);
+      console.error("[Workspace] SSE stream error:", err);
       res.write(`data: ${JSON.stringify({ type: "error" })}\n\n`);
     }
 

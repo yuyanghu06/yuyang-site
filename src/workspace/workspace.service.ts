@@ -71,7 +71,13 @@ export class WorkspaceService {
     private readonly pinecone:  PineconeService,
     private readonly context:   ContextService,
     private readonly tavily:    TavilyService,
-  ) {}
+  ) {
+    // Confirm prompts loaded correctly — surface any path issues at startup
+    console.log(
+      "[Workspace] Prompts loaded | WORKSPACE_PROMPT:", this.WORKSPACE_PROMPT.length, "chars",
+      "| WORKSPACE_TOOLS:", this.WORKSPACE_TOOLS.length, "chars",
+    );
+  }
 
   /**
    * describeImage
@@ -128,10 +134,26 @@ export class WorkspaceService {
   ): AsyncGenerator<string> {
     const apiKey = process.env.TOGETHER_API_KEY;
     const model  = process.env.TOGETHER_MODEL;
+
+    // Log env var presence so we can spot missing config in prod
+    console.log(
+      "[Workspace] TOGETHER_API_KEY:",  apiKey  ? `set (${apiKey.slice(0, 8)}...)` : "MISSING",
+      "| TOGETHER_MODEL:", model ?? "MISSING",
+    );
+
     if (!apiKey) throw new InternalServerErrorException("TOGETHER_API_KEY not configured");
     if (!model)  throw new InternalServerErrorException("TOGETHER_MODEL not configured");
 
-    console.log("[Workspace] Calling TogetherAI — model:", model, "| msgs:", messages.length);
+    // Log the shape of the request so we can verify the payload looks right
+    const totalChars = messages.reduce((n, m) => n + m.content.length, 0);
+    console.log(
+      "[Workspace] TogetherAI request | model:", model,
+      "| messages:", messages.length,
+      "| total chars:", totalChars,
+      "| max_tokens:", MAX_TOKENS,
+    );
+
+    const t0 = Date.now();
 
     const response = await fetch("https://api.together.xyz/v1/chat/completions", {
       method: "POST",
@@ -148,9 +170,15 @@ export class WorkspaceService {
       }),
     });
 
+    console.log(
+      "[Workspace] TogetherAI response | status:", response.status,
+      "| content-type:", response.headers.get("content-type"),
+      "| elapsed:", Date.now() - t0, "ms",
+    );
+
     if (!response.ok) {
       const text = await response.text();
-      console.error("[Workspace] TogetherAI error", response.status, text);
+      console.error("[Workspace] TogetherAI error body:", text);
       throw new InternalServerErrorException(`TogetherAI error ${response.status}: ${text}`);
     }
 

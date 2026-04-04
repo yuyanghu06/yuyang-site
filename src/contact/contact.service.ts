@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import * as nodemailer from "nodemailer";
+import * as dns from "dns";
 
 export interface ContactPayload {
   name: string;
@@ -21,8 +22,14 @@ export class ContactService {
       host:   process.env.SMTP_HOST ?? "smtp.gmail.com",
       port,
       secure,
-      family:            4,      // force IPv4 — prod hosts often can't route IPv6
-      connectionTimeout: 10_000, // fail fast instead of hanging for 60+ seconds
+      // Override DNS resolution to force IPv4 — nodemailer's `family` option is
+      // not reliably applied by the underlying smtp-connection layer, so we use
+      // a custom dnsLookup callback that pins family to 4 before connecting.
+      // Ignore the options argument — always resolve to a single IPv4 address.
+      dnsLookup: (hostname: string, _options: dns.LookupOptions, callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void) => {
+        dns.lookup(hostname, 4, callback);
+      },
+      connectionTimeout: 10_000, // fail fast if the port is firewalled
       greetingTimeout:   5_000,
       socketTimeout:     15_000,
       auth: {
