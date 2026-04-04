@@ -10,9 +10,10 @@ export interface ContactPayload {
 @Injectable()
 export class ContactService {
   private transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST ?? "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT ?? 587),
+    host:   process.env.SMTP_HOST ?? "smtp.gmail.com",
+    port:   Number(process.env.SMTP_PORT ?? 587),
     secure: false,
+    family: 4, // force IPv4 — production hosts often lack outbound IPv6 routing
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
