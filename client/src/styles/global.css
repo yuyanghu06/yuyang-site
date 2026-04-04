@@ -284,13 +284,23 @@ html {
     0 4px 20px rgba(0, 0, 0, 0.30),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.80);
-  cursor: pointer;
+  cursor: grab; /* indicates draggability */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
   position: relative; /* anchor for the badge */
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* While actively dragging — grabbing cursor + subtle lift */
+.spotlight-btn--dragging {
+  cursor: grabbing !important;
+  transform: scale(1.08) !important;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: none; /* no easing during drag */
 }
 
 /* Hover — slight grow + deeper shadow */
@@ -360,6 +370,19 @@ html {
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
+/* When the button is dragged near the top of the viewport, show the panel
+   below the button instead of above it to avoid viewport overflow */
+.spotlight-panel--below {
+  bottom: auto;
+  top: calc(100% + 12px);
+  animation: spotlight-panel-below-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes spotlight-panel-below-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
 /* Panel header — title + close button */
 .spotlight-panel-header {
   display: flex;
@@ -377,6 +400,31 @@ html {
   text-transform: uppercase;
   font-weight: 300;
   color: rgba(255, 255, 255, 0.65);
+}
+
+/* Header right-side action group: expand + close */
+.spotlight-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+/* Expand-to-full-screen button */
+.spotlight-panel-expand {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.40);
+  cursor: pointer;
+  font-size: 0.70rem;
+  padding: 0.25rem 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.spotlight-panel-expand:hover {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* ✕ close button */

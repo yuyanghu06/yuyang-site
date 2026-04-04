@@ -197,9 +197,14 @@ export default function AdminIngest() {
             <h1 className="admin-title">Ingest Data</h1>
             <p className="admin-subtitle">Upload PDFs, Markdown files, or paste raw text to index in Pinecone.</p>
           </div>
-          <button type="button" className="admin-btn admin-btn--lock" onClick={handleLock}>
-            Lock
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button type="button" className="admin-btn" onClick={() => window.location.href = "/admin/workspace"}>
+              Workspace
+            </button>
+            <button type="button" className="admin-btn admin-btn--lock" onClick={handleLock}>
+              Lock
+            </button>
+          </div>
         </div>
 
         {/* Status / Error banners */}

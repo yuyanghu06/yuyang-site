@@ -5,6 +5,7 @@ import About from "./pages/About";
 import Projects from "./pages/Projects";
 import Contact from "./pages/Contact";
 import AdminIngest from "./pages/AdminIngest";
+import AdminWorkspace from "./pages/AdminWorkspace";
 import HeroBg from "./components/HeroBg";
 import Navbar from "./components/Navbar";
 import PageTransition from "./components/PageTransition";
@@ -52,6 +53,7 @@ function AnimatedRoutes() {
           <Route path="/projects" element={<Projects />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin/ingest" element={<AdminIngest />} />
+          <Route path="/admin/workspace" element={<AdminWorkspace />} />
         </Routes>
       </PageTransition>
     </AnimatePresence>

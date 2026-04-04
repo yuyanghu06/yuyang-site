@@ -13,23 +13,28 @@ export default function Contact() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setStatus("sending");
+    console.log("[Contact] Form submitted — email:", form.email);
 
     try {
-      // Reuse the existing /api/contact endpoint.
-      // `name` is left blank — the backend uses `email` as replyTo and
-      // the message body carries the user's text.
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name:    "",               // not collected on this form
-          email:   form.email,       // attached as replyTo in the email
+          name:    "",
+          email:   form.email,
           message: form.message,
         }),
       });
 
-      setStatus(res.ok ? "sent" : "error");
-    } catch {
+      if (res.ok) {
+        console.log("[Contact] Email sent successfully — email:", form.email);
+        setStatus("sent");
+      } else {
+        console.error("[Contact] Email send failed — status:", res.status, "email:", form.email);
+        setStatus("error");
+      }
+    } catch (err) {
+      console.error("[Contact] Network error during email send — email:", form.email, err);
       setStatus("error");
     }
   };

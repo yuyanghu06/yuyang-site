@@ -23,16 +23,20 @@ export class ContactService {
     const to = process.env.CONTACT_EMAIL;
     if (!to) throw new InternalServerErrorException("CONTACT_EMAIL not configured");
 
+    console.log(`[Contact] Sending email — from: ${email}, to: ${to}, subject: "New message from ${name || email}"`);
+
     try {
       await this.transporter.sendMail({
-        from: `"${name}" <${process.env.SMTP_USER}>`,
+        from: `"${name || "Site Visitor"}" <${process.env.SMTP_USER}>`,
         replyTo: email,
         to,
-        subject: `New message from ${name}`,
+        subject: `New message from ${name || email}`,
         text: message,
-        html: `<p><strong>From:</strong> ${name} &lt;${email}&gt;</p><p>${message.replace(/\n/g, "<br>")}</p>`,
+        html: `<p><strong>From:</strong> ${name || "Site Visitor"} &lt;${email}&gt;</p><p>${message.replace(/\n/g, "<br>")}</p>`,
       });
+      console.log(`[Contact] Email sent successfully — from: ${email}`);
     } catch (err) {
+      console.error(`[Contact] Failed to send email — from: ${email}:`, (err as Error).message);
       throw new InternalServerErrorException("Failed to send email");
     }
   }

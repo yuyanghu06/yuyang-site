@@ -26,8 +26,7 @@ export const PAGE_MAP: Record<string, string> = {
 // ── Discriminated union of all possible agent actions ───────────────────────
 export type AgentAction =
   | { type: "navigate"; page: string; path: string }
-  | { type: "redirect"; key: string; url: string }
-  | { type: "contact" };
+  | { type: "redirect"; key: string; url: string };
 
 /**
  * buildAction
@@ -59,8 +58,6 @@ export function buildAction(
       if (key && url) return { type: "redirect", key, url };
       return null;
     }
-    case "contact":
-      return { type: "contact" };
     case "message":
     default:
       return null;

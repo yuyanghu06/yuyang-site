@@ -5,6 +5,7 @@ import { EmbeddingService } from "../mcp/embedding.service";
 import { PineconeService  } from "../mcp/pinecone.service";
 import { ContextService   } from "../mcp/context.service";
 import { TavilyService    } from "../mcp/tavily.service";
+import { ContactService   } from "../contact/contact.service";
 
 // ── Bracket-tag regex — matches [toolName] optional params at end of response ─
 const TAG_REGEX = /^\[(\w+)\]\s*(.*)$/;
@@ -74,8 +75,6 @@ function tagToAction(tag: ParsedTag | null): { tool: string; parameters: string[
     case "navigate":
     case "redirect":
       return { tool: tag.tool, parameters: tag.params ? [tag.params] : [] };
-    case "contact":
-      return { tool: "contact", parameters: [] };
     case "message":
     default:
       return null;
@@ -92,7 +91,7 @@ function toolCallSummary(tag: ParsedTag): string {
     case "retrieve":    return `Searching memory for: ${tag.params}`;
     case "web_search":  return `Searching the web for: ${tag.params}`;
     case "navigate":    return `Navigating to ${tag.params} page`;
-    case "contact":     return "Opening contact flow";
+    case "send_email":  return `Sending email to Yuyang`;
     case "redirect":    return `Opening ${tag.params}`;
     case "message":     return "";
     default:            return "";
@@ -147,6 +146,7 @@ export class ChatService {
     private readonly pinecone:  PineconeService,
     private readonly context:   ContextService,
     private readonly tavily:    TavilyService,
+    private readonly contact:   ContactService,
   ) {}
 
   /**
@@ -406,7 +406,41 @@ export class ChatService {
         continue; // loop back for another inference call
       }
 
-      // ── Terminal tag (navigate, contact, redirect, message) or no tag ────
+      // ── [send_email] — send email via ContactService and loop ────────────
+      if (tag?.tool === "send_email" && tag.params) {
+        const separatorIdx = tag.params.indexOf(" | ");
+        const summary = toolCallSummary(tag);
+        yield { type: "tool_call", tool: "send_email", summary };
+
+        if (separatorIdx === -1) {
+          // Malformed tag — ask model to retry with correct format
+          console.warn("[Chat] [send_email] malformed params:", tag.params);
+          messages.push({ role: "assistant", content: raw.trim() });
+          messages.push({ role: "system",    content: "Error: the [send_email] tag was malformed. Required format: [send_email] email@example.com | message text. Please try again." });
+          continue;
+        }
+
+        const visitorEmail   = tag.params.slice(0, separatorIdx).trim();
+        const visitorMessage = tag.params.slice(separatorIdx + 3).trim();
+
+        console.log(`[Chat] [send_email] attempting — from: ${visitorEmail}`);
+
+        let resultContext: string;
+        try {
+          await this.contact.send({ name: "", email: visitorEmail, message: visitorMessage });
+          console.log(`[Chat] [send_email] success — from: ${visitorEmail}`);
+          resultContext = `Email sent successfully. Yuyang will receive the message and can reply to ${visitorEmail}. Tell the visitor their message has been delivered.`;
+        } catch (err) {
+          console.error(`[Chat] [send_email] failed — from: ${visitorEmail}:`, (err as Error).message);
+          resultContext = "Email send failed due to a server error. Apologize to the visitor and suggest they try the contact page at /contact directly.";
+        }
+
+        messages.push({ role: "assistant", content: raw.trim() });
+        messages.push({ role: "system",    content: resultContext });
+        continue; // loop back for final response
+      }
+
+      // ── Terminal tag (navigate, redirect, message) or no tag ─────────────
       if (tag && tag.tool !== "message") {
         const summary = toolCallSummary(tag);
         if (summary) {
@@ -418,7 +452,6 @@ export class ChatService {
       const fallbacks: Record<string, string> = {
         navigate: "On it.",
         redirect: "Here you go.",
-        contact:  "Let's get you in touch.",
       };
       const finalText = text || (tag ? fallbacks[tag.tool] ?? "" : "") || ".";
 

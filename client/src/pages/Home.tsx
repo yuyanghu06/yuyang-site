@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaInstagram, FaLinkedinIn, FaGithub, FaCamera } from "react-icons/fa";
 import { IconType } from "react-icons";
 import { CONFIG } from "../config";
-import { useChatContext, INITIAL_CONTACT_FLOW } from "../context/ChatContext";
+import { useChatContext } from "../context/ChatContext";
 import MessageContent from "../components/MessageContent";
 import ToolStatusBubble from "../components/ToolStatusBubble";
 import "../styles/hero.css";
@@ -21,24 +21,27 @@ export default function Home() {
 
   // All chat state and send logic live in ChatContext so SpotlightButton
   // can share the same conversation from any route.
-  const { messages, loading, contactFlow, setContactFlow, sendMessage } = useChatContext();
+  const { messages, loading, sendMessage } = useChatContext();
 
   const [input,      setInput]      = useState("");
   const [image,      setImage]      = useState<string | undefined>(undefined);
-  // True once the user sends a first message — triggers the full-screen chat layout
-  const [chatActive, setChatActive] = useState(false);
+  // True once the user sends a first message — or when navigated here with expandChat:true
+  const [chatActive, setChatActive] = useState(
+    () => !!(location.state as { expandChat?: boolean } | null)?.expandChat
+  );
   // Invisible scroll anchor kept at the bottom of the message list
   const heroChatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef      = useRef<HTMLInputElement>(null);
 
-  // Reset local UI state on every navigation to "/" (location.key changes even
-  // for same-path navigations).  Messages are NOT reset — they persist in
-  // ChatContext / sessionStorage until the user refreshes the page.
-  useEffect(() => {
-    setChatActive(false);
+  // Reset local UI state on every navigation to "/".  If navigation carries
+  // expandChat:true (from the SpotlightButton expand action), skip the hero and
+  // go straight into chat mode.  useLayoutEffect runs before paint so there is
+  // no visible flash when arriving from the panel expand button.
+  useLayoutEffect(() => {
+    const state = location.state as { expandChat?: boolean } | null;
+    setChatActive(!!(state?.expandChat));
     setInput("");
     setImage(undefined);
-    setContactFlow(INITIAL_CONTACT_FLOW);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
@@ -171,11 +174,7 @@ export default function Home() {
               <input
                   className="chat-fs-input"
                   type="text"
-                  placeholder={
-                    contactFlow.step === "collecting_email"   ? "your email address…"   :
-                    contactFlow.step === "collecting_message" ? "your message…"          :
-                    "message Yuyang…"
-                  }
+                  placeholder="message Yuyang…"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleHeroKeyDown}

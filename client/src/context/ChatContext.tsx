@@ -22,25 +22,6 @@ export interface ChatMessage {
   imageUrl?:   string;
 }
 
-// ── Contact-collection flow ───────────────────────────────────────────────────
-// When the AI returns a [contact] action tag, the frontend collects email then
-// message locally without round-tripping to the model.
-export type ContactStep =
-  | "idle"
-  | "collecting_email"
-  | "collecting_message"
-  | "sending"
-  | "done"
-  | "error";
-
-export interface ContactFlow {
-  step:    ContactStep;
-  email:   string;
-  message: string;
-}
-
-export const INITIAL_CONTACT_FLOW: ContactFlow = { step: "idle", email: "", message: "" };
-
 // sessionStorage key — persists across React Router navigation, clears on refresh
 const STORAGE_KEY = "chatHistory";
 
@@ -82,11 +63,9 @@ type SSEEvent = SSETokenEvent | SSEToolCallEvent | SSEResponseEvent | SSEDoneEve
 
 // ── Context shape ─────────────────────────────────────────────────────────────
 interface ChatContextValue {
-  messages:     ChatMessage[];
-  setMessages:  Dispatch<SetStateAction<ChatMessage[]>>;
-  loading:      boolean;
-  contactFlow:  ContactFlow;
-  setContactFlow: Dispatch<SetStateAction<ContactFlow>>;
+  messages:    ChatMessage[];
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  loading:     boolean;
   /**
    * Send a message through the full chat pipeline.
    * @param text     The raw user input to send.
@@ -94,7 +73,7 @@ interface ChatContextValue {
    *                 required to execute [navigate] action tags from the model.
    * @param image    Optional base64 data URL of an image to include.
    */
-  sendMessage:  (text: string, navigate: NavigateFunction, image?: string) => Promise<void>;
+  sendMessage: (text: string, navigate: NavigateFunction, image?: string) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -119,8 +98,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const [loading,     setLoading]     = useState(false);
-  const [contactFlow, setContactFlow] = useState<ContactFlow>(INITIAL_CONTACT_FLOW);
+  const [loading, setLoading] = useState(false);
 
   // Mirror every state change into sessionStorage (survives navigation, not refresh)
   useEffect(() => {
@@ -138,48 +116,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
-    // ── Contact flow state machine ──────────────────────────────────────────
-    if (contactFlow.step === "collecting_email") {
-      // Treat input as the user's email address
-      setContactFlow((f) => ({ ...f, step: "collecting_message", email: trimmed }));
-      setMessages((prev) => [
-        ...prev,
-        { role: "user",      content: trimmed },
-        { role: "assistant", content: "Got it. Now, what would you like to say?" },
-      ]);
-      return;
-    }
-
-    if (contactFlow.step === "collecting_message") {
-      // Treat input as the message body and POST to /api/contact
-      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
-      setContactFlow((f) => ({ ...f, step: "sending", message: trimmed }));
-      setLoading(true);
-      try {
-        const res = await fetch("/api/contact", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "", email: contactFlow.email, message: trimmed }),
-        });
-        if (!res.ok) throw new Error("contact API error");
-        setContactFlow((f) => ({ ...f, step: "done" }));
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Message sent! Yuyang will get back to you soon." },
-        ]);
-      } catch {
-        setContactFlow((f) => ({ ...f, step: "error" }));
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Sorry, something went wrong sending your message. Please try again." },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // ── Normal AI chat flow (SSE tool-use loop) ─────────────────────────────
+    // ── AI chat flow (SSE tool-use loop) ────────────────────────────────────
     const userMessage: ChatMessage = { role: "user", content: trimmed, ...(image ? { imageUrl: image } : {}) };
     const nextHistory = [...messages, userMessage];
     setMessages(nextHistory);
@@ -305,15 +242,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             setLoading(false);
 
             if (action) {
-              if (action.type === "contact") {
-                setContactFlow({ step: "collecting_email", email: "", message: "" });
-                setMessages((prev) => [
-                  ...prev,
-                  { role: "assistant", content: "What's your email address?" },
-                ]);
-              } else {
-                executeAction(action, navigate);
-              }
+              executeAction(action, navigate);
             }
           } else if (event.type === "done") {
             // SSE stream complete — loading was already cleared when response arrived.
@@ -330,10 +259,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, loading, contactFlow]);
+  }, [messages, loading]);
 
   return (
-    <ChatContext.Provider value={{ messages, setMessages, loading, contactFlow, setContactFlow, sendMessage }}>
+    <ChatContext.Provider value={{ messages, setMessages, loading, sendMessage }}>
       {children}
     </ChatContext.Provider>
   );

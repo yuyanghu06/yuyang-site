@@ -420,12 +420,17 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .admin-ingest-page {
-  min-height: 100vh;
+  /* Fixed container starting below navbar — content can never overflow into nav */
+  position: fixed;
+  top: 72px; /* matches navbar height (1.5rem padding × 2 + ~24px line-height) */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 2rem;
-  position: relative;
   z-index: 10;
 }
 
@@ -609,9 +614,9 @@
 
 @media (max-width: 768px) {
   .admin-ingest-page {
+    top: 60px; /* mobile navbar is shorter */
     padding: 1rem;
     align-items: flex-start;
-    padding-top: 4rem;   /* clear navbar */
   }
 
   .admin-card {
@@ -672,6 +677,377 @@
   .admin-banner {
     font-size: 0.78rem;
     padding: 0.5rem 0.75rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WORKSPACE — Admin private chat interface
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.ws-page {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 100vh;
+  padding-top: 80px; /* navbar clearance */
+}
+
+/* ── Header bar ─────────────────────────────────────────────────────────────── */
+
+.ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.ws-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.ws-title {
+  font-family: var(--font-display, "Playfair Display", serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #fff;
+  margin: 0;
+}
+
+.ws-subtitle {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.04em;
+}
+
+.ws-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ws-header-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.78rem;
+  font-family: var(--font-body, "Jost", sans-serif);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ws-header-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* ── Messages area ──────────────────────────────────────────────────────────── */
+
+.ws-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-behavior: smooth;
+}
+
+/* Subtle scrollbar */
+.ws-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.ws-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ws-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+/* ── Message bubbles ────────────────────────────────────────────────────────── */
+
+.ws-bubble {
+  max-width: 85%;
+  padding: 0.9rem 1.2rem;
+  border-radius: 14px;
+  line-height: 1.65;
+  font-size: 0.92rem;
+  font-family: var(--font-body, "Jost", sans-serif);
+  position: relative;
+}
+
+.ws-bubble--user {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.ws-bubble--assistant {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+  border-bottom-left-radius: 4px;
+}
+
+.ws-msg-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.ws-msg-image {
+  max-width: 280px;
+  max-height: 200px;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  display: block;
+  object-fit: cover;
+}
+
+/* ── Copy button ────────────────────────────────────────────────────────────── */
+
+.ws-copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
+  font-family: var(--font-body, "Jost", sans-serif);
+}
+
+.ws-bubble--assistant:hover .ws-copy-btn {
+  opacity: 1;
+}
+
+.ws-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Tool call pills ────────────────────────────────────────────────────────── */
+
+.ws-tool-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.ws-tool-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  background: rgba(100, 160, 255, 0.08);
+  color: rgba(130, 180, 255, 0.9);
+  width: fit-content;
+}
+
+.ws-tool-pill--web_search {
+  background: rgba(0, 210, 180, 0.08);
+  color: rgba(80, 220, 200, 0.9);
+}
+
+.ws-tool-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ws-dot-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ws-dot-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+
+/* ── Typing indicator ───────────────────────────────────────────────────────── */
+
+.ws-typing {
+  display: flex;
+  gap: 5px;
+  padding: 0.25rem 0;
+}
+
+.ws-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  animation: ws-typing-bounce 1.4s ease-in-out infinite;
+}
+
+.ws-typing span:nth-child(2) { animation-delay: 0.2s; }
+.ws-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ws-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+  30%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Input area ─────────────────────────────────────────────────────────────── */
+
+.ws-input-area {
+  flex-shrink: 0;
+  padding: 0.75rem 2rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ws-image-preview {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+
+.ws-image-preview img {
+  max-width: 120px;
+  max-height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+
+.ws-image-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 60, 60, 0.8);
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ws-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.ws-attach-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ws-attach-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ws-textarea {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  font-family: var(--font-body, "Jost", sans-serif);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  resize: none;
+  min-height: 40px;
+  max-height: 200px;
+  overflow-y: auto;
+  transition: border-color 0.2s;
+}
+
+.ws-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.ws-textarea:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ws-send-btn {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 1.3rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-body, "Jost", sans-serif);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ws-send-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.ws-send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .ws-header {
+    padding: 0.6rem 1rem;
+  }
+
+  .ws-header-left {
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .ws-title {
+    font-size: 1rem;
+  }
+
+  .ws-messages {
+    padding: 1rem;
+  }
+
+  .ws-bubble {
+    max-width: 92%;
+    font-size: 0.88rem;
+  }
+
+  .ws-input-area {
+    padding: 0.5rem 1rem 0.75rem;
   }
 }
 
