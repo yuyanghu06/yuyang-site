@@ -9,16 +9,18 @@ export interface ContactPayload {
 
 @Injectable()
 export class ContactService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private transporter = nodemailer.createTransport({
     host:   process.env.SMTP_HOST ?? "smtp.gmail.com",
     port:   Number(process.env.SMTP_PORT ?? 587),
     secure: false,
     family: 4, // force IPv4 — production hosts often lack outbound IPv6 routing
+               // (valid nodemailer option but missing from @types/nodemailer)
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-  });
+  } as any);
 
   async send({ name, email, message }: ContactPayload): Promise<void> {
     const to = process.env.CONTACT_EMAIL;
