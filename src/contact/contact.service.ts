@@ -16,19 +16,31 @@ export class ContactService {
   constructor() {
     const port   = Number(process.env.SMTP_PORT ?? 587);
     const secure = port === 465; // SSL on 465, STARTTLS on 587
+    const host   = process.env.SMTP_HOST ?? "smtp.gmail.com";
+
+    console.log(`[Contact] Transporter config — host: ${host}, port: ${port}, secure: ${secure}`);
+
+    // Override DNS resolution to force IPv4 — nodemailer's `family` option is
+    // not reliably applied by the underlying smtp-connection layer, so we use
+    // a custom dnsLookup callback that pins family to 4 before connecting.
+    // Ignore the options argument — always resolve to a single IPv4 address.
+    const dnsLookup = (hostname: string, _options: dns.LookupOptions, callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void) => {
+      dns.lookup(hostname, 4, (err, address, family) => {
+        if (err) {
+          console.error(`[Contact] DNS lookup failed for ${hostname}:`, err.message);
+        } else {
+          console.log(`[Contact] DNS resolved ${hostname} → ${address} (family: ${family})`);
+        }
+        callback(err, address, family);
+      });
+    };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.transporter = nodemailer.createTransport({
-      host:   process.env.SMTP_HOST ?? "smtp.gmail.com",
+      host,
       port,
       secure,
-      // Override DNS resolution to force IPv4 — nodemailer's `family` option is
-      // not reliably applied by the underlying smtp-connection layer, so we use
-      // a custom dnsLookup callback that pins family to 4 before connecting.
-      // Ignore the options argument — always resolve to a single IPv4 address.
-      dnsLookup: (hostname: string, _options: dns.LookupOptions, callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void) => {
-        dns.lookup(hostname, 4, callback);
-      },
+      dnsLookup,
       connectionTimeout: 10_000, // fail fast if the port is firewalled
       greetingTimeout:   5_000,
       socketTimeout:     15_000,
@@ -56,7 +68,8 @@ export class ContactService {
       });
       console.log(`[Contact] Email sent successfully — from: ${email}`);
     } catch (err) {
-      console.error(`[Contact] Failed to send email — from: ${email}:`, (err as Error).message);
+      const e = err as NodeJS.ErrnoException;
+      console.error(`[Contact] Failed to send email — code: ${e.code ?? "unknown"}, message: ${e.message}`);
       throw new InternalServerErrorException("Failed to send email");
     }
   }
