@@ -26,14 +26,14 @@
 
 .page-wrapper {
   position: relative;
-  min-height: 100vh;
-  overflow: hidden;
+  min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
 }
 
 .page-content {
   position: relative;
   z-index: 10; /* above blur-overlay (z-index:1) and HeroBg (z-index:0) */
-  padding: 8rem 3rem 3rem;
+  padding: 3rem 3rem 3rem;
   color: var(--white);
 }
 
@@ -391,7 +391,7 @@
   }
 
   .page-content {
-    padding: 6rem 1.5rem 2rem;
+    padding: 2rem 1.5rem 2rem;
   }
 
   /* Single column on mobile — all blocks stack */
@@ -420,12 +420,10 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .admin-ingest-page {
-  /* Fixed container starting below navbar — content can never overflow into nav */
-  position: fixed;
-  top: 72px; /* matches navbar height (1.5rem padding × 2 + ~24px line-height) */
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Fills the #root scroll container — content clips at the navbar boundary */
+  position: relative;
+  min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
   overflow-y: auto;
   display: flex;
   align-items: flex-start;
@@ -614,7 +612,6 @@
 
 @media (max-width: 768px) {
   .admin-ingest-page {
-    top: 60px; /* mobile navbar is shorter */
     padding: 1rem;
     align-items: flex-start;
   }
@@ -685,13 +682,10 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .ws-page {
-  /* Fixed below the navbar — same pattern as .admin-ingest-page.
-     Never overflows into the nav regardless of content height. */
-  position: fixed;
-  top: 72px; /* matches navbar height */
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Fills the #root scroll container — clips at navbar boundary */
+  position: relative;
+  height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1028,7 +1022,8 @@
 
 @media (max-width: 768px) {
   .ws-page {
-    top: 60px; /* mobile navbar is shorter */
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
   }
 
   .ws-header {

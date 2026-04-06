@@ -6,9 +6,9 @@
 .hero {
   position: relative;
   width: 100vw;
-  /* dvh cascade keeps the hero section sized to the true visible screen on mobile */
-  height: 100vh;
-  height: 100dvh;
+  /* Fill the #root scroll container (viewport minus navbar) */
+  height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -204,7 +204,10 @@
 /* ── Full-screen chat — takes over the entire viewport on first send ── */
 .chat-fullscreen {
   position: fixed;
-  inset: 0;
+  top: 72px; /* start below navbar */
+  left: 0;
+  right: 0;
+  bottom: 0;
   /* Below navbar (z-index:100) so nav links remain usable as the exit path */
   z-index: 50;
   display: flex;
@@ -217,8 +220,7 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  /* Extra top padding so the absolute-positioned navbar doesn't overlap the brand */
-  padding: 5rem 2rem 1.25rem;
+  padding: 1.25rem 2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
@@ -513,6 +515,11 @@
 }
 
 @media (max-width: 768px) {
+  .hero {
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
+  }
+
   .hero-display {
     font-size: clamp(16vw, 22vw, 30vw);
   }
@@ -526,6 +533,10 @@
   .hero-chat-bar {
     width: 92vw;
     margin-top: 1.75rem;
+  }
+
+  .chat-fullscreen {
+    top: 60px;
   }
 
   /* Full-screen chat: tighter padding on small screens */

@@ -13,11 +13,24 @@
   padding: 0;
 }
 
-html, body, #root {
+html, body {
   /* min-height instead of height so content can grow beyond the viewport */
   min-height: 100vh;
   min-height: 100dvh; /* dynamic viewport height — adjusts as mobile browser chrome shows/hides */
   width: 100%;
+}
+
+/* #root is a fixed scroll container that starts below the navbar.
+   Content clips at its top edge so nothing bleeds into the nav area.
+   Scrolling moves from body to #root — all page content lives inside. */
+#root {
+  position: fixed;
+  top: 72px; /* navbar height: 1.5rem padding × 2 + ~24px line-height */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 body {
@@ -47,6 +60,7 @@ html {
   z-index: 100; /* above HeroBg(0), BlurOverlay(1), page content(10) */
   background: transparent;
 }
+
 
 .navbar-left {
   display: flex;
@@ -98,6 +112,10 @@ html {
 /* On mobile viewports, hide the desktop link row entirely — the
    hamburger + drawer (rendered by useMobileDevice in Navbar.tsx) takes over */
 @media (max-width: 768px) {
+  #root {
+    top: 60px; /* mobile navbar is shorter */
+  }
+
   .navbar-links {
     display: none;
   }
