@@ -1,0 +1,1020 @@
+/* Landing / Hero page */
+.home {
+  position: relative;
+}
+
+.hero {
+  position: relative;
+  width: 100vw;
+  /* dvh cascade keeps the hero section sized to the true visible screen on mobile */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-bg {
+  position: fixed;
+  /* Explicit top/left instead of inset shorthand for widest mobile compatibility */
+  top: 0;
+  left: 0;
+  /* 100% of the fixed containing block = viewport, guarantees full coverage */
+  width: 100%;
+  height: 100%;
+  /* dvh = dynamic viewport height: shrinks/grows as mobile browser chrome hides/shows.
+     Cascades: 100vh (all browsers) → 100dvh (modern browsers that support it) */
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  /* Prevent any accidental tiling on edge-case viewport sizes */
+  background-repeat: no-repeat;
+  filter: brightness(0.35);
+  pointer-events: none;
+  z-index: 0;
+  /* Force a GPU compositing layer so iOS Safari re-evaluates background-size:cover
+     after orientation changes (without this, cover is cached at initial dimensions) */
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+
+.hero-center {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hero-display {
+  font-family: var(--font-display);
+  font-size: clamp(10vw, 14vw, 18vw);
+  font-weight: 300;
+  color: var(--white);
+  letter-spacing: 0.08em;
+  mix-blend-mode: overlay;
+  opacity: 1;
+  line-height: 1;
+}
+
+.hero-subtitle {
+  font-family: var(--font-ui);
+  font-size: clamp(0.75rem, 1rem, 1.1rem);
+  font-weight: 300;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.hero-dots {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.5rem;
+  color: var(--white);
+}
+
+/* Slider controls */
+.slider-prev,
+.slider-next {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--white);
+  font-size: 2rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.slider-prev { left: 1.5rem; }
+.slider-next { right: 1.5rem; }
+
+.slider-prev:hover,
+.slider-next:hover {
+  opacity: 1;
+}
+
+/* ── Hero chat bar — pill input, wider, pushed down from the title ── */
+.hero-chat-bar {
+  position: relative;        /* establishes stacking context for ::before */
+  overflow: hidden;          /* clips the blurred ::before slab to the pill border-radius */
+  display: flex;
+  width: min(800px, 92vw);
+  margin-top: 2.75rem;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;   /* visual fill lives in ::before so blur stays below text */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Blurred background slab — sits behind all text/content.
+   filter:blur() here only affects this layer; the flex children (input, button)
+   render above it and remain fully sharp. */
+.hero-chat-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.18);
+  filter: blur(4px);
+  pointer-events: none;
+  transition: background 0.3s ease, filter 0.25s ease;
+  /* z-index is intentionally absent — ::before paints behind in-flow flex children */
+}
+
+/* Ensure input and button stay visually above the blurred ::before layer */
+.hero-chat-bar > * {
+  position: relative;
+}
+
+/* Hover: clear blur on the slab, add halo on the container */
+.hero-chat-bar:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+.hero-chat-bar:hover::before,
+.hero-chat-bar:focus-within::before {
+  background: rgba(255, 255, 255, 0.25);
+  filter: none;
+}
+
+.hero-chat-bar:focus-within {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+.hero-chat-input {
+  flex: 1;
+  background: none;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  /* Left pill end — mirrors the container's border-radius */
+  border-radius: 50px 0 0 50px;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  padding: 1rem 1.6rem;
+  outline: none;
+}
+
+.hero-chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+}
+
+.hero-chat-input:disabled { opacity: 0.5; }
+
+.hero-chat-send {
+  background: none;
+  border: none;
+  /* Right pill end */
+  border-radius: 0 50px 50px 0;
+  color: var(--white);
+  font-size: 1.1rem;
+  padding: 0 1.5rem;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.hero-chat-send:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hero-chat-send:disabled { opacity: 0.2; cursor: default; }
+
+/* ── Full-screen chat — takes over the entire viewport on first send ── */
+.chat-fullscreen {
+  position: fixed;
+  inset: 0;
+  /* Below navbar (z-index:100) so nav links remain usable as the exit path */
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top header: brand only — navbar above handles navigation */
+.chat-fs-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  /* Extra top padding so the absolute-positioned navbar doesn't overlap the brand */
+  padding: 5rem 2rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.chat-fs-brand {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: var(--white);
+  letter-spacing: 0.15em;
+  opacity: 0.9;
+}
+
+/* Scrollable message column — fills all space between header and input */
+.chat-fs-messages {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  scroll-behavior: smooth;
+}
+
+.chat-fs-messages::-webkit-scrollbar { width: 3px; }
+.chat-fs-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* Inner column: centered, constrained for readability */
+.chat-fs-messages-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Individual message bubble */
+.chat-fs-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 78%;
+}
+
+.chat-fs-bubble--user      { align-self: flex-end;   align-items: flex-end; }
+.chat-fs-bubble--assistant { align-self: flex-start; align-items: flex-start; }
+
+/* Fix alignment when bubbles are wrapped by an extra map() wrapper div */
+.chat-fs-messages-inner > div > .chat-fs-bubble--user {
+  align-self: flex-end;
+  align-items: flex-end;
+  margin-left: auto;
+}
+.chat-fs-messages-inner > div > .chat-fs-bubble--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+
+/* Small ALL-CAPS speaker label */
+.chat-fs-bubble-role {
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--white);
+  opacity: 0.4;
+}
+
+/* Bubble text — frosted glass so the background image shows through */
+.chat-fs-bubble-text {
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 300;
+  line-height: 1.78;
+  color: var(--white);
+  margin: 0;
+  padding: 0.85rem 1.15rem;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+/* User bubble — purple-tinted frosted glass */
+.chat-fs-bubble--user .chat-fs-bubble-text {
+  background: rgba(180, 140, 200, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(180, 140, 200, 0.25);
+}
+
+/* Action hint — small label shown beneath a bubble when the model triggered
+   a navigate or redirect action (e.g. "→ Navigated to projects") */
+.chat-fs-action-hint {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+  padding-left: 0.1rem;
+}
+
+/* Web search sources — collapsible, shown below assistant bubbles */
+.chat-fs-searches {
+  margin-top: 0.4rem;
+  padding-left: 0.1rem;
+}
+.chat-fs-searches-summary {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.chat-fs-searches-summary::-webkit-details-marker { display: none; }
+.chat-fs-searches-summary:hover { color: rgba(255, 255, 255, 0.65); }
+.chat-fs-searches-list {
+  margin: 0.3rem 0 0 0.2rem;
+  padding: 0;
+  list-style: none;
+}
+.chat-fs-searches-list li {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 0.1rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 28ch;
+}
+
+/* Typing indicator (reuses @keyframes chatbot-bounce) */
+.chat-fs-typing {
+  display: flex !important;
+  gap: 5px;
+  align-items: center;
+}
+
+.chat-fs-typing span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: chatbot-bounce 1.2s infinite ease-in-out;
+}
+
+.chat-fs-typing span:nth-child(1) { animation-delay: 0s; }
+.chat-fs-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-fs-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Bottom input strip — pinned to viewport floor */
+.chat-fs-input-wrap {
+  position: relative;
+  z-index: 2;
+  padding: 1rem 1.5rem 2rem;
+  /* Gradient dissolves messages into the input strip */
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.35) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+
+/* Pill-shaped form container */
+.chat-fs-form {
+  max-width: 740px;
+  margin: 0 auto;
+  display: flex;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 0.22s, background 0.22s;
+}
+
+.chat-fs-form:focus-within {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-fs-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  padding: 1rem 1.5rem;
+  outline: none;
+}
+
+.chat-fs-input::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+  letter-spacing: 0.1em;
+}
+
+.chat-fs-input:disabled { opacity: 0.5; }
+
+/* Send button — upward arrow */
+.chat-fs-send {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--white);
+  font-size: 1.1rem;
+  padding: 0 1.3rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-fs-send:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+.chat-fs-send:disabled { opacity: 0.22; cursor: default; }
+
+/* Attach (camera) button — mirrors send button, sits left of input */
+.chat-fs-attach,
+.hero-chat-attach {
+  background: none;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 12px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.chat-fs-attach:hover,
+.hero-chat-attach:hover { color: rgba(255, 255, 255, 0.9); }
+
+/* Hidden native file input */
+.chat-file-input { display: none; }
+
+/* Inline image thumbnail inside the input row */
+.chat-input-thumb {
+  position: relative;
+  flex-shrink: 0;
+  margin: 5px 4px 5px 0;
+}
+.chat-input-thumb img {
+  display: block;
+  height: 36px;
+  width: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.chat-input-thumb-clear {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: rgba(0, 0, 0, 0.65);
+  border: none;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.15s;
+}
+.chat-input-thumb-clear:hover { background: rgba(0, 0, 0, 0.9); }
+
+/* Thumbnail inside a chat bubble */
+.chat-bubble-img {
+  display: block;
+  max-width: 180px;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 768px) {
+  .hero-display {
+    font-size: clamp(16vw, 22vw, 30vw);
+  }
+
+  .slider-prev,
+  .slider-next {
+    display: none;
+  }
+
+  /* Pill bar spans nearly full width on mobile */
+  .hero-chat-bar {
+    width: 92vw;
+    margin-top: 1.75rem;
+  }
+
+  /* Full-screen chat: tighter padding on small screens */
+  .chat-fs-messages-inner {
+    padding: 1.5rem 1rem;
+  }
+
+  .chat-fs-input-wrap {
+    padding: 0.75rem 1rem 1.5rem;
+  }
+
+  .chat-fs-bubble {
+    max-width: 92%;
+  }
+}
+
+/* Bottom strip */
+.hero-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 0 3rem 1.5rem;
+  z-index: 2;
+}
+
+.hero-rule {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  margin-bottom: 1rem;
+}
+
+.hero-socials {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.hero-socials a {
+  color: var(--white);
+  text-decoration: none;
+  font-size: 1.1rem;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  font-family: var(--font-ui);
+  font-weight: 300;
+}
+
+.hero-socials a:hover {
+  opacity: 1;
+}
+
+/* ── Scroll sections ─────────────────────────────────────────────────────────── */
+.home-section {
+  position: relative;
+  z-index: 1;
+  padding: 6rem 3rem;
+  color: var(--white);
+}
+
+/* Dark overlay so the fixed background doesn't overpower text */
+.home-section::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.home-section-inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.section-label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 1.5rem;
+}
+
+.section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+}
+
+.section-body {
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.8;
+  opacity: 1;
+  max-width: 640px;
+  margin-bottom: 2rem;
+}
+
+.section-cta {
+  display: inline-block;
+  color: var(--white);
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  padding-bottom: 2px;
+  transition: opacity 0.2s;
+}
+
+.section-cta:hover { opacity: 0.6; }
+
+/* ── Story grid ── */
+.home-grid-section { background: rgba(0, 0, 0, 0); }
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+
+.story-card {
+  padding: 2rem;
+  /* Higher base opacity so cards remain visible if backdrop-filter is
+     blocked by a parent CSS transform (Framer Motion animation context) */
+  background: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Animate surface, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.story-card:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Full border lights up on all sides */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+.story-card-label {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.story-card-heading {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.story-card-excerpt {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  line-height: 1.7;
+  opacity: 0.7;
+}
+
+/* ── Contact section ── */
+.home-contact-section {
+  padding: 7rem 3rem;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 640px;
+  margin-top: 2rem;
+}
+
+.contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.contact-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  padding: 0.85rem 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.contact-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+}
+
+.contact-input:focus {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.contact-textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.contact-submit {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.contact-submit:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.contact-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.contact-success {
+  font-family: var(--font-ui);
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  margin-top: 1rem;
+}
+
+.contact-error {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: rgba(255, 160, 160, 0.9);
+}
+
+/* ── Chatbot section ─────────────────────────────────────────────────────────── */
+.home-chatbot-section {
+  padding: 7rem 3rem;           /* Match the previous contact section spacing */
+}
+
+/* Scrollable message window — frosted-glass card */
+.chatbot-window {
+  margin-top: 2.5rem;
+  max-width: 760px;             /* Slightly wider than body text for breathing room */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  height: 420px;                /* Fixed height so it scrolls rather than expanding */
+  overflow-y: auto;             /* Inner scroll */
+  padding: 1.5rem;
+  scroll-behavior: smooth;
+  /* Animate surface, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chatbot-window:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Crisp white border trace */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+/* Thin custom scrollbar to match editorial aesthetic */
+.chatbot-window::-webkit-scrollbar {
+  width: 3px;
+}
+.chatbot-window::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+}
+
+/* Container stacking bubbles vertically */
+.chatbot-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Row wrapper — must be flex column so align-self works on bubbles inside */
+.chatbot-msg-row {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Individual message bubble */
+.chatbot-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 80%;               /* Bubbles don't span the full window width */
+  width: fit-content;           /* shrink to content so margin-left: auto works */
+}
+
+/* User messages pushed to the right */
+.chatbot-bubble--user {
+  align-self: flex-end;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+/* Assistant messages sit on the left */
+.chatbot-bubble--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+/* Small ALL-CAPS label above each bubble (YOU / AI) */
+.chatbot-bubble-role {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+/* The bubble text pill */
+.chatbot-bubble-text {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--white);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* User bubble gets a slightly warmer tint to distinguish from assistant */
+.chatbot-bubble--user .chatbot-bubble-text {
+  background: rgba(180, 140, 200, 0.15);
+  border-color: rgba(180, 140, 200, 0.2);
+}
+
+/* Animated typing indicator — three bouncing dots */
+.chatbot-typing {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+}
+
+.chatbot-typing span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: chatbot-bounce 1.2s infinite ease-in-out;
+}
+
+/* Stagger the three dots so they ripple */
+.chatbot-typing span:nth-child(1) { animation-delay: 0s; }
+.chatbot-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chatbot-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes chatbot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Input row below the window */
+.chatbot-input-row {
+  display: flex;
+  gap: 0;                       /* No gap — button is flush against input */
+  max-width: 760px;
+  margin-top: 0;                /* Sits directly below the window */
+}
+
+/* Text input — same style family as the old contact inputs */
+.chatbot-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: none;           /* Merged with send button */
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  padding: 0.85rem 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chatbot-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.05em;
+}
+
+.chatbot-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.chatbot-input:disabled {
+  opacity: 0.5;
+}
+
+/* Send button — arrow, flush with input */
+.chatbot-send {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-size: 1.2rem;
+  padding: 0 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  line-height: 1;
+}
+
+.chatbot-send:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chatbot-send:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-section {
+    padding: 4rem 1.5rem;
+  }
+
+  /* Tighten the chatbot on mobile */
+  .home-chatbot-section {
+    padding: 4rem 1.5rem;
+  }
+
+  .chatbot-window {
+    height: 320px;              /* Shorter on small screens */
+  }
+
+  .chatbot-bubble {
+    max-width: 95%;
+  }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .chatbot-input,
+  .contact-input {
+    font-size: 1rem;
+  }
+}

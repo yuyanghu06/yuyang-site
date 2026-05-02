@@ -1,0 +1,697 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400&family=Jost:wght@300;400&display=swap");
+
+:root {
+  --bg-image: url("/public/photos/BACKGROUND.jpeg");
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-ui: "Jost", sans-serif;
+  --white: #ffffff;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  /* min-height instead of height so content can grow beyond the viewport */
+  min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport height — adjusts as mobile browser chrome shows/hides */
+  width: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: #000;
+  color: var(--white);
+}
+
+html {
+  /* Clip horizontal overflow here (not on body) — overflow-x:hidden on body
+     creates a scroll container (BFC) that breaks position:fixed anchoring,
+     causing the navbar to drift during page transitions. On html, the value
+     applies to the viewport directly with no side-effects on fixed children. */
+  overflow-x: hidden;
+}
+
+/* Navbar */
+.navbar {
+  position: fixed; /* viewport-locked — immune to page transition layout changes */
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 3rem;
+  z-index: 100; /* above HeroBg(0), BlurOverlay(1), page content(10) */
+  background: transparent;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navbar-admin-link {
+  color: var(--white);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  font-size: 0.75rem;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+}
+
+.navbar-admin-link:hover {
+  opacity: 1;
+}
+
+.navbar-logo {
+  font-size: 2rem;
+  color: var(--white);
+}
+
+.navbar-links {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+.navbar-links a {
+  color: var(--white);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  font-size: 0.85rem;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.navbar-links a:hover {
+  opacity: 0.6;
+}
+
+/* On mobile viewports, hide the desktop link row entirely — the
+   hamburger + drawer (rendered by useMobileDevice in Navbar.tsx) takes over */
+@media (max-width: 768px) {
+  .navbar-links {
+    display: none;
+  }
+
+  /* Show admin link on mobile, positioned below other elements */
+  .navbar {
+    flex-wrap: wrap;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .navbar-left {
+    order: 10; /* push to the end */
+    flex-basis: 100%;
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .navbar-admin-link {
+    font-size: 0.7rem;
+  }
+}
+
+/* ── Mobile hamburger button ─────────────────────────────────────────────── */
+
+/* The button is always in the DOM on mobile (controlled by JS), but also
+   surfaced by CSS for any viewport ≤ 768px as a fallback. */
+.navbar-hamburger {
+  display: none; /* hidden on desktop — shown when isMobile is true via JS */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  position: relative; /* required: z-index has no effect on position:static elements */
+  z-index: 101;       /* above the drawer (z-index 100) so the × is always tappable */
+}
+
+/* CSS fallback: always show the button when viewport is narrow */
+@media (max-width: 768px) {
+  .navbar-hamburger {
+    display: flex;
+  }
+}
+
+/* Individual lines that form the hamburger / × icon */
+.hamburger-line {
+  display: block;
+  width: 22px;
+  height: 1.5px;
+  background: var(--white);
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform-origin: center;
+}
+
+/* Animate first line downward + rotate to form the top arm of × */
+.hamburger-line--open:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+
+/* Middle line fades out */
+.hamburger-line--open:nth-child(2) {
+  opacity: 0;
+}
+
+/* Animate last line upward + rotate to form the bottom arm of × */
+.hamburger-line--open:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+/* ── Drawer backdrop ─────────────────────────────────────────────────────── */
+
+/* Full-screen translucent overlay rendered behind the drawer.
+   Tapping it closes the menu — positioned below drawer (z-index 99). */
+.navbar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99;
+  /* No transition needed — it mounts/unmounts with the drawer open state */
+}
+
+/* ── Slide-in drawer panel ───────────────────────────────────────────────── */
+
+/* The drawer slides in from the right edge of the screen.
+   Default state: fully off-screen to the right (transform: translateX(100%)).
+   Open state (.navbar-drawer--open): slides to translateX(0).
+   Liquid glass style: semi-transparent with strong blur, subtle border, and
+   a faint cool tint — avoids the heavy solid-black look. */
+.navbar-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 55vw;             /* Narrower — takes up less of the page */
+  max-width: 220px;        /* Tighter cap than the old 300px */
+  height: 100dvh;          /* dvh handles mobile browser chrome correctly */
+  /* Liquid glass: very low opacity background, layered cool tint */
+  background: linear-gradient(
+    160deg,
+    rgba(180, 160, 210, 0.12) 0%,
+    rgba(80,  80,  120, 0.18) 100%
+  );
+  /* Strong blur + a thin highlight border to sell the glass effect */
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  /* Subtle inner glow on the leading edge */
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.25), inset 1px 0 0 rgba(255, 255, 255, 0.08);
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Open state — slides drawer into view */
+.navbar-drawer--open {
+  transform: translateX(0);
+}
+
+/* Vertical link list inside the drawer */
+.navbar-drawer-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  text-align: center;
+}
+
+/* Drawer link typography — matches desktop navbar style */
+.navbar-drawer-links a {
+  color: var(--white);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  font-size: 1rem;
+  font-family: var(--font-ui);
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+/* Hover and active-route states */
+.navbar-drawer-links a:hover,
+.navbar-drawer-links a.active {
+  opacity: 0.55;
+}
+
+/* ── Page transition (handled by framer-motion in PageTransition.tsx) ────── */
+/* The .page-transition class is no longer used — slide variants live in the
+   component. This block is kept as a reference comment only. */
+
+/* ── Spotlight chat history button ──────────────────────────────────────── */
+
+/* Root wrapper — fixed to the bottom-left of the viewport, above all content.
+   Contains both the circular button and the slide-up panel. */
+.spotlight-root {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 200; /* above navbar (100), blur overlay (1), page content (10) */
+}
+
+/* Circular liquid-glass trigger button */
+.spotlight-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  /* Liquid glass: translucent cool gradient + strong blur */
+  background: linear-gradient(
+    135deg,
+    rgba(180, 160, 210, 0.18) 0%,
+    rgba(80,  80,  120, 0.22) 100%
+  );
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  /* Outer glow + inset highlight to sell the glass edge */
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.80);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  position: relative; /* anchor for the badge */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover — slight grow + deeper shadow */
+.spotlight-btn:hover {
+  transform: scale(1.10);
+  box-shadow:
+    0 6px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Active (after first message) — brighter border glow */
+.spotlight-btn--active {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Exchange count badge ─────────────────────────────────────────────────── */
+/* Tiny pill anchored to the top-right of the button */
+.spotlight-btn-badge {
+  position: absolute;
+  top:   -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  padding: 0 3px;
+  background: rgba(255, 255, 255, 0.55);
+  color: rgba(0, 0, 0, 0.75);
+  font-size: 0.58rem;
+  font-family: var(--font-ui);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0;
+}
+
+/* ── Slide-up chat log panel ─────────────────────────────────────────────── */
+
+/* Panel anchors above the button with a small gap */
+.spotlight-panel {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: 340px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    160deg,
+    rgba(180, 160, 210, 0.14) 0%,
+    rgba(60,  60,  100, 0.22) 100%
+  );
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  /* Mount animation: rises + fades in */
+  animation: spotlight-panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes spotlight-panel-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* Panel header — title + close button */
+.spotlight-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  flex-shrink: 0; /* never squish the header */
+}
+
+.spotlight-panel-title {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ✕ close button */
+.spotlight-panel-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.spotlight-panel-close:hover {
+  opacity: 0.65;
+}
+
+/* Scrollable message area */
+.spotlight-panel-messages {
+  overflow-y: auto;
+  flex: 1;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  /* Subtle custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+.spotlight-panel-messages::-webkit-scrollbar        { width: 4px; }
+.spotlight-panel-messages::-webkit-scrollbar-track  { background: transparent; }
+.spotlight-panel-messages::-webkit-scrollbar-thumb  {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+}
+
+/* ── Message row wrapper — flex column so align-self works on bubbles ────── */
+/* The map() wrapper <div> must be a flex container for align-self: flex-end
+   to take effect on .spotlight-bubble--user inside it.                       */
+.spotlight-msg-row {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Message bubbles ──────────────────────────────────────────────────────── */
+
+.spotlight-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  max-width: 88%;
+  width: fit-content; /* shrink to content so align-self + margin work correctly */
+}
+
+/* User bubbles flush right */
+.spotlight-bubble--user      { align-self: flex-end;  align-items: flex-end;  margin-left: auto; }
+/* Assistant bubbles flush left */
+.spotlight-bubble--assistant { align-self: flex-start; align-items: flex-start; }
+
+/* Tiny "YOU" / "Yuyang" label above each bubble */
+.spotlight-bubble-role {
+  font-family: var(--font-ui);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.40);
+}
+
+/* Bubble body — frosted glass pill */
+.spotlight-bubble-text {
+  font-family: var(--font-ui);
+  font-size: 0.80rem;
+  font-weight: 300;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+}
+
+/* User bubbles get a slightly brighter fill */
+.spotlight-bubble--user .spotlight-bubble-text {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+/* Action hint — e.g. "→ Navigated to projects" */
+/* KaTeX color override for dark backgrounds */
+.katex { color: inherit; }
+.math-block { display: block; margin: 0.4rem 0; overflow-x: auto; }
+.math-inline { display: inline; }
+
+.spotlight-action-hint {
+  font-size: 0.63rem;
+  font-family: var(--font-ui);
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.38);
+  padding-left: 0.3rem;
+}
+
+/* Web search sources — collapsible, shown below assistant bubbles */
+.spotlight-searches {
+  margin-top: 0.35rem;
+  padding-left: 0.3rem;
+}
+.spotlight-searches-summary {
+  font-family: var(--font-ui);
+  font-size: 0.63rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.38);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.spotlight-searches-summary::-webkit-details-marker { display: none; }
+.spotlight-searches-summary:hover { color: rgba(255, 255, 255, 0.6); }
+.spotlight-searches-list {
+  margin: 0.25rem 0 0 0.2rem;
+  padding: 0;
+  list-style: none;
+}
+.spotlight-searches-list li {
+  font-family: var(--font-ui);
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.28);
+  padding: 0.1rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 26ch;
+}
+
+/* ── Input bar at the bottom of the spotlight panel ─────────────────────── */
+
+/* Wrapper — sits below the message list, never squishes */
+.spotlight-input-wrap {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* Flex row: input + send button */
+.spotlight-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Text input — same liquid-glass feel as the panel */
+.spotlight-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.80rem;
+  font-weight: 300;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.spotlight-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.spotlight-input:focus {
+  border-color: rgba(255, 255, 255, 0.30);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.spotlight-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Send button — compact circle matching the trigger button style */
+.spotlight-send {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.spotlight-send:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.spotlight-send:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Attach button in spotlight panel */
+.spotlight-attach {
+  background: none;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 10px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.spotlight-attach:hover { color: rgba(255, 255, 255, 0.9); }
+
+/* Typing indicator — three animated dots (same as hero chat) */
+.spotlight-typing {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0.1rem 0;
+}
+
+.spotlight-typing span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+  animation: spotlight-dot-bounce 1.2s infinite ease-in-out;
+}
+
+.spotlight-typing span:nth-child(1) { animation-delay: 0s;    }
+.spotlight-typing span:nth-child(2) { animation-delay: 0.18s; }
+.spotlight-typing span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes spotlight-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.55; }
+  40%            { transform: translateY(-4px); opacity: 1;    }
+}
+@media (max-width: 768px) {
+  /* Move button up slightly so it clears mobile browser chrome */
+  .spotlight-root {
+    bottom: 1.5rem;
+    left:   1.5rem;
+  }
+
+  /* Panel takes almost full width on narrow screens */
+  .spotlight-panel {
+    width: calc(100vw - 3rem);
+    max-height: 55vh;
+  }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .spotlight-input {
+    font-size: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TOOL STATUS BUBBLES
+   Compact status indicators for tool calls in the chat stream.
+   Used in all three chat rendering contexts (fullscreen, spotlight, chatbot).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tool-status-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  margin: 0.25rem 0;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  width: fit-content;
+  max-width: 90%;
+  animation: tool-bubble-in 0.3s ease-out;
+}
+
+.tool-bubble-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  animation: tool-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.tool-bubble--retrieve .tool-bubble-dot    { background: rgba(120, 180, 255, 0.6); }
+.tool-bubble--web-search .tool-bubble-dot  { background: rgba(100, 220, 200, 0.6); }
+.tool-bubble--navigate .tool-bubble-dot    { background: rgba(120, 255, 180, 0.6); }
+.tool-bubble--contact  .tool-bubble-dot    { background: rgba(255, 200, 120, 0.6); }
+.tool-bubble--redirect .tool-bubble-dot    { background: rgba(200, 160, 255, 0.6); }
+
+.tool-bubble-text {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-body, sans-serif);
+  line-height: 1.3;
+}
+
+@keyframes tool-bubble-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tool-dot-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.3); }
+}

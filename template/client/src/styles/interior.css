@@ -1,0 +1,677 @@
+/* Blur overlay — rendered in App.tsx, fades in on interior pages.
+   Uses the actual background image + CSS filter (not backdrop-filter) to
+   avoid tint/colour artifacts. backgroundImage is set via inline style in App.tsx. */
+.blur-overlay {
+  position: fixed;
+  /* Explicit top/left instead of inset shorthand for widest mobile compat */
+  top: 0;
+  left: 0;
+  /* 100% of the fixed containing block = viewport */
+  width: 100%;
+  height: 100%;
+  /* dvh cascade: fills screen including areas uncovered as browser chrome hides */
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-size: cover;
+  background-position: center;
+  /* Prevent tiling on unusual viewport sizes */
+  background-repeat: no-repeat;
+  filter: blur(18px) brightness(0.35); /* same brightness as HeroBg — no tone shift */
+  transform: scale(1.05); /* prevents blurred edge bleed at viewport edges */
+  pointer-events: none;
+  z-index: 1; /* above HeroBg (z-index:0), below page content (z-index:10) */
+  /* GPU compositing layer so iOS Safari recalculates cover on orientation change */
+  will-change: transform;
+}
+
+.page-wrapper {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.page-content {
+  position: relative;
+  z-index: 10; /* above blur-overlay (z-index:1) and HeroBg (z-index:0) */
+  padding: 8rem 3rem 3rem;
+  color: var(--white);
+}
+
+.page-content h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 3rem;
+  letter-spacing: 0.08em;
+}
+
+/* ── Page header area (title + subtitle above the grid) ──────────────────── */
+.page-header {
+  max-width: 1200px;
+  margin: 0 auto 3.5rem;
+}
+
+.page-header h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+.page-header-sub {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* ── Block grid ──────────────────────────────────────────────────────────── */
+/*  3-column base grid; blocks declare their own span via modifier classes   */
+.block-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 equal columns */
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 6rem;
+  align-items: start;                    /* blocks don't stretch to match neighbours */
+}
+
+/* ── Individual block — frosted glass card ───────────────────────────────── */
+.content-block {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2rem 2rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  /* Animate background, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.content-block:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Crisp white border trace */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+/* Column-span variants */
+.content-block--full  { grid-column: span 3; }  /* Full row */
+.content-block--wide  { grid-column: span 2; }  /* Two thirds */
+.content-block--half  { grid-column: span 1; }  /* One third (half of wide) */
+.content-block--third { grid-column: span 1; }  /* One third */
+
+/* ── Photo block ─────────────────────────────────────────────────────────── */
+
+/* Photo blocks drop their padding and clip the image to the card boundary */
+.content-block--photo {
+  padding: 0;
+  overflow: hidden;
+  min-height: 320px;               /* Ensure image has meaningful height */
+  position: relative;
+}
+
+/* The photo fills the entire card — object-fit keeps it cropped, never stretched */
+.block-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.5s ease;  /* Subtle zoom on hover */
+}
+
+.content-block--photo:hover .block-photo {
+  transform: scale(1.03);           /* Gentle Ken-Burns effect on hover */
+}
+
+/* Dark gradient scrim so text remains legible over any photo */
+.block-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.2)  50%,
+    transparent         100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;        /* Push text to the bottom */
+  gap: 0.6rem;
+  padding: 1.5rem 1.75rem;
+  z-index: 1;
+}
+
+/* Non-photo blocks keep a simple flex column wrapper */
+.block-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ── Block internals ─────────────────────────────────────────────────────── */
+
+/* Eyebrow label */
+.block-label {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  display: block;
+}
+
+/* Heading — size scales with block width via clamp */
+.block-heading {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(1.15rem, 2vw, 1.6rem);
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+/* Full-width blocks get a larger heading */
+.content-block--full .block-heading {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+/* Body copy */
+.block-body {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  line-height: 1.8;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* Tag pill row */
+.block-tags {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.block-tag {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  opacity: 0.75;
+}
+
+/* CTA link */
+.block-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: var(--white);
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  padding-bottom: 2px;
+  align-self: flex-start;
+  transition: opacity 0.2s;
+}
+
+.block-link:hover { opacity: 0.6; }
+
+/* ── Contact page card ───────────────────────────────────────────────────── */
+
+/* Frosted-glass card that holds the form — full width, aligned with page header */
+.contact-card {
+  max-width: 1200px;
+  margin: 2.5rem auto 6rem;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2.5rem 2.5rem 3rem;
+  /* Animate surface, border, and glow together */
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-card:hover {
+  /* Brighter frosted surface */
+  background: rgba(255, 255, 255, 0.13);
+  /* Crisp white border trace */
+  border-color: rgba(255, 255, 255, 0.45);
+  /* Soft outer glow — cool white halo */
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(200, 210, 255, 0.08);
+}
+
+/* Each label + input pair stacked vertically */
+.contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ALL-CAPS field label */
+.contact-label {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* Shared input / textarea style */
+.contact-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 300;
+  padding: 0.8rem 1rem;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.contact-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.05em;
+}
+
+.contact-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.contact-input:disabled {
+  opacity: 0.45;
+}
+
+/* Textarea — taller than a single-line input */
+.contact-textarea {
+  resize: vertical;
+  min-height: 220px;
+}
+
+/* Submit button — ghost style matching editorial aesthetic */
+.contact-submit {
+  margin-top: 0.5rem;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.contact-submit:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.contact-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Inline error text */
+.contact-error {
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 300;
+  color: rgba(255, 160, 160, 0.9);
+  margin-bottom: 0.75rem;
+}
+
+/* Success state — centred icon + message */
+.contact-success-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.contact-success-icon {
+  font-size: 1.5rem;
+  opacity: 0.6;
+}
+
+.contact-success-msg {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  /* Collapse to 2-column on tablets */
+  .block-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Full stays full, wide stays full too, third/half = 1 col */
+  .content-block--full { grid-column: span 2; }
+  .content-block--wide { grid-column: span 2; }
+}
+
+@media (max-width: 768px) {
+  .page-bg {
+    filter: blur(12px);
+  }
+
+  .page-content {
+    padding: 6rem 1.5rem 2rem;
+  }
+
+  /* Single column on mobile — all blocks stack */
+  .block-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .content-block--full,
+  .content-block--wide,
+  .content-block--half,
+  .content-block--third {
+    grid-column: span 1;
+  }
+
+  /* Prevent iOS auto-zoom on focus (triggered when font-size < 16px) */
+  .contact-input {
+    font-size: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ADMIN INGEST PAGE
+   Key-protected page for uploading PDFs and text into Pinecone.
+   Accessible only at /admin/ingest (not linked in site nav).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.admin-ingest-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.admin-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.2rem;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.admin-card--wide {
+  max-width: 680px;
+}
+
+.admin-title {
+  font-family: var(--font-display, serif);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 0.4rem;
+}
+
+.admin-subtitle {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 1.5rem;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-input,
+.admin-textarea {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.88rem;
+  font-family: var(--font-body, sans-serif);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.admin-input:focus,
+.admin-textarea:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.admin-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.admin-file-input {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+}
+
+.admin-file-input::file-selector-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.8rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  cursor: pointer;
+  margin-right: 0.75rem;
+  transition: background 0.2s;
+}
+
+.admin-file-input::file-selector-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.admin-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.6rem;
+  padding: 0.6rem 1.2rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.88rem;
+  font-family: var(--font-body, sans-serif);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.admin-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.admin-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.admin-banner {
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.6rem;
+  font-size: 0.84rem;
+  margin-bottom: 1rem;
+}
+
+.admin-banner--success {
+  background: rgba(80, 200, 120, 0.12);
+  border: 1px solid rgba(80, 200, 120, 0.25);
+  color: rgba(120, 255, 160, 0.9);
+}
+
+.admin-banner--error {
+  background: rgba(255, 80, 80, 0.12);
+  border: 1px solid rgba(255, 80, 80, 0.25);
+  color: rgba(255, 140, 140, 0.9);
+}
+
+.admin-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-section {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.admin-section-title {
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Header row — title + lock button side by side */
+.admin-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-header-row .admin-title {
+  margin-bottom: 0.3rem;
+}
+
+.admin-header-row .admin-subtitle {
+  margin-bottom: 0;
+}
+
+.admin-btn--lock {
+  flex-shrink: 0;
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 80, 80, 0.2);
+  color: rgba(255, 140, 140, 0.85);
+  font-size: 0.78rem;
+  padding: 0.45rem 1rem;
+  letter-spacing: 0.06em;
+}
+
+.admin-btn--lock:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.16);
+  border-color: rgba(255, 80, 80, 0.35);
+}
+
+@media (max-width: 768px) {
+  .admin-ingest-page {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 4rem;   /* clear navbar */
+  }
+
+  .admin-card {
+    padding: 1.25rem;
+    border-radius: 0.9rem;
+  }
+
+  .admin-card--wide {
+    max-width: 100%;
+  }
+
+  .admin-title {
+    font-size: 1.2rem;
+  }
+
+  .admin-subtitle {
+    font-size: 0.78rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-sections {
+    gap: 1.25rem;
+  }
+
+  .admin-section {
+    padding-top: 0.75rem;
+  }
+
+  .admin-section-title {
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-header-row {
+    margin-bottom: 1rem;
+  }
+
+  .admin-form {
+    gap: 0.5rem;
+  }
+
+  /* Prevent iOS from auto-zooming when focusing inputs with small font-size */
+  .admin-input,
+  .admin-textarea {
+    font-size: 1rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .admin-textarea {
+    min-height: 80px;
+  }
+
+  .admin-btn {
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .admin-banner {
+    font-size: 0.78rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
