@@ -29,8 +29,18 @@ interface WashingtonPlanimetricsData {
   }>;
 }
 
+interface WashingtonParkData {
+  paths: Array<{
+    sourceId: string;
+    kind: "footway" | "path" | "pedestrian";
+    width: number;
+    points: Array<[number, number]>;
+  }>;
+  fountain: { sourceId: string; ring: Array<[number, number]> } | null;
+  arch: { sourceId: string; height: number; footprint: Array<[number, number]> } | null;
+}
+
 const PARK_CENTER = new THREE.Vector3(0, 0, 0);
-const ARCH_CENTER = new THREE.Vector3(21.1, 0, 0);
 
 function projectedRing(ring: Point3[], normal: THREE.Vector3) {
   const axis = normal.clone().set(Math.abs(normal.x), Math.abs(normal.y), Math.abs(normal.z));
@@ -106,29 +116,63 @@ function buildingColor(id: string, kind: SurfaceKind) {
   return color;
 }
 
-function box(
-  parent: THREE.Object3D,
-  size: [number, number, number],
-  position: [number, number, number],
-  material: THREE.Material,
-) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
-  mesh.position.set(...position);
-  mesh.castShadow = true;
+function createParkPaths(paths: WashingtonParkData["paths"], material: THREE.Material) {
+  const segments = paths.flatMap((path) => path.points.slice(1).map((point, index) => ({
+    from: path.points[index],
+    to: point,
+    width: Math.min(path.width, 6),
+  })));
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, segments.length);
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  const rotation = new THREE.Euler();
+  segments.forEach((segment, index) => {
+    const dx = segment.to[0] - segment.from[0];
+    const dz = segment.to[1] - segment.from[1];
+    const length = Math.hypot(dx, dz);
+    position.set((segment.from[0] + segment.to[0]) / 2, 0.76, (segment.from[1] + segment.to[1]) / 2);
+    quaternion.setFromEuler(rotation.set(0, Math.atan2(dx, dz), 0));
+    scale.set(segment.width, 0.12, length + 0.25);
+    matrix.compose(position, quaternion, scale);
+    mesh.setMatrixAt(index, matrix);
+  });
   mesh.receiveShadow = true;
-  parent.add(mesh);
+  mesh.name = "OpenStreetMap Washington Square paths";
   return mesh;
 }
 
-function createArch(material: THREE.Material) {
-  const arch = new THREE.Group();
-  box(arch, [6.5, 25, 8], [-12, 12.5, 0], material);
-  box(arch, [6.5, 25, 8], [12, 12.5, 0], material);
-  box(arch, [31, 7.5, 8], [0, 27.5, 0], material);
-  box(arch, [21, 4, 8], [0, 33.25, 0], material);
-  box(arch, [13, 2.5, 8], [0, 36.5, 0], material);
-  arch.position.copy(ARCH_CENTER).add(new THREE.Vector3(0, 1, 0));
-  arch.name = "Washington Square Arch";
+function createSimpleArch(data: NonNullable<WashingtonParkData["arch"]>, material: THREE.Material) {
+  const footprint = data.footprint.slice(0, -1);
+  const center = footprint.reduce((sum, point) => [sum[0] + point[0], sum[1] + point[1]], [0, 0]).map((value) => value / footprint.length);
+  const edge = [footprint[1][0] - footprint[0][0], footprint[1][1] - footprint[0][1]];
+  const width = Math.hypot(...edge);
+  const depth = Math.hypot(footprint[2][0] - footprint[1][0], footprint[2][1] - footprint[1][1]);
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, 0);
+  shape.lineTo(width / 2, 0);
+  shape.lineTo(width / 2, data.height);
+  shape.lineTo(-width / 2, data.height);
+  shape.closePath();
+  const openingWidth = width * 0.42;
+  const openingRadius = openingWidth / 2;
+  const springHeight = data.height * 0.46;
+  const opening = new THREE.Path();
+  opening.moveTo(-openingRadius, 0);
+  opening.lineTo(-openingRadius, springHeight);
+  opening.absarc(0, springHeight, openingRadius, Math.PI, 0, true);
+  opening.lineTo(openingRadius, 0);
+  opening.closePath();
+  shape.holes.push(opening);
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 16 });
+  geometry.translate(0, 0, -depth / 2);
+  const arch = new THREE.Mesh(geometry, material);
+  arch.position.set(center[0], 0.68, center[1]);
+  arch.rotation.y = -Math.atan2(edge[1], edge[0]);
+  arch.castShadow = true;
+  arch.receiveShadow = true;
+  arch.name = "OpenStreetMap Washington Square Arch";
   return arch;
 }
 
@@ -235,16 +279,19 @@ export default function Nyc3dMap() {
     Promise.all([
       fetch("/data/washington-square-citygml.json"),
       fetch("/data/washington-square-planimetrics.json"),
+      fetch("/data/washington-square-park.json"),
     ])
-      .then(async ([cityResponse, planimetricsResponse]) => {
+      .then(async ([cityResponse, planimetricsResponse, parkResponse]) => {
         if (!cityResponse.ok) throw new Error(`CityGML request failed (${cityResponse.status})`);
         if (!planimetricsResponse.ok) throw new Error(`Planimetrics request failed (${planimetricsResponse.status})`);
+        if (!parkResponse.ok) throw new Error(`Park data request failed (${parkResponse.status})`);
         return Promise.all([
           cityResponse.json() as Promise<WashingtonCityGmlData>,
           planimetricsResponse.json() as Promise<WashingtonPlanimetricsData>,
+          parkResponse.json() as Promise<WashingtonParkData>,
         ]);
       })
-      .then(([data, planimetrics]) => {
+      .then(([data, planimetrics, park]) => {
         if (disposed) return;
         const roadSurfaces: CityGmlSurface[] = planimetrics.roadbeds.map((roadbed) => ({
           kind: "ground",
@@ -275,6 +322,29 @@ export default function Nyc3dMap() {
           depthTest: true,
           depthWrite: true,
         })));
+        scene.add(createParkPaths(
+          park.paths,
+          new THREE.MeshStandardMaterial({ color: 0xd9d1c2, roughness: 1 }),
+        ));
+        if (park.fountain) {
+          const fountainSurface: CityGmlSurface = {
+            kind: "ground",
+            ring: park.fountain.ring.map(([x, z]) => [x, 0.8, z]),
+            holes: [],
+          };
+          const fountain = new THREE.Mesh(
+            makeSurfaceGeometry([fountainSurface]),
+            new THREE.MeshStandardMaterial({ color: 0xb8c2c0, roughness: 0.9, side: THREE.DoubleSide }),
+          );
+          fountain.name = "OpenStreetMap Washington Square fountain footprint";
+          scene.add(fountain);
+        }
+        if (park.arch) {
+          scene.add(createSimpleArch(
+            park.arch,
+            new THREE.MeshStandardMaterial({ color: 0xd8ccb5, roughness: 0.94 }),
+          ));
+        }
 
         const surfaces: Record<SurfaceKind, CityGmlSurface[]> = { ground: [], roof: [], wall: [] };
         for (const building of data.buildings) {
@@ -295,7 +365,6 @@ export default function Nyc3dMap() {
           mesh.name = `NYC CityGML ${kind} surfaces`;
           scene.add(mesh);
         }
-        scene.add(createArch(new THREE.MeshStandardMaterial({ color: 0xd8c19c, roughness: 1 })));
         setStatus("");
       })
       .catch((error: Error) => setStatus(error.message));

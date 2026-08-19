@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "data:washington-planimetrics": "node scripts/build-washington-planimetrics.mjs"
+    "data:washington-planimetrics": "node scripts/build-washington-planimetrics.mjs",
+    "data:washington-park": "node scripts/build-washington-park.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
