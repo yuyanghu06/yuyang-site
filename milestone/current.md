@@ -33,6 +33,8 @@ The previous multi-scale atlas and Manhattan camera sequence have been retired. 
 - A cool gray ground datum sits 0.56 scene units above the dark roadbeds to create a subtle but readable sidewalk curb; authoritative sidewalk polygons remain a later data refinement.
 - The WebGL renderer explicitly requests a stencil buffer so the raised sidewalk datum is cut away over official roadbed polygons instead of covering the asphalt.
 - Eight low-contrast off-white zebra crossings mark the two adjoining streets at each Washington Square corner. Their centers are verified to fall inside official roadbed polygons so the raised sidewalk mask does not hide them.
+- Crosswalk materials explicitly test for the roadbed stencil and bypass depth testing, ensuring they draw above asphalt while remaining clipped out of sidewalk pixels.
+- Lighting remains a single fixed warm daytime treatment; user-local time-of-day lighting has not yet been implemented.
 - `public/data/washington-square-citygml.json` is a tracked 9.35 MiB crop of official NYC CityGML delivery area 12: 3,090 buildings, 59,414 surfaces, and 293,642 vertices within 680 meters of Washington Square.
 - `public/data/washington-square-planimetrics.json` contains 555 tracked roadbed polygons from the official NYC 2022 Planimetric Database, providing measured road shapes and widths.
 - `public/data/washington-square-addresses.json` joins current NYC Property Address Directory 26B records to CityGML buildings by BIN: 3,007 matched BINs and 4,152 unique addresses.

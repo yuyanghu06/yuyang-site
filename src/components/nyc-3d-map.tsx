@@ -140,6 +140,7 @@ function createCrosswalks(material: THREE.Material) {
       const marking = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.045, 3.8), material);
       marking.position.x = stripe * 1.42;
       marking.receiveShadow = true;
+      marking.renderOrder = 3;
       crossing.add(marking);
     }
     crossing.position.set(x, 0.18, z);
@@ -269,9 +270,13 @@ export default function Nyc3dMap() {
         roads.name = "NYC 2022 planimetric roadbeds";
         scene.add(roads);
         scene.add(createCrosswalks(new THREE.MeshStandardMaterial({
-          color: 0xe6e1d5,
+          color: 0xf0ece2,
           roughness: 1,
-          depthWrite: true,
+          depthTest: false,
+          depthWrite: false,
+          stencilWrite: true,
+          stencilRef: 1,
+          stencilFunc: THREE.EqualStencilFunc,
         })));
 
         const surfaces: Record<SurfaceKind, CityGmlSurface[]> = { ground: [], roof: [], wall: [] };
