@@ -143,7 +143,7 @@ function createCrosswalks(material: THREE.Material) {
       marking.renderOrder = 3;
       crossing.add(marking);
     }
-    crossing.position.set(x, 0.18, z);
+    crossing.position.set(x, 0.76, z);
     crossing.rotation.y = -angle;
     crossings.add(crossing);
   };
@@ -272,11 +272,8 @@ export default function Nyc3dMap() {
         scene.add(createCrosswalks(new THREE.MeshStandardMaterial({
           color: 0xf0ece2,
           roughness: 1,
-          depthTest: false,
-          depthWrite: false,
-          stencilWrite: true,
-          stencilRef: 1,
-          stencilFunc: THREE.EqualStencilFunc,
+          depthTest: true,
+          depthWrite: true,
         })));
 
         const surfaces: Record<SurfaceKind, CityGmlSurface[]> = { ground: [], roof: [], wall: [] };
