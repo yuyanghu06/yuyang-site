@@ -12,6 +12,12 @@
 - Treat files in `milestone/history/` as append-only records. Do not revise an existing history file to reflect later work.
 - Do not create a history entry for a session that made no meaningful project change.
 
+## Verification cadence
+
+- Do not run a full production build after every incremental change.
+- During iteration, use only the targeted checks needed for the files or behavior being changed.
+- Run the full production build before creating a commit, or earlier only when the user requests it or the change specifically requires build-level verification.
+
 ## Landmark geometry integrity
 
 - Whenever procedural or higher-LOD geometry (such as windows, facade panels, rooftop equipment, trim, or signs) is added to a base dataset building, bake or merge the additions with the base geometry into one selectable object before exposing it to outlines, raycasting, hover, click, lift, or camera interactions.
