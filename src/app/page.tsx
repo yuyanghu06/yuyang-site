@@ -1,5 +1,5 @@
-import Nyc3dMap from "@/components/nyc-3d-map";
+import Nyc3dMapShell from "@/components/nyc-3d-map-shell";
 
 export default function Home() {
-  return <Nyc3dMap />;
+  return <Nyc3dMapShell />;
 }

@@ -2,7 +2,8 @@ import { writeFile } from "node:fs/promises";
 
 const ORIGIN = [-73.99733, 40.73082];
 const METERS_PER_LONGITUDE = 111320 * Math.cos((ORIGIN[1] * Math.PI) / 180);
-const BOUNDS = { north: 40.738, west: -74.006, south: 40.724, east: -73.988 };
+// One shared road crop covers both Washington Square and Union Square views.
+const BOUNDS = { north: 40.742, west: -74.009, south: 40.721, east: -73.982 };
 const ROADBED_DATASET = "i36f-5ih7";
 const OUTPUT = "public/data/washington-square-planimetrics.json";
 

@@ -82,6 +82,7 @@ const paths = [];
 const crossings = new Map();
 let fountain = null;
 let arch = null;
+const parkRings = [];
 for (const match of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
   const way = attributes(match[1]);
   const body = match[2];
@@ -93,6 +94,11 @@ for (const match of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
   const coordinates = nodeRefs.map((node) => nodes.get(node)).filter(Boolean);
   if (coordinates.length < 2) continue;
   const points = coordinates.map(project);
+
+  if (tags.leisure === "park" && tags.name === "Washington Square Park") {
+    parkRings.push(points);
+    continue;
+  }
 
   if (way.id === "248166269") {
     arch = { sourceId: way.id, height: Number(tags.height) || 20.5, footprint: points };
@@ -136,7 +142,14 @@ const payload = {
   sourceUrl: "https://www.openstreetmap.org/copyright",
   license: "ODbL",
   origin: { longitude: ORIGIN[0], latitude: ORIGIN[1] },
-  statistics: { paths: paths.length, crossings: crossings.size, hasFountain: Boolean(fountain), hasArch: Boolean(arch) },
+  statistics: {
+    paths: paths.length,
+    crossings: crossings.size,
+    parkRings: parkRings.length,
+    hasFountain: Boolean(fountain),
+    hasArch: Boolean(arch),
+  },
+  parkRings,
   paths,
   crossings: [...crossings.values()],
   fountain,
@@ -144,4 +157,4 @@ const payload = {
 };
 
 await writeFile(OUTPUT, JSON.stringify(payload));
-console.log(`Wrote ${paths.length} park paths, ${crossings.size} crossings, fountain=${Boolean(fountain)}, arch=${Boolean(arch)} to ${OUTPUT}`);
+console.log(`Wrote ${paths.length} park paths, ${crossings.size} crossings, ${parkRings.length} park rings, fountain=${Boolean(fountain)}, arch=${Boolean(arch)} to ${OUTPUT}`);
