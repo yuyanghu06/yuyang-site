@@ -115,7 +115,172 @@ const MANHATTAN_CAMERA_RADIUS = (MANHATTAN_CAMERA_HEIGHT - MANHATTAN_CENTER.y) *
 const HUDSON_MIN_CITY_TILE_X = -1152;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
-type MapView = "manhattan" | "washington" | "union";
+type MapView = "globe" | "manhattan" | "washington" | "union";
+
+const GLOBE_RADIUS = 360;
+const GLOBE_START_CAMERA_DISTANCE = 1920;
+const GLOBE_MAX_CAMERA_DISTANCE = GLOBE_START_CAMERA_DISTANCE;
+const MANHATTAN_LATITUDE = 40.7128;
+const MANHATTAN_LONGITUDE = -74.006;
+// Axis calibration from the replacement GLB: the central U.S. sits around
+// model longitude 135° (-95° W in WGS84). A small westward visual correction
+// places the low-poly coastline's NYC destination at WGS84 + 224°.
+const IMPORTED_EARTH_NYC_LATITUDE = MANHATTAN_LATITUDE;
+const IMPORTED_EARTH_NYC_LONGITUDE = MANHATTAN_LONGITUDE + 224;
+
+function globePoint(latitude: number, longitude: number, radius: number) {
+  const latitudeRadians = THREE.MathUtils.degToRad(latitude);
+  const longitudeRadians = THREE.MathUtils.degToRad(longitude);
+  return new THREE.Vector3(
+    Math.cos(latitudeRadians) * Math.cos(longitudeRadians) * radius,
+    Math.sin(latitudeRadians) * radius,
+    -Math.cos(latitudeRadians) * Math.sin(longitudeRadians) * radius,
+  );
+}
+
+function globeTangentQuaternion(latitude: number, longitude: number) {
+  const latitudeRadians = THREE.MathUtils.degToRad(latitude);
+  const longitudeRadians = THREE.MathUtils.degToRad(longitude);
+  const outward = globePoint(latitude, longitude, 1);
+  const east = new THREE.Vector3(
+    -Math.sin(longitudeRadians),
+    0,
+    -Math.cos(longitudeRadians),
+  );
+  const north = new THREE.Vector3(
+    -Math.sin(latitudeRadians) * Math.cos(longitudeRadians),
+    Math.cos(latitudeRadians),
+    Math.sin(latitudeRadians) * Math.sin(longitudeRadians),
+  );
+
+  return new THREE.Quaternion()
+    .setFromRotationMatrix(new THREE.Matrix4().makeBasis(east, north, outward));
+}
+
+function northUpGlobeQuaternion(latitude: number, longitude: number) {
+  // Invert the local east/north/outward frame so longitude stays horizontal,
+  // latitude stays vertical, and the selected coordinate faces the camera.
+  return globeTangentQuaternion(latitude, longitude).invert();
+}
+
+function createWatercolorGlobe() {
+  const group = new THREE.Group();
+  group.name = "Imported low-poly globe with Manhattan destination";
+  const placeholder = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(GLOBE_RADIUS, 4),
+    new THREE.MeshStandardMaterial({
+      color: 0x7894a0,
+      roughness: 0.94,
+      metalness: 0,
+    }),
+  );
+  placeholder.name = "Powder blue globe loading placeholder";
+  group.add(placeholder);
+
+  const manhattanNormal = globePoint(IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE, 1);
+  group.quaternion.copy(
+    northUpGlobeQuaternion(IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE),
+  );
+  const marker = new THREE.Group();
+  marker.name = "Manhattan globe destination";
+  marker.position.copy(manhattanNormal).multiplyScalar(GLOBE_RADIUS + 4);
+  marker.quaternion.copy(
+    globeTangentQuaternion(IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE),
+  );
+  const markerFill = new THREE.Mesh(
+    new THREE.CircleGeometry(2.1, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }),
+  );
+  const leader = new THREE.Group();
+  const leaderMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+  const leaderLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(2, 0, 1),
+      new THREE.Vector3(18, 14, 1),
+      new THREE.Vector3(68, 14, 1),
+    ]),
+    leaderMaterial,
+  );
+  leader.add(leaderLine);
+  leader.scale.setScalar(0.9);
+  const labelCanvas = document.createElement("canvas");
+  labelCanvas.width = 512;
+  labelCanvas.height = 96;
+  const labelContext = labelCanvas.getContext("2d");
+  if (!labelContext) throw new Error("Could not create the Manhattan label canvas");
+  labelContext.font = "600 55px Helvetica Neue, Arial, sans-serif";
+  labelContext.fillStyle = "#ffffff";
+  labelContext.textBaseline = "middle";
+  labelContext.fillText("New York City", 8, labelCanvas.height / 2);
+  const labelTexture = new THREE.CanvasTexture(labelCanvas);
+  labelTexture.colorSpace = THREE.SRGBColorSpace;
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: labelTexture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  label.position.set(139, 14, 2);
+  label.scale.set(136.5, 26, 1);
+  const calloutHitMaterial = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    colorWrite: false,
+    depthTest: false,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const markerHitTarget = new THREE.Mesh(new THREE.CircleGeometry(13, 24), calloutHitMaterial);
+  markerHitTarget.name = "NYC dot padded interaction target";
+  markerHitTarget.position.z = 3;
+  const leaderHitTarget = new THREE.Mesh(new THREE.PlaneGeometry(72, 16), calloutHitMaterial);
+  leaderHitTarget.name = "NYC leader padded interaction target";
+  leaderHitTarget.position.set(36, 8, 3);
+  markerFill.renderOrder = 4;
+  leader.renderOrder = 4;
+  label.renderOrder = 4;
+  marker.add(markerFill, leader, label, markerHitTarget, leaderHitTarget);
+  group.add(marker);
+  return { group, marker, leader, placeholder };
+}
+
+function createStarField() {
+  const group = new THREE.Group();
+  let randomState = 0x91e10da5;
+  const random = () => {
+    randomState |= 0;
+    randomState = randomState + 0x6d2b79f5 | 0;
+    let value = Math.imul(randomState ^ randomState >>> 15, 1 | randomState);
+    value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value;
+    return ((value ^ value >>> 14) >>> 0) / 4294967296;
+  };
+  const addLayer = (count: number, size: number, opacity: number) => {
+    const positions = new Float32Array(count * 3);
+    for (let index = 0; index < count; index += 1) {
+      positions[index * 3] = THREE.MathUtils.lerp(-2100, 2100, random());
+      positions[index * 3 + 1] = THREE.MathUtils.lerp(-1300, 1300, random());
+      positions[index * 3 + 2] = THREE.MathUtils.lerp(-1050, -620, random());
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    group.add(new THREE.Points(
+      geometry,
+      new THREE.PointsMaterial({
+        color: 0xffffff,
+        size,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity,
+        toneMapped: false,
+      }),
+    ));
+  };
+  addLayer(900, 7.5, 0.92);
+  addLayer(180, 11.5, 1);
+  group.name = "Apple Earth-inspired crisp white star field";
+  return group;
+}
 
 interface ClickableLandmark {
   root: THREE.Object3D;
@@ -670,6 +835,85 @@ function createNeighborhoodBirdTravelers(scene: THREE.Scene) {
   return travelers;
 }
 
+function createLowPolyCloud(
+  cloudIndex: number,
+  lobes: number[][],
+  material: THREE.Material,
+) {
+  const cloud = new THREE.Group();
+  for (const [lobeIndex, [x, y, z, radius]] of lobes.entries()) {
+    const variant = (cloudIndex + lobeIndex) % 3;
+    const geometry = variant === 0
+      ? new THREE.IcosahedronGeometry(radius, 2)
+      : variant === 1
+        ? new THREE.DodecahedronGeometry(radius, 1)
+        : new THREE.OctahedronGeometry(radius, 2);
+    const lobe = new THREE.Mesh(geometry, material);
+    lobe.position.set(x, y, z);
+    lobe.scale.set(1, 0.88 + ((cloudIndex + lobeIndex) % 3) * 0.08, 0.58 + (lobeIndex % 2) * 0.1);
+    lobe.rotation.set(
+      (cloudIndex * 0.17 + lobeIndex * 0.11) % 0.42,
+      (cloudIndex * 0.31 + lobeIndex * 0.23) % 0.7,
+      (cloudIndex * 0.09 - lobeIndex * 0.13) % 0.36,
+    );
+    cloud.add(lobe);
+  }
+  return cloud;
+}
+
+function createGlobeClouds() {
+  const cloudLayer = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.14,
+    roughness: 1,
+    flatShading: true,
+  });
+  const cloudShapes = [
+    [[-66, 2, 0, 24], [-38, 13, 5, 34], [0, 25, 0, 48], [40, 10, -5, 36], [72, 0, 3, 22]],
+    [[-25, 0, 2, 25], [4, 16, -2, 38], [34, 1, 3, 27]],
+    [[-38, 0, 0, 31], [-11, 31, 4, 43], [18, 4, -4, 35], [44, -2, 2, 22]],
+    [[-53, 0, 2, 21], [-28, 8, -3, 29], [0, 15, 4, 34], [31, 9, -4, 29], [57, 0, 2, 20]],
+    // Compact radial layouts keep several clouds visibly round instead of
+    // making every formation a horizontal chain.
+    [[0, 23, 0, 46], [-27, 7, 3, 29], [28, 8, -3, 31], [0, 5, 25, 27]],
+    [[0, 17, 0, 42], [-24, 4, 17, 27], [24, 5, 16, 28], [-3, 3, -24, 25]],
+    [[-72, 0, 2, 20], [-47, 7, -3, 28], [-17, 23, 4, 39], [17, 15, -4, 34], [48, 24, 2, 41], [78, 0, 0, 24]],
+  ];
+  const localDown = new THREE.Vector3(0, -1, 0);
+  const inward = new THREE.Vector3();
+  const cloudCount = 7;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  const randomUnit = (index: number, salt: number) => {
+    const value = Math.sin(index * 91.173 + salt * 47.237) * 43758.5453;
+    return value - Math.floor(value);
+  };
+  for (let index = 0; index < cloudCount; index += 1) {
+    const cloud = createLowPolyCloud(index, cloudShapes[index % cloudShapes.length], material);
+    const bounds = new THREE.Box3().setFromObject(cloud);
+    cloud.children.forEach((lobe) => { lobe.position.y -= bounds.min.y; });
+    const vertical = 1 - 2 * ((index + 0.5) / cloudCount);
+    const horizontalRadius = Math.sqrt(1 - vertical * vertical);
+    const longitude = index * goldenAngle + (randomUnit(index, 1) - 0.5) * 0.62;
+    const originalDistance = 445 + randomUnit(index, 2) * 85;
+    const distance = GLOBE_RADIUS + (originalDistance - GLOBE_RADIUS) * 0.8;
+    cloud.position.set(
+      Math.cos(longitude) * horizontalRadius * distance,
+      vertical * distance,
+      Math.sin(longitude) * horizontalRadius * distance,
+    );
+    cloud.scale.setScalar(0.29 + randomUnit(index, 3) * 0.39);
+    inward.copy(cloud.position).normalize().negate();
+    cloud.quaternion.setFromUnitVectors(localDown, inward);
+    cloud.rotateY((randomUnit(index, 4) - 0.5) * Math.PI);
+    cloud.name = "Globe low-poly cloud";
+    cloudLayer.add(cloud);
+  }
+  cloudLayer.name = "Globe cloud layer using Manhattan cloud models";
+  return cloudLayer;
+}
+
 function createSkyTravelers(scene: THREE.Scene, overlayScene: THREE.Scene) {
   const travelers: SkyTraveler[] = [];
   const cloudMaterial = new THREE.MeshStandardMaterial({
@@ -720,25 +964,11 @@ function createSkyTravelers(scene: THREE.Scene, overlayScene: THREE.Scene) {
     },
   ];
   for (const [cloudIndex, setting] of cloudSettings.entries()) {
-    const cloud = new THREE.Group();
-    for (const [lobeIndex, [x, y, z, radius]] of setting.lobes.entries()) {
-      const variant = (cloudIndex + lobeIndex) % 3;
-      const geometry = variant === 0
-        ? new THREE.IcosahedronGeometry(radius, 2)
-        : variant === 1
-          ? new THREE.DodecahedronGeometry(radius, 1)
-          : new THREE.OctahedronGeometry(radius, 2);
-      const lobe = new THREE.Mesh(geometry, cloudMaterial);
-      lobe.position.set(x, y, z);
-      lobe.scale.set(1, 0.88 + ((cloudIndex + lobeIndex) % 3) * 0.08, 0.58 + (lobeIndex % 2) * 0.1);
-      lobe.rotation.set(
-        (cloudIndex * 0.17 + lobeIndex * 0.11) % 0.42,
-        (cloudIndex * 0.31 + lobeIndex * 0.23) % 0.7,
-        (cloudIndex * 0.09 - lobeIndex * 0.13) % 0.36,
-      );
-      lobe.renderOrder = 6;
-      cloud.add(lobe);
-    }
+    const cloud = createLowPolyCloud(cloudIndex, setting.lobes, cloudMaterial);
+    cloud.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      object.renderOrder = 6;
+    });
     cloud.position.set(setting.x, setting.y, setting.z);
     cloud.scale.setScalar(setting.scale);
     cloud.name = "Manhattan overview cloud";
@@ -1663,7 +1893,7 @@ function createEastRiverWaterAndPiers() {
   return group;
 }
 
-export default function Nyc3dMap() {
+export default function GlobalMap() {
   const mountRef = useRef<HTMLDivElement>(null);
   const switchStudyRef = useRef<(next: MapView, updateUrl?: boolean) => void>(() => undefined);
   const [status, setStatus] = useState("");
@@ -1671,7 +1901,7 @@ export default function Nyc3dMap() {
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
-    let activeStudy: MapView = "manhattan";
+    let activeStudy: MapView = "globe";
     const isUnion = false;
     const studyName = isUnion ? "Union Square" : "Washington Square";
     const loadLogPrefix = `[${studyName.replaceAll(" ", "")} load]`;
@@ -1688,6 +1918,7 @@ export default function Nyc3dMap() {
     const yieldToMainThread = () => new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 
     const scene = new THREE.Scene();
+    const globeScene = new THREE.Scene();
     const skyOverlayScene = new THREE.Scene();
     skyOverlayScene.add(new THREE.HemisphereLight(0xffffff, 0xded8cc, 2.4));
     const skyOverlayKey = new THREE.DirectionalLight(0xffffff, 1.8);
@@ -1697,6 +1928,119 @@ export default function Nyc3dMap() {
     // it, so river areas never change color when the WebGL canvas takes over.
     scene.background = new THREE.Color(0x354345);
     scene.fog = null;
+
+    globeScene.background = new THREE.Color(0x000000);
+    globeScene.add(createStarField());
+    globeScene.add(new THREE.HemisphereLight(0xfff4dc, 0x71838a, 2.45));
+    const globeKey = new THREE.DirectionalLight(0xffd7a3, 2.15);
+    globeKey.position.set(-520, 760, 820);
+    globeScene.add(globeKey);
+    const {
+      group: globe,
+      marker: manhattanGlobeMarker,
+      leader: manhattanGlobeLeader,
+      placeholder: globePlaceholder,
+    } = createWatercolorGlobe();
+    globe.add(createGlobeClouds());
+    globeScene.add(globe);
+    void loadGlb("/models/low-poly-planet-earth-e54e8607.glb", abortController.signal)
+      .then((gltf) => {
+        if (disposed) return;
+        const bounds = new THREE.Box3().setFromObject(gltf.scene);
+        const size = bounds.getSize(new THREE.Vector3());
+        const center = bounds.getCenter(new THREE.Vector3());
+        const scale = (GLOBE_RADIUS * 2) / Math.max(size.x, size.y, size.z);
+        gltf.scene.scale.setScalar(scale);
+        gltf.scene.position.copy(center).multiplyScalar(-scale);
+        gltf.scene.name = "Lowpoly Earth by morejpeg — recolored ocean and land";
+        gltf.scene.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) return;
+          object.castShadow = false;
+          object.receiveShadow = false;
+          if (object.name.toLowerCase().includes("water")) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            for (const material of materials) {
+              if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+              material.color.set(0x7894a0);
+              material.roughness = 0.9;
+              material.metalness = 0;
+            }
+          }
+        });
+        globe.add(gltf.scene);
+        globe.remove(globePlaceholder);
+        globePlaceholder.geometry.dispose();
+        (globePlaceholder.material as THREE.Material).dispose();
+      })
+      .catch((error) => {
+        if (!isAbortError(error)) console.warn("[Globe] Imported Earth failed; using placeholder", error);
+      });
+    const manhattanMarkerMaterials: Array<THREE.MeshBasicMaterial | THREE.SpriteMaterial> = [];
+    manhattanGlobeMarker.traverse((object) => {
+      if (!(object instanceof THREE.Mesh || object instanceof THREE.Sprite)) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.SpriteMaterial) {
+          manhattanMarkerMaterials.push(material);
+        }
+      });
+    });
+    const manhattanLeaderMaterials: THREE.LineBasicMaterial[] = [];
+    manhattanGlobeLeader.traverse((object) => {
+      if (!(object instanceof THREE.Line)) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (material instanceof THREE.LineBasicMaterial) manhattanLeaderMaterials.push(material);
+      });
+    });
+    const markerWorldPosition = new THREE.Vector3();
+    const globeCameraDirection = new THREE.Vector3();
+    let currentGlobeMarkerFacing = 1;
+    const globeHomeQuaternion = globe.quaternion.clone();
+    const globeTransitionStartQuaternion = globe.quaternion.clone();
+    const globeYawQuaternion = new THREE.Quaternion();
+    const globePitchQuaternion = new THREE.Quaternion();
+    const globeScreenRight = new THREE.Vector3(1, 0, 0);
+    let globeOrbitYaw = 0;
+    let globeOrbitPitch = 0;
+    const updateGlobeOrbit = () => {
+      globeYawQuaternion.setFromAxisAngle(WORLD_UP, globeOrbitYaw);
+      globePitchQuaternion.setFromAxisAngle(globeScreenRight, globeOrbitPitch);
+      globe.quaternion.copy(globePitchQuaternion).multiply(globeYawQuaternion).multiply(globeHomeQuaternion);
+    };
+    const globeCamera = new THREE.PerspectiveCamera(34, 1, 10, 4000);
+    const globeCameraStart = new THREE.Vector3(0, 0, GLOBE_START_CAMERA_DISTANCE);
+    const globeCameraEnd = new THREE.Vector3(0, 0, GLOBE_RADIUS + 42);
+    globeCamera.position.copy(globeCameraStart);
+    globeCamera.lookAt(0, 0, 0);
+    let globeCameraDistance = globeCameraStart.length();
+    let globeBlockedZoomStartedAt = 0;
+    let globeBlockedZoomOriginDistance = globeCameraDistance;
+    const setGlobeCameraDistance = (distance: number) => {
+      globeCameraDistance = THREE.MathUtils.clamp(distance, 850, GLOBE_MAX_CAMERA_DISTANCE);
+      globeCamera.position.copy(globeCameraStart).normalize().multiplyScalar(globeCameraDistance);
+      globeCamera.lookAt(0, 0, 0);
+    };
+    const blockGlobeZoom = () => {
+      if (globeBlockedZoomStartedAt) return;
+      globeBlockedZoomOriginDistance = globeCameraDistance;
+      globeBlockedZoomStartedAt = performance.now();
+      globeInteractionFullRateUntil = performance.now() + BLOCKED_ZOOM_DURATION_MS;
+    };
+    const zoomGlobeOut = (requestedDistance: number) => {
+      if (requestedDistance > GLOBE_MAX_CAMERA_DISTANCE) {
+        blockGlobeZoom();
+        return;
+      }
+      setGlobeCameraDistance(requestedDistance);
+    };
+    const cloudVeil = document.createElement("div");
+    cloudVeil.className = "globe-cloud-transition";
+    let globeTransitionStartedAt = 0;
+    let globeTransitionLanded = false;
+    let globeTransitionDirection: "in" | "out" | null = null;
+    let reverseTransitionStartZoom = 0.3;
+    const GLOBE_TRANSITION_DURATION_MS = 1820;
 
     const camera = new THREE.OrthographicCamera(-500, 500, 390, -390, 10, 3500);
     const overviewCameraTarget = MANHATTAN_CENTER.clone();
@@ -1735,6 +2079,19 @@ export default function Nyc3dMap() {
     let navigationArrowSpringComplete = false;
     switchStudyRef.current = (next, updateUrl = true) => {
       activeStudy = next;
+      if (next === "globe") {
+        if (globeTransitionDirection !== "out") {
+          globeTransitionStartedAt = 0;
+          globeTransitionLanded = false;
+          globeTransitionDirection = null;
+          cloudVeil.style.opacity = "0";
+          globeCamera.position.copy(globeCameraStart);
+          globeCamera.lookAt(0, 0, 0);
+        }
+        scene.fog = null;
+        if (updateUrl) window.history.pushState({ study: next }, "", "/");
+        return;
+      }
       const isManhattan = next === "manhattan";
       const nextCenter = next === "union"
         ? UNION_CENTER
@@ -1767,10 +2124,15 @@ export default function Nyc3dMap() {
       if (updateUrl) window.history.pushState({ study: next }, "", "/");
     };
     const handlePopState = (event: PopStateEvent) => switchStudyRef.current(
-      event.state?.study === "union" ? "union" : event.state?.study === "washington" ? "washington" : "manhattan",
+      event.state?.study === "union"
+        ? "union"
+        : event.state?.study === "washington"
+          ? "washington"
+          : event.state?.study === "manhattan" ? "manhattan" : "globe",
       false,
     );
     window.addEventListener("popstate", handlePopState);
+    window.history.replaceState({ study: "globe" }, "", "/");
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -1778,7 +2140,11 @@ export default function Nyc3dMap() {
       stencil: true,
     });
     renderer.autoClear = false;
-    const maximumPixelRatio = navigator.hardwareConcurrency <= 4 ? 1 : 1.25;
+    // The imported globe has broad, high-contrast polygon edges that expose a
+    // low drawing-buffer resolution immediately in Chrome. Give this persistent
+    // canvas enough native pixels for a crisp Retina presentation.
+    const maximumPixelRatio = Math.min(window.devicePixelRatio, navigator.hardwareConcurrency <= 4 ? 1.5 : 2);
+    const minimumPixelRatio = Math.min(maximumPixelRatio, 1.5);
     let activePixelRatio = Math.min(window.devicePixelRatio, maximumPixelRatio);
     renderer.setPixelRatio(activePixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -2261,6 +2627,8 @@ export default function Nyc3dMap() {
       camera.top = height / 2;
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
+      globeCamera.aspect = mount.clientWidth / mount.clientHeight;
+      globeCamera.updateProjectionMatrix();
       renderer.setSize(mount.clientWidth, mount.clientHeight);
     };
     const observer = new ResizeObserver(resize);
@@ -2268,8 +2636,9 @@ export default function Nyc3dMap() {
     resize();
     // Do not expose the renderer's cleared backing buffer. Present the canvas
     // only after its first land-and-riverbed frame has been rendered.
-    renderer.render(scene, camera);
+    renderer.render(globeScene, globeCamera);
     mount.appendChild(renderer.domElement);
+    mount.appendChild(cloudVeil);
     logLoad("Renderer ready", {
       pixelRatio: renderer.getPixelRatio(),
       viewport: `${mount.clientWidth}x${mount.clientHeight}`,
@@ -2317,6 +2686,34 @@ export default function Nyc3dMap() {
         -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
       );
       raycaster.setFromCamera(pointer, camera);
+    };
+    const globeManhattanAtPointer = (event: { clientX: number; clientY: number }) => {
+      if (activeStudy !== "globe" || globeTransitionStartedAt) return false;
+      const bounds = renderer.domElement.getBoundingClientRect();
+      pointer.set(
+        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(pointer, globeCamera);
+      return raycaster.intersectObject(manhattanGlobeMarker, true).length > 0;
+    };
+    const enterManhattanFromGlobe = () => {
+      if (activeStudy !== "globe" || globeTransitionStartedAt) return;
+      globeTransitionStartedAt = performance.now();
+      globeTransitionDirection = "in";
+      globeTransitionLanded = false;
+      globeTransitionStartQuaternion.copy(globe.quaternion);
+      window.history.pushState({ study: "manhattan" }, "", "/");
+      renderer.domElement.style.cursor = "default";
+    };
+    const enterGlobeFromManhattan = () => {
+      if (activeStudy !== "manhattan" || globeTransitionStartedAt) return;
+      globeTransitionStartedAt = performance.now();
+      globeTransitionDirection = "out";
+      globeTransitionLanded = false;
+      reverseTransitionStartZoom = camera.zoom;
+      window.history.pushState({ study: "globe" }, "", "/");
+      renderer.domElement.style.cursor = "default";
     };
     const landmarkAtPointer = (event: { clientX: number; clientY: number }) => {
       if (activeStudy === "manhattan") return null;
@@ -2397,22 +2794,74 @@ export default function Nyc3dMap() {
     };
 
     let dragging = false;
+    let globeDragging = false;
+    const globeTouchPointers = new Map<number, { x: number; y: number }>();
+    let globeTouchDistance = 0;
+    let globeMultiTouchGesture = false;
+    let globeInteractionFullRateUntil = 0;
     let pointerX = 0;
+    let pointerY = 0;
     let pointerDownX = 0;
     let pointerDownY = 0;
     let pointerMoved = false;
     let lastPointerHitTestAt = Number.NEGATIVE_INFINITY;
     const pointerDown = (event: PointerEvent) => {
-      dragging = !cameraLocked && activeStudy !== "manhattan";
+      dragging = !cameraLocked && activeStudy !== "manhattan" && activeStudy !== "globe";
+      if (event.pointerType === "touch" && activeStudy === "globe" && !globeTransitionStartedAt) {
+        globeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        globeDragging = true;
+        if (globeTouchPointers.size >= 2) {
+          const touches = [...globeTouchPointers.values()];
+          globeTouchDistance = Math.hypot(touches[1].x - touches[0].x, touches[1].y - touches[0].y);
+          globeMultiTouchGesture = true;
+        }
+      } else {
+        globeDragging = activeStudy === "globe" && !globeTransitionStartedAt;
+      }
       pointerX = event.clientX;
+      pointerY = event.clientY;
       pointerDownX = event.clientX;
       pointerDownY = event.clientY;
       pointerMoved = false;
       renderer.domElement.setPointerCapture(event.pointerId);
-      if (dragging) renderer.domElement.classList.add("is-dragging");
+      if (dragging || globeDragging) renderer.domElement.classList.add("is-dragging");
     };
     const pointerMove = (event: PointerEvent) => {
+      if (activeStudy === "globe") globeInteractionFullRateUntil = performance.now() + 180;
+      if (event.pointerType === "touch" && globeTouchPointers.has(event.pointerId)) {
+        globeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (globeTouchPointers.size >= 2) {
+          const touches = [...globeTouchPointers.values()];
+          const touchDistance = Math.hypot(touches[1].x - touches[0].x, touches[1].y - touches[0].y);
+          if (globeTouchDistance > 0 && touchDistance > 0) {
+            const requestedDistance = globeCameraDistance * (globeTouchDistance / touchDistance);
+            if (requestedDistance < globeCameraDistance) {
+              if (currentGlobeMarkerFacing > 0.94) enterManhattanFromGlobe();
+              else blockGlobeZoom();
+            } else {
+              zoomGlobeOut(requestedDistance);
+            }
+          }
+          globeTouchDistance = touchDistance;
+          pointerMoved = true;
+          return;
+        }
+      }
       pointerMoved ||= Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY) > 5;
+      if (globeDragging) {
+        const yaw = (event.clientX - pointerX) * 0.0045;
+        const pitch = (event.clientY - pointerY) * 0.0032;
+        globeOrbitYaw += yaw;
+        globeOrbitPitch = THREE.MathUtils.clamp(
+          globeOrbitPitch + pitch,
+          -THREE.MathUtils.degToRad(85),
+          THREE.MathUtils.degToRad(85),
+        );
+        updateGlobeOrbit();
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        return;
+      }
       if (dragging) {
         cameraAzimuth -= (event.clientX - pointerX) * 0.005;
         desiredCameraAzimuth = cameraAzimuth;
@@ -2424,12 +2873,26 @@ export default function Nyc3dMap() {
       // render loop. Raycasting more often cannot produce a visible update.
       if (event.timeStamp - lastPointerHitTestAt < 1000 / 30) return;
       lastPointerHitTestAt = event.timeStamp;
+      if (activeStudy === "globe") {
+        renderer.domElement.style.cursor = globeManhattanAtPointer(event) ? "pointer" : "default";
+        return;
+      }
       const hovered = landmarkAtPointer(event);
       clickableLandmarks.forEach((landmark) => { landmark.hovered = landmark === hovered; });
       renderer.domElement.style.cursor = hovered || navigationAtPointer(event) || parkDestinationAtPointer(event) ? "pointer" : "default";
     };
     const pointerUp = (event: PointerEvent) => {
-      if (!pointerMoved) {
+      const endedMultiTouchGesture = globeMultiTouchGesture;
+      if (event.pointerType === "touch") {
+        globeTouchPointers.delete(event.pointerId);
+        if (globeTouchPointers.size < 2) globeDragging = false;
+        if (globeTouchPointers.size === 0) globeMultiTouchGesture = false;
+      }
+      if (!pointerMoved && !endedMultiTouchGesture) {
+        if (globeManhattanAtPointer(event)) {
+          enterManhattanFromGlobe();
+          return;
+        }
         const parkDestination = parkDestinationAtPointer(event);
         if (parkDestination) {
           switchStudyRef.current(parkDestination);
@@ -2442,6 +2905,7 @@ export default function Nyc3dMap() {
         if (landmark) selectLandmark(landmark);
       }
       dragging = false;
+      if (event.pointerType !== "touch") globeDragging = false;
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       renderer.domElement.classList.remove("is-dragging");
     };
@@ -2453,6 +2917,24 @@ export default function Nyc3dMap() {
       if (event.key === "Escape" && cameraLocked) clearLandmarkSelection();
     };
     const wheel = (event: WheelEvent) => {
+      if (activeStudy === "globe") {
+        event.preventDefault();
+        globeInteractionFullRateUntil = performance.now() + 180;
+        if (event.ctrlKey) {
+          if (event.deltaY < 0) {
+            if (globeManhattanAtPointer(event)) enterManhattanFromGlobe();
+            else blockGlobeZoom();
+          } else {
+            zoomGlobeOut(globeCameraDistance * Math.exp(event.deltaY * 0.004));
+          }
+        } else if (event.deltaY < 0) {
+          if (globeManhattanAtPointer(event)) enterManhattanFromGlobe();
+          else blockGlobeZoom();
+        } else if (!globeTransitionStartedAt) {
+          zoomGlobeOut(globeCameraDistance * Math.exp(event.deltaY * 0.0025));
+        }
+        return;
+      }
       if (event.deltaY > 0) {
         event.preventDefault();
         window.clearTimeout(zoomOutGestureReset);
@@ -2468,8 +2950,9 @@ export default function Nyc3dMap() {
         }
         return;
       }
-      if (event.deltaY > 0 && activeStudy !== "manhattan") {
-        switchStudyRef.current("manhattan");
+      if (event.deltaY > 0) {
+        if (activeStudy === "manhattan") enterGlobeFromManhattan();
+        else switchStudyRef.current("manhattan");
         return;
       }
       if (event.deltaY >= 0) return;
@@ -2512,13 +2995,87 @@ export default function Nyc3dMap() {
         return;
       }
       frame = requestAnimationFrame(animate);
-      const interactionNeedsFullFrameRate = dragging || cameraTransitioning || blockedZoomStartedAt > 0;
+      const interactionNeedsFullFrameRate = dragging
+        || globeDragging
+        || now < globeInteractionFullRateUntil
+        || cameraTransitioning
+        || blockedZoomStartedAt > 0
+        || globeTransitionStartedAt > 0;
       if (!interactionNeedsFullFrameRate && now - previousRender < 1000 / 30) return;
       previousRender = now;
       timer.update();
       const delta = Math.min(timer.getDelta(), 0.05);
       const elapsed = timer.getElapsed();
       const interactionEase = 1 - Math.exp(-delta * 9);
+      manhattanGlobeMarker.getWorldPosition(markerWorldPosition);
+      globeCameraDirection.copy(globeCamera.position).normalize();
+      const markerFacing = markerWorldPosition.normalize().dot(globeCameraDirection);
+      currentGlobeMarkerFacing = markerFacing;
+      const markerOpacity = THREE.MathUtils.smoothstep(markerFacing, 0.3, 0.52);
+      manhattanMarkerMaterials.forEach((material) => { material.opacity = markerOpacity; });
+      const leaderOpacity = THREE.MathUtils.smoothstep(markerFacing, 0.5, 0.68);
+      manhattanLeaderMaterials.forEach((material) => { material.opacity = markerOpacity * leaderOpacity; });
+      manhattanGlobeMarker.visible = markerOpacity > 0.01;
+      if (globeBlockedZoomStartedAt) {
+        const progress = Math.min(1, (now - globeBlockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
+        setGlobeCameraDistance(globeBlockedZoomOriginDistance * (1 - Math.sin(progress * Math.PI) * 0.025));
+        if (progress >= 1) globeBlockedZoomStartedAt = 0;
+      }
+      if (globeTransitionStartedAt) {
+        const progress = THREE.MathUtils.clamp(
+          (now - globeTransitionStartedAt) / GLOBE_TRANSITION_DURATION_MS,
+          0,
+          1,
+        );
+        const approachProgress = THREE.MathUtils.clamp(progress / 0.58, 0, 1);
+        const approachEase = 1 - Math.pow(1 - approachProgress, 3);
+        if (globeTransitionDirection === "out" && !globeTransitionLanded) {
+          const zoomOutProgress = THREE.MathUtils.smoothstep(progress, 0, 0.3);
+          camera.zoom = THREE.MathUtils.lerp(reverseTransitionStartZoom, reverseTransitionStartZoom * 0.91, zoomOutProgress);
+          camera.updateProjectionMatrix();
+        }
+        if (globeTransitionDirection === "in" && !globeTransitionLanded) {
+          globe.quaternion.copy(globeTransitionStartQuaternion).slerp(globeHomeQuaternion, approachEase);
+          globeCamera.position.lerpVectors(globeCameraStart, globeCameraEnd, approachEase);
+          globeCamera.lookAt(0, 0, THREE.MathUtils.lerp(0, GLOBE_RADIUS, approachEase * 0.9));
+        } else if (globeTransitionDirection === "out" && globeTransitionLanded) {
+          const retreatProgress = THREE.MathUtils.smoothstep(progress, 0.56, 1);
+          globeCamera.position.lerpVectors(globeCameraEnd, globeCameraStart, retreatProgress);
+          globeCamera.lookAt(0, 0, THREE.MathUtils.lerp(GLOBE_RADIUS * 0.9, 0, retreatProgress));
+        }
+        const cloudOpacity = globeTransitionLanded
+          ? 1 - THREE.MathUtils.smoothstep(progress, 0.6, 0.98)
+          : globeTransitionDirection === "out"
+            ? THREE.MathUtils.smoothstep(progress, 0, 0.28)
+            : THREE.MathUtils.smoothstep(progress, 0.08, 0.38);
+        cloudVeil.style.opacity = cloudOpacity.toFixed(3);
+        cloudVeil.style.setProperty("--cloud-travel", `${progress * 7}rem`);
+        if (!globeTransitionLanded && progress >= 0.56) {
+          globeTransitionLanded = true;
+          if (globeTransitionDirection === "in") {
+            switchStudyRef.current("manhattan", false);
+            cameraHeight = 720;
+            cameraRadius = 680;
+            camera.zoom = 0.92;
+            camera.updateProjectionMatrix();
+            updateCamera();
+            cameraTransitioning = true;
+          } else {
+            globe.quaternion.copy(globeHomeQuaternion);
+            globeOrbitYaw = 0;
+            globeOrbitPitch = 0;
+            globeCamera.position.copy(globeCameraEnd);
+            globeCamera.lookAt(0, 0, GLOBE_RADIUS * 0.9);
+            switchStudyRef.current("globe", false);
+          }
+        }
+        if (progress >= 1) {
+          globeTransitionStartedAt = 0;
+          globeTransitionLanded = false;
+          globeTransitionDirection = null;
+          cloudVeil.style.opacity = "0";
+        }
+      }
       const selectedLandmark = clickableLandmarks.find((landmark) => landmark.selected);
       for (const landmark of clickableLandmarks) {
         const lift = !landmark.selected && landmark.hovered ? 4.5 : 0;
@@ -2642,15 +3199,19 @@ export default function Nyc3dMap() {
       }
       const renderStarted = performance.now();
       renderer.clear(true, true, true);
-      renderer.render(scene, camera);
-      renderer.clearDepth();
-      renderer.render(skyOverlayScene, camera);
+      if (activeStudy === "globe") {
+        renderer.render(globeScene, globeCamera);
+      } else {
+        renderer.render(scene, camera);
+        renderer.clearDepth();
+        renderer.render(skyOverlayScene, camera);
+      }
       renderCostTotal += performance.now() - renderStarted;
       renderSamples += 1;
       if (renderSamples === 120) {
         const averageRenderMs = renderCostTotal / renderSamples;
         const targetPixelRatio = averageRenderMs > 18
-          ? Math.max(0.75, activePixelRatio - 0.25)
+          ? Math.max(minimumPixelRatio, activePixelRatio - 0.25)
           : averageRenderMs < 8 ? Math.min(maximumPixelRatio, activePixelRatio + 0.25) : activePixelRatio;
         if (targetPixelRatio !== activePixelRatio) {
           activePixelRatio = targetPixelRatio;
@@ -2703,10 +3264,12 @@ export default function Nyc3dMap() {
         }
       };
       scene.traverse(disposeObjectResources);
+      globeScene.traverse(disposeObjectResources);
       skyOverlayScene.traverse(disposeObjectResources);
       timer.dispose();
       renderer.dispose();
       renderer.domElement.remove();
+      cloudVeil.remove();
       switchStudyRef.current = () => undefined;
     };
   }, []);
@@ -2715,9 +3278,15 @@ export default function Nyc3dMap() {
     <main className="washington-study">
       <div ref={mountRef} className="washington-study__viewport" />
       {status && <div className="washington-study__loading">{status}</div>}
-      <a className="washington-study__credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-        NYC Open Data · © OpenStreetMap contributors
-      </a>
+      <div className="washington-study__credit">
+        <a href="https://sketchfab.com/3d-models/lowpoly-earth-5f6ea1111fda4cf6a7b36cf4ce200d1b" target="_blank" rel="noreferrer">
+          Low Poly Planet Earth on Sketchfab
+        </a>
+        {" · "}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+          NYC Open Data · © OpenStreetMap contributors
+        </a>
+      </div>
     </main>
   );
 }

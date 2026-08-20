@@ -42,6 +42,23 @@ body {
   inset: 0;
 }
 
+.globe-cloud-transition {
+  --cloud-travel: 0rem;
+  position: absolute;
+  z-index: 2;
+  inset: -18%;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse at calc(18% + var(--cloud-travel)) 36%, rgb(255 255 255 / 98%) 0 15%, transparent 42%),
+    radial-gradient(ellipse at calc(76% - var(--cloud-travel)) 62%, rgb(236 242 242 / 98%) 0 18%, transparent 46%),
+    radial-gradient(ellipse at 48% calc(28% + var(--cloud-travel)), rgb(255 253 247 / 96%) 0 21%, transparent 52%),
+    linear-gradient(128deg, rgb(218 229 230 / 95%), rgb(255 255 252 / 99%) 46%, rgb(206 222 225 / 96%));
+  filter: blur(18px) contrast(0.92);
+  transform: scale(1.08);
+  will-change: opacity, background-position;
+}
+
 .washington-canvas {
   cursor: grab;
   background: var(--ground);
@@ -112,6 +129,10 @@ body {
   font-size: 0.42rem;
   letter-spacing: 0.08em;
   opacity: 0.48;
+}
+
+.washington-study__credit a {
+  color: inherit;
   text-decoration: none;
 }
 
