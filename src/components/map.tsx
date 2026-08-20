@@ -906,7 +906,15 @@ function createGlobeClouds() {
     cloud.scale.setScalar(0.29 + randomUnit(index, 3) * 0.39);
     inward.copy(cloud.position).normalize().negate();
     cloud.quaternion.setFromUnitVectors(localDown, inward);
-    cloud.rotateY((randomUnit(index, 4) - 0.5) * Math.PI);
+    const twist = (randomUnit(index, 4) - 0.5) * Math.PI;
+    cloud.rotateY(twist);
+    cloud.userData.twist = twist;
+    cloud.userData.orbitSpeed = 0.006 + randomUnit(index, 5) * 0.007;
+    cloud.userData.orbitAxis = new THREE.Vector3(
+      randomUnit(index, 6) - 0.5,
+      randomUnit(index, 7) - 0.5,
+      randomUnit(index, 8) - 0.5,
+    ).normalize();
     cloud.name = "Globe low-poly cloud";
     cloudLayer.add(cloud);
   }
@@ -1941,7 +1949,10 @@ export default function GlobalMap() {
       leader: manhattanGlobeLeader,
       placeholder: globePlaceholder,
     } = createWatercolorGlobe();
-    globe.add(createGlobeClouds());
+    const globeClouds = createGlobeClouds();
+    const globeCloudLocalDown = new THREE.Vector3(0, -1, 0);
+    const globeCloudInward = new THREE.Vector3();
+    globe.add(globeClouds);
     globeScene.add(globe);
     void loadGlb("/models/low-poly-planet-earth-e54e8607.glb", abortController.signal)
       .then((gltf) => {
@@ -3007,6 +3018,17 @@ export default function GlobalMap() {
       const delta = Math.min(timer.getDelta(), 0.05);
       const elapsed = timer.getElapsed();
       const interactionEase = 1 - Math.exp(-delta * 9);
+      if (activeStudy === "globe") {
+        for (const cloud of globeClouds.children) {
+          cloud.position.applyAxisAngle(
+            cloud.userData.orbitAxis as THREE.Vector3,
+            (cloud.userData.orbitSpeed as number) * delta,
+          );
+          globeCloudInward.copy(cloud.position).normalize().negate();
+          cloud.quaternion.setFromUnitVectors(globeCloudLocalDown, globeCloudInward);
+          cloud.rotateY(cloud.userData.twist as number);
+        }
+      }
       manhattanGlobeMarker.getWorldPosition(markerWorldPosition);
       globeCameraDirection.copy(globeCamera.position).normalize();
       const markerFacing = markerWorldPosition.normalize().dot(globeCameraDirection);
