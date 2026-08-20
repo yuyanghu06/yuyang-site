@@ -12,6 +12,11 @@
 - Treat files in `milestone/history/` as append-only records. Do not revise an existing history file to reflect later work.
 - Do not create a history entry for a session that made no meaningful project change.
 
+## Landmark geometry integrity
+
+- Whenever procedural or higher-LOD geometry (such as windows, facade panels, rooftop equipment, trim, or signs) is added to a base dataset building, bake or merge the additions with the base geometry into one selectable object before exposing it to outlines, raycasting, hover, click, lift, or camera interactions.
+- Do not keep interactive landmark details as independently transformable scene objects. Selection bounds, outlines, animation, and loading must always operate on the merged base-plus-detail object so visual layers cannot separate.
+
 ## Figma workflow
 
 - The project uses the Figma MCP server for design work.
