@@ -22,7 +22,27 @@ function isOnRoadbed(point) {
 }
 
 function isNearParkEdge([x, z]) {
-  return x < -250 || x > 100 || z < -140 || z > 150;
+  // Keep only the streets immediately enclosing Washington Square. The old
+  // `x < -250` branch accidentally selected crossings several blocks west.
+  return x >= -220 && x <= 200 && z >= -220 && z <= 220
+    && (x < -120 || x > 105 || z < -125 || z > 125);
+}
+
+function measureRoadSpan(point, angle) {
+  const direction = [Math.cos(angle), Math.sin(angle)];
+  const distanceToEdge = (sign) => {
+    let distance = 0;
+    while (distance < 18) {
+      const next = distance + 0.25;
+      if (!isOnRoadbed([
+        point[0] + direction[0] * next * sign,
+        point[1] + direction[1] * next * sign,
+      ])) break;
+      distance = next;
+    }
+    return distance;
+  };
+  return Math.max(4, Math.min(16, distanceToEdge(-1) + distanceToEdge(1)));
 }
 
 function project([longitude, latitude]) {
@@ -101,10 +121,12 @@ for (const match of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
     if (!isOnRoadbed(point) || !isNearParkEdge(point)) return;
     const before = project(previous);
     const after = project(next);
+    const angle = Math.atan2(after[1] - before[1], after[0] - before[0]);
     crossings.set(nodeId, {
       sourceId: nodeId,
       point,
-      angle: Math.atan2(after[1] - before[1], after[0] - before[0]),
+      angle,
+      span: measureRoadSpan(point, angle),
     });
   });
 }
