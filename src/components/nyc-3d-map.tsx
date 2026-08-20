@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 type Point3 = [number, number, number];
 type SurfaceKind = "ground" | "roof" | "wall";
@@ -14,13 +16,16 @@ interface CityGmlSurface {
   color?: THREE.Color;
 }
 
-interface WashingtonCityGmlData {
-  buildings: Array<{
-    bin: string | null;
-    doittId: string | null;
-    sourceId: string | null;
-    surfaces: CityGmlSurface[];
-  }>;
+interface WashingtonCityRuntimeData {
+  footprints: Array<Array<[number, number]>>;
+  details: Record<string, CityGmlSurface[]>;
+}
+
+interface WashingtonCityManifest {
+  version: string;
+  tileSize: number;
+  buildingCount: number;
+  tiles: Array<{ file: string; x: number; z: number }>;
 }
 
 interface WashingtonPlanimetricsData {
@@ -37,7 +42,7 @@ interface WashingtonParkData {
     width: number;
     points: Array<[number, number]>;
   }>;
-  crossings: Array<{ sourceId: string; point: [number, number]; angle: number }>;
+  crossings: Array<{ sourceId: string; point: [number, number]; angle: number; span: number }>;
   fountain: { sourceId: string; ring: Array<[number, number]> } | null;
   arch: { sourceId: string; height: number; footprint: Array<[number, number]> } | null;
 }
@@ -67,6 +72,46 @@ interface SkyTraveler {
 
 interface AmbientAnimation {
   update: (elapsed: number) => void;
+}
+
+const BLOCKED_ZOOM_DURATION_MS = 260;
+const BLOCKED_ZOOM_SCALE = 1.035;
+const WHEEL_GESTURE_SETTLE_MS = BLOCKED_ZOOM_DURATION_MS;
+
+interface ClickableLandmark {
+  root: THREE.Object3D;
+  glow: THREE.Object3D;
+  baseY: number;
+  hovered: boolean;
+  selected: boolean;
+}
+
+function createBuildingGlow(source: THREE.Object3D) {
+  source.updateMatrixWorld(true);
+  const inverseRoot = source.matrixWorld.clone().invert();
+  const glow = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.16,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  source.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh) return;
+    const geometry = object.geometry.clone();
+    geometry.applyMatrix4(inverseRoot.clone().multiply(object.matrixWorld));
+    const surface = new THREE.Mesh(geometry, material);
+    surface.renderOrder = 4;
+    surface.raycast = () => undefined;
+    glow.add(surface);
+  });
+  glow.name = "Clickable landmark surface glow";
+  return glow;
 }
 
 function projectedRing(ring: Point3[], normal: THREE.Vector3) {
@@ -120,40 +165,6 @@ function makeSurfaceGeometry(surfaces: CityGmlSurface[]) {
   return geometry;
 }
 
-const BUILDING_PALETTE = [
-  0xb9a98d,
-  0xc49b72,
-  0xa96f61,
-  0xb77b5f,
-  0x788878,
-  0x858983,
-  0xd2c3a6,
-  0x71675c,
-];
-
-const LANDMARK_PALETTE: Record<string, Record<SurfaceKind, number>> = {
-  // One Fifth Avenue: weathered Art Deco limestone and masonry.
-  "1008847": { wall: 0xa3a39b, roof: 0xc2bdb2, ground: 0xb0aea5 },
-  // NYU Silver Center / Graduate School of Arts and Science complex.
-  "1008820": { wall: 0xd1cec5, roof: 0xe1dbcf, ground: 0xd7d3ca },
-  // NYU Lipton Hall, 33–34 Washington Square West.
-  "1008875": { wall: 0x956553, roof: 0xb8aa9b, ground: 0x806056 },
-};
-
-function buildingColor(id: string, kind: SurfaceKind) {
-  const landmarkColor = LANDMARK_PALETTE[id]?.[kind];
-  if (landmarkColor !== undefined) return new THREE.Color(landmarkColor);
-  let hash = 2166136261;
-  for (let index = 0; index < id.length; index += 1) {
-    hash ^= id.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  const color = new THREE.Color(BUILDING_PALETTE[Math.abs(hash) % BUILDING_PALETTE.length]);
-  if (kind === "roof") color.offsetHSL(0, -0.05, 0.1);
-  if (kind === "ground") color.offsetHSL(0, -0.08, 0.025);
-  return color;
-}
-
 function createParkPaths(paths: WashingtonParkData["paths"], material: THREE.Material) {
   const segments = paths.flatMap((path) => path.points.slice(1).map((point, index) => ({
     from: path.points[index],
@@ -179,6 +190,218 @@ function createParkPaths(paths: WashingtonParkData["paths"], material: THREE.Mat
   mesh.receiveShadow = true;
   mesh.name = "OpenStreetMap Washington Square paths";
   return mesh;
+}
+
+function createWashingtonSquareTrees(park: WashingtonParkData) {
+  const random = seededRandom(0x7ee5_2026);
+  const positions: Array<{
+    x: number;
+    z: number;
+    trunkScale: number;
+    heightScale: number;
+    crownScale: [number, number, number];
+    crownColor: number;
+  }> = [];
+  const crownPalette = [0x91ad72, 0xa5bf82, 0x7f9d67, 0xb2c990, 0x8eaa70];
+  const distanceToSegment = (x: number, z: number, from: [number, number], to: [number, number]) => {
+    const dx = to[0] - from[0];
+    const dz = to[1] - from[1];
+    const lengthSquared = dx * dx + dz * dz;
+    const t = lengthSquared === 0 ? 0 : THREE.MathUtils.clamp(((x - from[0]) * dx + (z - from[1]) * dz) / lengthSquared, 0, 1);
+    return Math.hypot(x - (from[0] + dx * t), z - (from[1] + dz * t));
+  };
+  const localPathSegments = park.paths.flatMap((path) => path.points.slice(1).map((point, index) => ({
+    from: path.points[index],
+    to: point,
+    clearance: Math.min(path.width, 6) / 2 + 4.4,
+  }))).filter(({ from, to }) => Math.hypot(from[0], from[1]) < 230 || Math.hypot(to[0], to[1]) < 230);
+  const fountainCenter = park.fountain
+    ? park.fountain.ring.reduce((sum, [x, z]) => [sum[0] + x, sum[1] + z] as [number, number], [0, 0] as [number, number])
+      .map((value) => value / park.fountain!.ring.length) as [number, number]
+    : [0, 0] as [number, number];
+  const fountainRadius = park.fountain
+    ? park.fountain.ring.reduce((sum, [x, z]) => sum + Math.hypot(x - fountainCenter[0], z - fountainCenter[1]), 0) / park.fountain.ring.length
+    : 0;
+  const archCenter = park.arch
+    ? park.arch.footprint.slice(0, -1).reduce((sum, [x, z]) => [sum[0] + x, sum[1] + z] as [number, number], [0, 0] as [number, number])
+      .map((value) => value / (park.arch!.footprint.length - 1)) as [number, number]
+    : [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY] as [number, number];
+
+  for (let attempt = 0; positions.length < 88 && attempt < 12000; attempt += 1) {
+    const x = (random() - 0.5) * 310;
+    const z = (random() - 0.5) * 285 + 10;
+    if ((x / 158) ** 2 + ((z - 10) / 146) ** 2 > 1) continue;
+    if (Math.hypot(x - fountainCenter[0], z - fountainCenter[1]) < fountainRadius + 10) continue;
+    if (Math.hypot(x - archCenter[0], z - archCenter[1]) < 16) continue;
+    if (localPathSegments.some((segment) => distanceToSegment(x, z, segment.from, segment.to) < segment.clearance)) continue;
+    if (positions.some((tree) => Math.hypot(x - tree.x, z - tree.z) < 10.5)) continue;
+    const isTall = random() < 0.18;
+    const crownSize = 0.68 + random() * 0.68;
+    positions.push({
+      x,
+      z,
+      trunkScale: 0.78 + random() * 0.38,
+      heightScale: isTall ? 1.45 + random() * 0.55 : 0.88 + random() * 0.22,
+      crownScale: [
+        crownSize * (0.86 + random() * 0.28),
+        crownSize * (0.88 + random() * 0.38),
+        crownSize * (0.86 + random() * 0.28),
+      ],
+      crownColor: crownPalette[Math.floor(random() * crownPalette.length)],
+    });
+  }
+
+  const group = new THREE.Group();
+  const trunks = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.5, 0.72, 6.8, 7),
+    new THREE.MeshStandardMaterial({ color: 0x66513d, roughness: 1 }),
+    positions.length,
+  );
+  const crowns = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(4.1, 1),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
+    positions.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  positions.forEach((tree, index) => {
+    matrix.compose(
+      new THREE.Vector3(tree.x, 0.68 + 3.4 * tree.heightScale, tree.z),
+      quaternion,
+      new THREE.Vector3(tree.trunkScale, tree.heightScale, tree.trunkScale),
+    );
+    trunks.setMatrixAt(index, matrix);
+    matrix.compose(
+      new THREE.Vector3(tree.x, 0.68 + 8.2 * tree.heightScale, tree.z),
+      quaternion,
+      new THREE.Vector3(
+        tree.crownScale[0],
+        tree.crownScale[1] * tree.heightScale,
+        tree.crownScale[2],
+      ),
+    );
+    crowns.setMatrixAt(index, matrix);
+    crowns.setColorAt(index, new THREE.Color(tree.crownColor));
+  });
+  trunks.castShadow = true;
+  crowns.castShadow = true;
+  group.add(trunks, crowns);
+  group.name = `${positions.length} path-cleared Washington Square trees`;
+  return {
+    group,
+    footprints: positions.map(({ x, z }) => Array.from({ length: 10 }, (_, index) => {
+      const angle = (index / 10) * Math.PI * 2;
+      return [x + Math.cos(angle) * 3.2, z + Math.sin(angle) * 3.2] as [number, number];
+    })),
+  };
+}
+
+function createSimpleFountain(data: NonNullable<WashingtonParkData["fountain"]>) {
+  const center = data.ring.reduce(
+    (sum, [x, z]) => [sum[0] + x, sum[1] + z] as [number, number],
+    [0, 0] as [number, number],
+  ).map((value) => value / data.ring.length) as [number, number];
+  const mappedRadius = data.ring.reduce(
+    (sum, [x, z]) => sum + Math.hypot(x - center[0], z - center[1]),
+    0,
+  ) / data.ring.length;
+  const radius = Math.max(4, mappedRadius);
+
+  const limestone = new THREE.MeshStandardMaterial({ color: 0xc7b99f, roughness: 0.94 });
+  const waterMaterial = new THREE.MeshStandardMaterial({
+    color: 0x86aeb3,
+    roughness: 0.32,
+    metalness: 0.04,
+  });
+  const fountain = new THREE.Group();
+  fountain.position.set(center[0], 0, center[1]);
+
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 1.03, 0.42, 48), limestone);
+  base.position.y = 0.98;
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.78, radius * 0.78, 0.08, 48), waterMaterial);
+  water.position.y = 1.23;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.89, radius * 0.115, 8, 48), limestone);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 1.34;
+  const pedestal = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.09, radius * 0.13, 1.35, 12),
+    limestone,
+  );
+  pedestal.position.y = 1.91;
+  const bowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.25, radius * 0.18, 0.2, 20),
+    limestone,
+  );
+  bowl.position.y = 2.64;
+
+  const sprayMaterial = new THREE.MeshBasicMaterial({
+    color: 0x73c9df,
+    transparent: true,
+    opacity: 0.94,
+    depthWrite: true,
+  });
+  const sprays = new THREE.Group();
+  const sprayCurves: THREE.QuadraticBezierCurve3[] = [];
+  const sprayCount = 8;
+  for (let index = 0; index < sprayCount; index += 1) {
+    const angle = (index / sprayCount) * Math.PI * 2;
+    const direction = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const start = direction.clone().multiplyScalar(radius * 0.08).setY(2.78);
+    const end = direction.clone().multiplyScalar(radius * 0.64).setY(1.4);
+    const apex = direction.clone().multiplyScalar(radius * 0.31).setY(7.1);
+    const curve = new THREE.QuadraticBezierCurve3(start, apex, end);
+    sprayCurves.push(curve);
+    const jet = new THREE.Mesh(new THREE.TubeGeometry(curve, 18, 0.23, 6, false), sprayMaterial);
+    jet.renderOrder = 4;
+    sprays.add(jet);
+  }
+  const centerPlumeHeight = radius * 1.7;
+  const centerJet = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.018, radius * 0.045, centerPlumeHeight, 10),
+    sprayMaterial,
+  );
+  centerJet.position.y = 2.75 + centerPlumeHeight / 2;
+  centerJet.renderOrder = 4;
+  sprays.add(centerJet);
+
+  const dropletsPerSpray = 5;
+  const droplets = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.27, 6, 5),
+    sprayMaterial,
+    sprayCount * dropletsPerSpray,
+  );
+  droplets.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  droplets.renderOrder = 5;
+  sprays.add(droplets);
+  sprays.name = "Eight arcing fountain sprays and central plume";
+
+  for (const part of [base, water, rim, pedestal, bowl]) {
+    part.castShadow = part !== water;
+    part.receiveShadow = true;
+    fountain.add(part);
+  }
+  fountain.add(sprays);
+  fountain.name = "Simple mapped Washington Square fountain";
+  const dropletMatrix = new THREE.Matrix4();
+  const dropletScale = new THREE.Vector3(1, 1, 1);
+  const dropletRotation = new THREE.Quaternion();
+  return {
+    group: fountain,
+    animation: {
+      update: (elapsed: number) => {
+        sprayCurves.forEach((curve, sprayIndex) => {
+          for (let dropletIndex = 0; dropletIndex < dropletsPerSpray; dropletIndex += 1) {
+            const progress = (elapsed * 0.72 + dropletIndex / dropletsPerSpray + sprayIndex * 0.037) % 1;
+            const position = curve.getPoint(progress);
+            dropletMatrix.compose(position, dropletRotation, dropletScale);
+            droplets.setMatrixAt(sprayIndex * dropletsPerSpray + dropletIndex, dropletMatrix);
+          }
+        });
+        droplets.instanceMatrix.needsUpdate = true;
+        centerJet.scale.y = 0.88 + Math.sin(elapsed * 5.5) * 0.12;
+      },
+    } satisfies AmbientAnimation,
+  };
 }
 
 function createSimpleArch(data: NonNullable<WashingtonParkData["arch"]>, material: THREE.Material) {
@@ -209,13 +432,19 @@ function createSimpleArch(data: NonNullable<WashingtonParkData["arch"]>, materia
   return arch;
 }
 
-function loadBlenderArch(
+async function loadGlb(url: string, signal: AbortSignal) {
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`${url} failed (${response.status})`);
+  const buffer = await response.arrayBuffer();
+  return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, "");
+}
+
+async function loadBlenderArch(
   data: NonNullable<WashingtonParkData["arch"]>,
-  onLoad: (arch: THREE.Group) => void,
-  onError: () => void,
+  signal: AbortSignal,
 ) {
   const startedAt = performance.now();
-  new GLTFLoader().load("/models/washington-square-arch.glb", (gltf) => {
+  const gltf = await loadGlb("/models/washington-square-arch.glb", signal);
     const model = gltf.scene;
     const white = new THREE.MeshStandardMaterial({
       color: 0xf1ede4,
@@ -229,6 +458,7 @@ function loadBlenderArch(
         object.receiveShadow = true;
       }
     });
+    model.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(model);
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
@@ -247,18 +477,12 @@ function loadBlenderArch(
       elapsedMs: Math.round(performance.now() - startedAt),
       meshes: model.children.length,
     });
-    onLoad(normalized);
-  }, undefined, (error) => {
-    console.warn(LOAD_LOG_PREFIX, "Arch GLB failed", { elapsedMs: Math.round(performance.now() - startedAt), error });
-    onError();
-  });
+  return normalized;
 }
 
-const BOBST_BIN = "1008626";
-
-function loadBobstLibrary(onLoad: (building: THREE.Group) => void, onError: () => void) {
+async function loadBobstLibrary(signal: AbortSignal) {
   const startedAt = performance.now();
-  new GLTFLoader().load("/models/bobst-library.glb", (gltf) => {
+  const gltf = await loadGlb("/models/bobst-library.glb", signal);
     const building = gltf.scene;
     building.traverse((object) => {
       if (object instanceof THREE.Mesh) {
@@ -274,9 +498,9 @@ function loadBobstLibrary(onLoad: (building: THREE.Group) => void, onError: () =
       }
     });
     building.scale.set(69.633 / 33.586, 51.086 / 28.004, 64.53 / 36.674);
-    // Follow the long Washington Square South facade edge rather than the
-    // irregular footprint's PCA axis, which over-rotates the building.
-    building.rotation.y = 0.998781;
+    // Start from the measured street-edge alignment, then apply the source
+    // model's user-verified facade orientation.
+    building.rotation.y = 0.998781 + (Math.PI * 3) / 2;
     building.position.set(9.692, 2.688, 154.508);
     building.name = "Corrected Sketchfab Bobst Library";
     let meshes = 0;
@@ -287,30 +511,28 @@ function loadBobstLibrary(onLoad: (building: THREE.Group) => void, onError: () =
       elapsedMs: Math.round(performance.now() - startedAt),
       meshes,
     });
-    onLoad(building);
-  }, undefined, (error) => {
-    console.warn(LOAD_LOG_PREFIX, "Bobst GLB failed", { elapsedMs: Math.round(performance.now() - startedAt), error });
-    onError();
-  });
+  return building;
 }
 
 function createCrosswalks(data: WashingtonParkData["crossings"], material: THREE.Material) {
   const crossings = new THREE.Group();
-  const addCrosswalk = (x: number, z: number, angle: number) => {
+  const addCrosswalk = (x: number, z: number, angle: number, span: number) => {
     const crossing = new THREE.Group();
-    for (let stripe = -3; stripe <= 3; stripe += 1) {
-      const marking = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.065, 5.2), material);
-      marking.position.x = stripe * 1.72;
+    const stripeSpacing = 1.05;
+    const stripeCount = Math.max(5, Math.floor(span / stripeSpacing));
+    for (let stripe = 0; stripe < stripeCount; stripe += 1) {
+      const marking = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.035, 4.1), material);
+      marking.position.x = (stripe - (stripeCount - 1) / 2) * stripeSpacing;
       marking.receiveShadow = true;
       marking.renderOrder = 3;
       crossing.add(marking);
     }
-    crossing.position.set(x, 0.82, z);
+    crossing.position.set(x, 0.735, z);
     crossing.rotation.y = -angle;
     crossings.add(crossing);
   };
 
-  for (const crossing of data) addCrosswalk(crossing.point[0], crossing.point[1], crossing.angle);
+  for (const crossing of data) addCrosswalk(crossing.point[0], crossing.point[1], crossing.angle, crossing.span);
 
   crossings.name = "Washington Square crosswalk markings";
   crossings.renderOrder = 2;
@@ -475,16 +697,30 @@ function collidesWithFootprints(x: number, z: number, index: FootprintIndex, mar
 
 function createPedestrians(
   scene: THREE.Scene,
-  city: WashingtonCityGmlData,
+  buildingFootprints: Array<Array<[number, number]>>,
   planimetrics: WashingtonPlanimetricsData,
+  fountain: WashingtonParkData["fountain"],
+  parkObstacles: Array<Array<[number, number]>> = [],
 ): AmbientAnimation {
   const count = 300;
   const random = seededRandom(0x57a5_2026);
-  const buildingFootprints = city.buildings.flatMap((building) => building.surfaces
-    .filter((surface) => surface.kind === "ground")
-    .map((surface) => surface.ring.map(([x, , z]) => [x, z] as [number, number])));
   const roadFootprints = planimetrics.roadbeds.map((roadbed) => roadbed.ring);
-  const buildingIndex = createFootprintIndex(buildingFootprints);
+  const pedestrianObstacles = [...buildingFootprints, ...parkObstacles];
+  if (fountain) {
+    const center = fountain.ring.reduce(
+      (sum, [x, z]) => [sum[0] + x, sum[1] + z] as [number, number],
+      [0, 0] as [number, number],
+    ).map((value) => value / fountain.ring.length) as [number, number];
+    const radius = fountain.ring.reduce(
+      (sum, [x, z]) => sum + Math.hypot(x - center[0], z - center[1]),
+      0,
+    ) / fountain.ring.length + 2.5;
+    pedestrianObstacles.push(Array.from({ length: 24 }, (_, index) => {
+      const angle = (index / 24) * Math.PI * 2;
+      return [center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius] as [number, number];
+    }));
+  }
+  const buildingIndex = createFootprintIndex(pedestrianObstacles);
   const roadIndex = createFootprintIndex(roadFootprints);
   const walkers: Array<{ x: number; z: number; heading: number; phase: number; radius: number; speed: number }> = [];
 
@@ -520,8 +756,8 @@ function createPedestrians(
   walkers.forEach((_, index) => bodies.setColorAt(index, new THREE.Color(clothing[index % clothing.length])));
   bodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   heads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  bodies.castShadow = true;
-  heads.castShadow = true;
+  bodies.castShadow = false;
+  heads.castShadow = false;
   bodies.name = "300 low-detail walking pedestrians";
   heads.name = "Pedestrian heads";
   scene.add(bodies, heads);
@@ -552,14 +788,14 @@ function createPedestrians(
 
 function createTraffic(
   scene: THREE.Scene,
-  city: WashingtonCityGmlData,
+  buildingFootprints: Array<Array<[number, number]>>,
   planimetrics: WashingtonPlanimetricsData,
 ): AmbientAnimation {
-  const count = 100;
+  // The camera only exposes a portion of the road-data crop and tall buildings
+  // occlude many vehicles. A larger simulated fleet keeps roughly 100 cars
+  // readable in the overview instead of merely creating 100 mostly hidden ones.
+  const count = 240;
   const random = seededRandom(0xca45_2026);
-  const buildingFootprints = city.buildings.flatMap((building) => building.surfaces
-    .filter((surface) => surface.kind === "ground")
-    .map((surface) => surface.ring.map(([x, , z]) => [x, z] as [number, number])));
   const buildingIndex = createFootprintIndex(buildingFootprints);
   const verifiedRoutes: Array<{ start: THREE.Vector2; end: THREE.Vector2 }> = [];
   for (const roadbed of planimetrics.roadbeds) {
@@ -622,28 +858,43 @@ function createTraffic(
   }
 
   const cars: Array<{ start: THREE.Vector2; end: THREE.Vector2; speed: number; offset: number }> = [];
+  const routeOrder = verifiedRoutes
+    .map((route, routeIndex) => ({
+      routeIndex,
+      angle: Math.atan2(
+        (route.start.y + route.end.y) / 2,
+        (route.start.x + route.end.x) / 2,
+      ),
+      radius: route.start.clone().add(route.end).multiplyScalar(0.5).length(),
+    }))
+    .sort((a, b) => a.angle - b.angle || a.radius - b.radius);
   for (let index = 0; index < count; index += 1) {
-    const route = verifiedRoutes[Math.floor(random() * verifiedRoutes.length)];
-    const reversed = random() > 0.5;
+    // Sample across the entire spatially ordered route list. There are normally
+    // many more verified roadbeds than cars, so taking the first 100 would leave
+    // a large directional wedge of the map without any traffic.
+    const routeOrderIndex = Math.floor(index * routeOrder.length / count);
+    const orderedRoute = routeOrder[routeOrderIndex];
+    const route = verifiedRoutes[orderedRoute.routeIndex];
+    const reversed = index % 2 === 1;
     cars.push({
       start: (reversed ? route.end : route.start).clone(),
       end: (reversed ? route.start : route.end).clone(),
       speed: 0.025 + random() * 0.025,
-      offset: random(),
+      offset: (index * 0.61803398875) % 1,
     });
   }
 
   const chassis = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(5.8, 1.45, 2.65),
+    new THREE.BoxGeometry(6.4, 1.55, 2.9),
     new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }),
     count,
   );
   const cabins = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(3.2, 1.15, 2.25),
+    new THREE.BoxGeometry(3.5, 1.25, 2.45),
     new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }),
     count,
   );
-  const carColors = [0x65717a, 0xd8d4ca, 0xf2b71d];
+  const carColors = [0x45535f, 0xf1ede2, 0xf2b71d];
   cars.forEach((_, index) => {
     const color = new THREE.Color(index % 3 === 2 ? 0xf2b71d : carColors[index % 2]);
     chassis.setColorAt(index, color);
@@ -651,9 +902,9 @@ function createTraffic(
   });
   chassis.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   cabins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  chassis.castShadow = true;
-  cabins.castShadow = true;
-  chassis.name = "100 road-verified low-detail cars with every third car a yellow taxi";
+  chassis.castShadow = false;
+  cabins.castShadow = false;
+  chassis.name = "240 road-verified low-detail cars with every third car a yellow taxi";
   cabins.name = "Low-detail car cabins";
   scene.add(chassis, cabins);
 
@@ -665,10 +916,18 @@ function createTraffic(
   return {
     update: (elapsed) => {
       cars.forEach((car, index) => {
-        const progress = (car.offset + elapsed * car.speed) % 1;
+        // Ping-pong along each validated vector instead of teleporting from its
+        // end back to its start. The direction changes only at an endpoint.
+        const cycle = (car.offset + elapsed * car.speed) % 2;
+        const returning = cycle > 1;
+        const progress = returning ? 2 - cycle : cycle;
         const x = THREE.MathUtils.lerp(car.start.x, car.end.x, progress);
         const z = THREE.MathUtils.lerp(car.start.y, car.end.y, progress);
-        const heading = Math.atan2(-(car.end.y - car.start.y), car.end.x - car.start.x);
+        const direction = returning ? -1 : 1;
+        const heading = Math.atan2(
+          -(car.end.y - car.start.y) * direction,
+          (car.end.x - car.start.x) * direction,
+        );
         quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
         chassisMatrix.compose(position.set(x, 1.55, z), quaternion, scale);
         cabinMatrix.compose(position.set(x, 2.62, z), quaternion, scale);
@@ -681,10 +940,100 @@ function createTraffic(
   };
 }
 
-function createLiptonWindows(scene: THREE.Scene, city: WashingtonCityGmlData) {
-  const lipton = city.buildings.find((building) => building.bin === "1008875");
-  if (!lipton) return;
-  const buildingPoints = lipton.surfaces.flatMap((surface) => surface.ring);
+const INTERACTIVE_BUILDING_COLORS: Record<string, Record<SurfaceKind, number>> = {
+  "1008875": { wall: 0x956553, roof: 0xb8aa9b, ground: 0x777872 },
+  "1008627": { wall: 0x6f5d54, roof: 0x8d8176, ground: 0x63534c },
+  "1077346": { wall: 0x8f5e50, roof: 0xaaa094, ground: 0x785047 },
+  "1078952": { wall: 0xa9aaa5, roof: 0xc4c0b6, ground: 0x96958f },
+};
+
+function createInteractiveBuildingGroup(
+  details: WashingtonCityRuntimeData["details"],
+  ids: string[],
+  name: string,
+) {
+  const group = new THREE.Group();
+  for (const id of ids) {
+    const surfaces = details[id];
+    if (!surfaces) continue;
+    const coloredSurfaces = surfaces.map((surface) => ({
+      ...surface,
+      color: new THREE.Color(INTERACTIVE_BUILDING_COLORS[id][surface.kind]),
+    }));
+    const mesh = new THREE.Mesh(
+      makeSurfaceGeometry(coloredSurfaces),
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.FrontSide }),
+    );
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = `${id} interactive city building`;
+    group.add(mesh);
+  }
+  group.name = name;
+  return group;
+}
+
+function bakeLandmarkAsSingleMesh(source: THREE.Object3D, name: string) {
+  source.updateMatrixWorld(true);
+  const geometries: THREE.BufferGeometry[] = [];
+  source.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const appendGeometry = (matrix: THREE.Matrix4) => {
+      const geometry = object.geometry.clone();
+      geometry.applyMatrix4(matrix);
+      for (const attributeName of Object.keys(geometry.attributes)) {
+        if (!["position", "normal", "color"].includes(attributeName)) geometry.deleteAttribute(attributeName);
+      }
+      if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
+      if (!geometry.getAttribute("color")) {
+        const material = Array.isArray(object.material) ? object.material[0] : object.material;
+        const color = material instanceof THREE.MeshStandardMaterial ? material.color : new THREE.Color(0xffffff);
+        const colors = new Float32Array(geometry.getAttribute("position").count * 3);
+        for (let index = 0; index < colors.length; index += 3) {
+          colors[index] = color.r; colors[index + 1] = color.g; colors[index + 2] = color.b;
+        }
+        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      }
+      geometries.push(geometry);
+    };
+    if (object instanceof THREE.InstancedMesh) {
+      const instanceMatrix = new THREE.Matrix4();
+      for (let index = 0; index < object.count; index += 1) {
+        object.getMatrixAt(index, instanceMatrix);
+        appendGeometry(object.matrixWorld.clone().multiply(instanceMatrix));
+      }
+    } else {
+      appendGeometry(object.matrixWorld);
+    }
+  });
+  const geometry = mergeGeometries(geometries, false);
+  geometries.forEach((item) => item.dispose());
+  if (!geometry) throw new Error(`Unable to merge ${name}`);
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, side: THREE.DoubleSide }),
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = name;
+  return mesh;
+}
+
+function createLandmarkDetails(details: WashingtonCityRuntimeData["details"]) {
+  const groups = new Map<string, THREE.Group>();
+  const styles: Record<string, { window: number; frame: number; spacing: number }> = {
+    "1008875": { window: 0x667477, frame: 0x806056, spacing: 3.15 },
+    "1008627": { window: 0x263238, frame: 0x8b7569, spacing: 3.45 },
+    "1077346": { window: 0x4e5b5e, frame: 0xa56d5c, spacing: 3.2 },
+    "1078952": { window: 0x58666a, frame: 0xc3c0b8, spacing: 3.3 },
+  };
+  for (const [id, surfaces] of Object.entries(details)) {
+    const style = styles[id];
+    if (!style) continue;
+    const detailGroup = new THREE.Group();
+    detailGroup.name = `${id} facade and rooftop details`;
+    groups.set(id, detailGroup);
+    const buildingPoints = surfaces.flatMap((surface) => surface.ring);
   const buildingCenter = buildingPoints.reduce(
     (sum, [x, , z]) => sum.add(new THREE.Vector2(x, z)),
     new THREE.Vector2(),
@@ -692,7 +1041,7 @@ function createLiptonWindows(scene: THREE.Scene, city: WashingtonCityGmlData) {
   const placements: Array<{ position: THREE.Vector3; rotation: THREE.Quaternion }> = [];
   const up = new THREE.Vector3(0, 1, 0);
 
-  for (const surface of lipton.surfaces.filter((candidate) => candidate.kind === "wall")) {
+    for (const surface of surfaces.filter((candidate) => candidate.kind === "wall")) {
     const minimumY = Math.min(...surface.ring.map((point) => point[1]));
     const maximumY = Math.max(...surface.ring.map((point) => point[1]));
     if (maximumY - minimumY < 7.5) continue;
@@ -722,7 +1071,7 @@ function createLiptonWindows(scene: THREE.Scene, city: WashingtonCityGmlData) {
     );
     const normal = new THREE.Vector2(-direction.z, direction.x);
     if (normal.dot(facadeCenter.clone().sub(buildingCenter)) < 0) normal.multiplyScalar(-1);
-    const columns = Math.max(1, Math.floor(facadeWidth / 3.15));
+    const columns = Math.max(1, Math.floor(facadeWidth / style.spacing));
     const floors = Math.max(1, Math.floor((maximumY - minimumY - 2.4) / 3.25));
     const rotation = new THREE.Quaternion().setFromAxisAngle(up, Math.atan2(-direction.z, direction.x));
     for (let floor = 0; floor < floors; floor += 1) {
@@ -742,9 +1091,9 @@ function createLiptonWindows(scene: THREE.Scene, city: WashingtonCityGmlData) {
     }
   }
 
-  const windows = new THREE.InstancedMesh(
+    const windows = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1.45, 1.75, 0.16),
-    new THREE.MeshStandardMaterial({ color: 0x667477, roughness: 0.55, metalness: 0.06 }),
+      new THREE.MeshStandardMaterial({ color: style.window, roughness: 0.55, metalness: 0.06 }),
     placements.length,
   );
   const matrix = new THREE.Matrix4();
@@ -753,9 +1102,237 @@ function createLiptonWindows(scene: THREE.Scene, city: WashingtonCityGmlData) {
     matrix.compose(placement.position, placement.rotation, scale);
     windows.setMatrixAt(index, matrix);
   });
-  windows.castShadow = true;
-  windows.name = "Lipton Hall floor-by-floor facade windows";
-  scene.add(windows);
+    windows.castShadow = false;
+    windows.name = `${id} Bobst-style facade windows`;
+    detailGroup.add(windows);
+
+    const roofSurfaces = surfaces
+      .filter((surface) => surface.kind === "roof" && Math.abs(surfaceNormal(surface.ring).y) > 0.72)
+      .map((surface) => {
+        const area = Math.abs(surface.ring.reduce((sum, point, index) => {
+          const next = surface.ring[(index + 1) % surface.ring.length];
+          return sum + point[0] * next[2] - next[0] * point[2];
+        }, 0)) / 2;
+        return { surface, area };
+      })
+      .filter((roof) => roof.area > 24)
+      .sort((a, b) => b.area - a.area)
+      .slice(0, 4);
+    if (roofSurfaces.length) {
+      const equipment = new THREE.Group();
+      const equipmentMaterial = new THREE.MeshStandardMaterial({ color: style.frame, roughness: 0.92 });
+      const sternVentMaterial = new THREE.MeshStandardMaterial({ color: 0x858783, roughness: 0.94 });
+      const sternFanMaterial = new THREE.MeshStandardMaterial({ color: 0x151716, roughness: 0.82 });
+      const layouts: Record<string, Array<[number, number]>> = {
+        "1008627": [[0.12, 0.2], [0.27, 0.2], [0.42, 0.2], [0.57, 0.2], [0.72, 0.2], [0.87, 0.2]],
+        "1008629": [[0.18, 0.24], [0.34, 0.24], [0.66, 0.24], [0.82, 0.24], [0.3, 0.7], [0.7, 0.7]],
+        "1077346": [[0.16, 0.3], [0.39, 0.3], [0.62, 0.3], [0.85, 0.3]],
+        "1078952": [[0.16, 0.22], [0.33, 0.22], [0.5, 0.22], [0.67, 0.22], [0.84, 0.22], [0.3, 0.7], [0.7, 0.7]],
+        "1008875": [[0.2, 0.25], [0.5, 0.25], [0.8, 0.25]],
+      };
+      const layout = layouts[id];
+      for (const [roofIndex, roof] of roofSurfaces.entries()) {
+        if (id === "1077346" && roofIndex > 0) continue;
+        const placements = roofIndex === 0 ? layout : layout.slice(0, Math.min(2, layout.length));
+        const roofY = roof.surface.ring.reduce((sum, point) => sum + point[1], 0) / roof.surface.ring.length;
+        let longestEdge = new THREE.Vector2(1, 0);
+        let longestEdgeLength = 0;
+        for (let edgeIndex = 0; edgeIndex < roof.surface.ring.length; edgeIndex += 1) {
+          const start = roof.surface.ring[edgeIndex];
+          const end = roof.surface.ring[(edgeIndex + 1) % roof.surface.ring.length];
+          const edge = new THREE.Vector2(end[0] - start[0], end[2] - start[2]);
+          if (edge.lengthSq() > longestEdgeLength) {
+            longestEdgeLength = edge.lengthSq();
+            longestEdge = edge.normalize();
+          }
+        }
+        const perpendicular = new THREE.Vector2(-longestEdge.y, longestEdge.x);
+        const roofPoints2d = roof.surface.ring.map((point) => new THREE.Vector2(point[0], point[2]));
+        const along = roofPoints2d.map((point) => point.dot(longestEdge));
+        const across = roofPoints2d.map((point) => point.dot(perpendicular));
+        const alongMin = Math.min(...along); const alongMax = Math.max(...along);
+        const acrossMin = Math.min(...across); const acrossMax = Math.max(...across);
+        for (const [u, v] of placements) {
+          const point = longestEdge.clone().multiplyScalar(THREE.MathUtils.lerp(alongMin, alongMax, u))
+            .addScaledVector(perpendicular, THREE.MathUtils.lerp(acrossMin, acrossMax, v));
+          const x = point.x;
+          const z = point.y;
+          const roofRing = roof.surface.ring.map((point) => [point[0], point[2]] as [number, number]);
+          if (!pointInRing(x, z, roofRing)) continue;
+          const width = id === "1077346" ? 10 : id === "1008627" ? 3.8 : 4.6;
+          const height = id === "1077346" ? 3.1 : id === "1008627" ? 1.2 : 1.65;
+          const depth = id === "1077346" ? 10 : id === "1008627" ? 3 : 3.6;
+          const verticalOffset = id === "1077346" ? 0.75 : 0.04;
+          const box = new THREE.Mesh(
+            new THREE.BoxGeometry(width, height, depth),
+            id === "1077346" ? sternVentMaterial : equipmentMaterial,
+          );
+          box.position.set(x, roofY + height / 2 + verticalOffset, z);
+          box.rotation.y = -Math.atan2(longestEdge.y, longestEdge.x);
+          box.castShadow = true;
+          equipment.add(box);
+          if (id === "1077346") {
+            const fan = new THREE.Mesh(
+              new THREE.BoxGeometry(6.6, 0.72, 6.6),
+              sternFanMaterial,
+            );
+            fan.position.set(x, roofY + height + verticalOffset + 0.36, z);
+            fan.rotation.y = box.rotation.y;
+            fan.castShadow = true;
+            equipment.add(fan);
+          }
+        }
+      }
+      equipment.name = `${id} simplified rooftop equipment`;
+      detailGroup.add(equipment);
+    }
+  }
+  return groups;
+}
+
+function createSternRotundaDetails() {
+  const group = new THREE.Group();
+  const center = new THREE.Vector2(85.5, 192.5);
+  const radius = 9.92;
+  const glass = new THREE.MeshStandardMaterial({ color: 0x7699a8, roughness: 0.32, metalness: 0.08 });
+  const panelGeometry = new THREE.BoxGeometry(0.66, 7.6, 0.24);
+  for (let index = 0; index < 24; index += 1) {
+    const angle = THREE.MathUtils.lerp(-0.88, 2.03, index / 23);
+    const panel = new THREE.Mesh(panelGeometry, glass);
+    panel.position.set(center.x + Math.cos(angle) * radius, 16.2, center.y + Math.sin(angle) * radius);
+    panel.rotation.y = -angle;
+    panel.castShadow = false;
+    group.add(panel);
+  }
+  const flagSettings = [{ angle: -0.45, color: 0x55258a }];
+  for (const setting of flagSettings) {
+    const poleStart = new THREE.Vector3(center.x + Math.cos(setting.angle) * 9.7, 17.2, center.y + Math.sin(setting.angle) * 9.7);
+    const poleEnd = new THREE.Vector3(center.x + Math.cos(setting.angle) * 13.2, 20.1, center.y + Math.sin(setting.angle) * 13.2);
+    const poleDirection = poleEnd.clone().sub(poleStart);
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09, 0.09, poleDirection.length(), 6),
+      new THREE.MeshStandardMaterial({ color: 0xaaa49b, roughness: 0.65, metalness: 0.25 }),
+    );
+    pole.position.copy(poleStart).add(poleEnd).multiplyScalar(0.5);
+    pole.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), poleDirection.normalize());
+    group.add(pole);
+    const flagHeight = 5.2;
+    const flag = new THREE.Mesh(
+      new THREE.BoxGeometry(2.6, flagHeight, 0.16),
+      new THREE.MeshStandardMaterial({ color: setting.color, roughness: 0.82, side: THREE.DoubleSide }),
+    );
+    flag.position.copy(poleEnd).add(new THREE.Vector3(0, -flagHeight / 2, 0));
+    flag.rotation.y = -setting.angle - Math.PI / 2;
+    group.add(flag);
+  }
+  group.name = "Stern rotunda glass band and NYU flag";
+  return group;
+}
+
+function createGouldPlaza(scene: THREE.Scene) {
+  const plaza = new THREE.Group();
+  const plazaCenter = new THREE.Vector2(112.5, 191.3);
+  plaza.position.set(plazaCenter.x, 0, plazaCenter.y);
+  plaza.rotation.y = -0.57;
+  const paving = new THREE.Mesh(
+    new THREE.BoxGeometry(26, 0.12, 18),
+    new THREE.MeshStandardMaterial({ color: 0xc6c0b3, roughness: 1 }),
+  );
+  paving.position.set(0, 0.79, 0);
+  paving.receiveShadow = true;
+  plaza.add(paving);
+
+  const treePositions: Array<[number, number]> = [[101, 187], [106, 197], [113, 186], [120, 197], [125, 188]];
+  const trunks = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.42, 0.58, 5.5, 6),
+    new THREE.MeshStandardMaterial({ color: 0x75604a, roughness: 1 }),
+    treePositions.length,
+  );
+  const crowns = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(3.2, 1),
+    new THREE.MeshStandardMaterial({ color: 0x788878, roughness: 1 }),
+    treePositions.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  treePositions.forEach(([x, z], index) => {
+    const localX = x - plazaCenter.x;
+    const localZ = z - plazaCenter.y;
+    matrix.compose(new THREE.Vector3(localX, 3.55, localZ), quaternion, new THREE.Vector3(1, 1, 1));
+    trunks.setMatrixAt(index, matrix);
+    matrix.compose(new THREE.Vector3(localX, 7.25, localZ), quaternion, new THREE.Vector3(1 + (index % 2) * 0.18, 0.9, 1.08));
+    crowns.setMatrixAt(index, matrix);
+  });
+  trunks.castShadow = true;
+  crowns.castShadow = true;
+  plaza.add(trunks, crowns);
+
+  const seatPositions: Array<[number, number, number]> = [
+    [102, 192, 0], [106, 188, Math.PI / 2], [111, 195, 0], [116, 188, Math.PI / 2], [121, 193, 0],
+    [105, 198, 0], [114, 197, Math.PI / 2], [120, 188, 0], [124, 196, Math.PI / 2],
+  ];
+  const seats = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(3.6, 0.45, 1.35),
+    new THREE.MeshStandardMaterial({ color: 0x4f5960, roughness: 0.85 }),
+    seatPositions.length,
+  );
+  seatPositions.forEach(([x, z, yaw], index) => {
+    matrix.compose(
+      new THREE.Vector3(x - plazaCenter.x, 1.35, z - plazaCenter.y),
+      quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
+      new THREE.Vector3(1, 1, 1),
+    );
+    seats.setMatrixAt(index, matrix);
+  });
+  plaza.add(seats);
+  plaza.name = "Detailed Gould Plaza paving trees and seating";
+  scene.add(plaza);
+  return plaza;
+}
+
+function createCourantGarden(scene: THREE.Scene) {
+  const garden = new THREE.Group();
+  const bed = new THREE.Mesh(
+    new THREE.BoxGeometry(12.5, 0.24, 29),
+    new THREE.MeshStandardMaterial({ color: 0x6f765e, roughness: 1 }),
+  );
+  bed.position.set(166, 0.86, 236);
+  bed.rotation.y = -0.54;
+  bed.receiveShadow = true;
+  garden.add(bed);
+
+  const treePositions: Array<[number, number, number]> = [
+    [166, 221.5, 0.95], [171, 226, 1.12], [164, 230.5, 1.02], [170, 234.5, 1.18],
+    [162, 239, 0.96], [168, 243, 1.08], [160, 247.5, 0.9],
+  ];
+  const trunks = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.5, 0.72, 6.8, 7),
+    new THREE.MeshStandardMaterial({ color: 0x66513d, roughness: 1 }),
+    treePositions.length,
+  );
+  const crowns = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(4.1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x596b55, roughness: 1 }),
+    treePositions.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  treePositions.forEach(([x, z, scale], index) => {
+    matrix.compose(new THREE.Vector3(x, 4.35, z), quaternion, new THREE.Vector3(scale, 1, scale));
+    trunks.setMatrixAt(index, matrix);
+    matrix.compose(
+      new THREE.Vector3(x, 9 + (index % 3) * 0.45, z),
+      quaternion,
+      new THREE.Vector3(scale * (1 + (index % 2) * 0.12), scale * 1.05, scale),
+    );
+    crowns.setMatrixAt(index, matrix);
+  });
+  trunks.castShadow = true;
+  crowns.castShadow = true;
+  garden.add(trunks, crowns);
+  garden.name = "Courant Mercer Street garden and mature trees";
+  scene.add(garden);
+  return garden;
 }
 
 export default function Nyc3dMap() {
@@ -768,16 +1345,30 @@ export default function Nyc3dMap() {
     const logLoad = createLoadLogger();
     let disposed = false;
     let frame = 0;
+    const abortController = new AbortController();
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xe8e4d9);
     scene.fog = new THREE.Fog(0xe8e4d9, 920, 1700);
 
     const camera = new THREE.OrthographicCamera(-500, 500, 390, -390, 10, 3500);
-    const cameraTarget = PARK_CENTER.clone().add(new THREE.Vector3(0, 28, 0));
-    const cameraHeight = 560;
-    const cameraRadius = 630;
+    const overviewCameraTarget = PARK_CENTER.clone().add(new THREE.Vector3(0, 28, 0));
+    const cameraTarget = overviewCameraTarget.clone();
+    const desiredCameraTarget = cameraTarget.clone();
+    let cameraHeight = 560;
+    let cameraRadius = 630;
     let cameraAzimuth = 0;
+    let desiredCameraHeight = cameraHeight;
+    let desiredCameraRadius = cameraRadius;
+    let desiredCameraAzimuth = cameraAzimuth;
+    let desiredCameraZoom = 1;
+    let cameraLocked = false;
+    let cameraTransitioning = false;
+    let blockedZoomStartedAt = 0;
+    const blockedZoomOrigin = cameraTarget.clone();
+    const blockedZoomFocus = cameraTarget.clone();
+    let blockedZoomGestureActive = false;
+    let blockedZoomGestureReleaseTimer: number | undefined;
     const updateCamera = () => {
       camera.position.set(
         cameraTarget.x + Math.sin(cameraAzimuth) * cameraRadius,
@@ -793,13 +1384,19 @@ export default function Nyc3dMap() {
       powerPreference: "high-performance",
       stencil: true,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    const maximumPixelRatio = navigator.hardwareConcurrency <= 4 ? 1 : 1.25;
+    let activePixelRatio = Math.min(window.devicePixelRatio, maximumPixelRatio);
+    renderer.setPixelRatio(activePixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.94;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.domElement.className = "washington-canvas";
+    // The shadow casters are static apart from the short landmark hover lift.
+    // Avoid redrawing the full city shadow map on every ambient animation frame.
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
+    renderer.domElement.className = "washington-canvas is-loading";
     mount.appendChild(renderer.domElement);
     logLoad("Renderer ready", {
       pixelRatio: renderer.getPixelRatio(),
@@ -810,16 +1407,29 @@ export default function Nyc3dMap() {
     const sun = new THREE.DirectionalLight(0xffdca8, 1.4);
     sun.position.copy(PARK_CENTER).add(new THREE.Vector3(-720, 1080, 460));
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -850;
-    sun.shadow.camera.right = 850;
-    sun.shadow.camera.top = 850;
-    sun.shadow.camera.bottom = -850;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -560;
+    sun.shadow.camera.right = 560;
+    sun.shadow.camera.top = 560;
+    sun.shadow.camera.bottom = -560;
     sun.shadow.bias = -0.00015;
     sun.shadow.radius = 6;
     scene.add(sun);
     const skyTravelers = createSkyTravelers(scene);
     const ambientAnimations: AmbientAnimation[] = [];
+    const clickableLandmarks: ClickableLandmark[] = [];
+    const landmarkByRoot = new Map<THREE.Object3D, ClickableLandmark>();
+    const raycastRoots: THREE.Object3D[] = [];
+    const registerClickableLandmark = (root: THREE.Object3D) => {
+      const glow = createBuildingGlow(root);
+      root.add(glow);
+      scene.add(root);
+      const landmark = { root, glow, baseY: root.position.y, hovered: false, selected: false };
+      clickableLandmarks.push(landmark);
+      landmarkByRoot.set(root, landmark);
+      raycastRoots.push(root);
+      renderer.shadowMap.needsUpdate = true;
+    };
     const timer = new THREE.Timer();
     timer.connect(document);
 
@@ -837,38 +1447,97 @@ export default function Nyc3dMap() {
     scene.add(ground);
 
     logLoad("Data requests started");
-    Promise.all([
-      fetch("/data/washington-square-citygml.json"),
-      fetch("/data/washington-square-planimetrics.json"),
-      fetch("/data/washington-square-park.json"),
-    ])
-      .then(async ([cityResponse, planimetricsResponse, parkResponse]) => {
-        if (!cityResponse.ok) throw new Error(`CityGML request failed (${cityResponse.status})`);
-        if (!planimetricsResponse.ok) throw new Error(`Planimetrics request failed (${planimetricsResponse.status})`);
-        if (!parkResponse.ok) throw new Error(`Park data request failed (${parkResponse.status})`);
-        logLoad("Data responses received", {
-          cityBytes: Number(cityResponse.headers.get("content-length")) || null,
-          planimetricsBytes: Number(planimetricsResponse.headers.get("content-length")) || null,
-          parkBytes: Number(parkResponse.headers.get("content-length")) || null,
-        });
-        return Promise.all([
-          cityResponse.json() as Promise<WashingtonCityGmlData>,
+    void (async () => {
+      try {
+        const requests = [
+          fetch("/models/washington-city/manifest.json", { signal: abortController.signal }),
+          fetch("/models/washington-city/runtime.json", { signal: abortController.signal }),
+          fetch("/data/washington-square-planimetrics.json", { signal: abortController.signal }),
+          fetch("/data/washington-square-park.json", { signal: abortController.signal }),
+        ];
+        const [manifestResponse, runtimeResponse, planimetricsResponse, parkResponse] = await Promise.all(requests);
+        for (const response of [manifestResponse, runtimeResponse, planimetricsResponse, parkResponse]) {
+          if (!response.ok) throw new Error(`${response.url} failed (${response.status})`);
+        }
+        const [manifest, runtime, planimetrics, park] = await Promise.all([
+          manifestResponse.json() as Promise<WashingtonCityManifest>,
+          runtimeResponse.json() as Promise<WashingtonCityRuntimeData>,
           planimetricsResponse.json() as Promise<WashingtonPlanimetricsData>,
           parkResponse.json() as Promise<WashingtonParkData>,
         ]);
-      })
-      .then(([data, planimetrics, park]) => {
         if (disposed) return;
-        logLoad("JSON parsed", {
-          buildings: data.buildings.length,
+        logLoad("Runtime data parsed", {
+          buildings: manifest.buildingCount,
+          footprints: runtime.footprints.length,
+          tiles: manifest.tiles.length,
           roadbeds: planimetrics.roadbeds.length,
-          parkPaths: park.paths.length,
         });
+        // Begin the nearest city-tile downloads before the synchronous route and
+        // landmark construction below. Network/decode work can overlap that CPU
+        // phase instead of sitting behind it in the startup waterfall.
+        const orderedTiles = [...manifest.tiles].sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
+        let loadedTiles = 0;
+        const loadTile = async (tile: WashingtonCityManifest["tiles"][number]) => {
+          const gltf = await loadGlb(`/models/washington-city/${tile.file}?v=${manifest.version}`, abortController.signal);
+          if (disposed) return;
+          gltf.scene.traverse((object) => {
+            if (!(object instanceof THREE.Mesh)) return;
+            object.receiveShadow = true;
+            object.castShadow = Math.hypot(tile.x, tile.z) < 330 && object.name === "wall";
+            object.frustumCulled = true;
+          });
+          scene.add(gltf.scene);
+          renderer.shadowMap.needsUpdate = true;
+          loadedTiles += 1;
+        };
+        const cityTilesReady = (async () => {
+          for (let index = 0; index < orderedTiles.length; index += 6) {
+            await Promise.all(orderedTiles.slice(index, index + 6).map(loadTile));
+            if (disposed) return;
+            if (index === 0) {
+              setStatus("");
+              requestAnimationFrame(() => renderer.domElement.classList.replace("is-loading", "is-ready"));
+              logLoad("First city tiles ready", { loadedTiles });
+            }
+            await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+          }
+          logLoad("All city tiles ready", {
+            loadedTiles,
+            calls: renderer.info.render.calls,
+            triangles: renderer.info.render.triangles,
+            geometries: renderer.info.memory.geometries,
+          });
+        })();
+        const parkTrees = createWashingtonSquareTrees(park);
+        scene.add(parkTrees.group);
         ambientAnimations.push(
-          createPedestrians(scene, data, planimetrics),
-          createTraffic(scene, data, planimetrics),
+          createPedestrians(scene, runtime.footprints, planimetrics, park.fountain, parkTrees.footprints),
+          createTraffic(scene, runtime.footprints, planimetrics),
         );
-        createLiptonWindows(scene, data);
+        const landmarkDetails = createLandmarkDetails(runtime.details);
+        const liptonSource = createInteractiveBuildingGroup(runtime.details, ["1008875"], "Lipton Hall source geometry");
+        const courantSource = createInteractiveBuildingGroup(runtime.details, ["1008627"], "Courant source geometry");
+        const sternSource = createInteractiveBuildingGroup(runtime.details, ["1078952", "1077346"], "Stern source geometry");
+        const liptonDetails = landmarkDetails.get("1008875");
+        if (liptonDetails) liptonSource.add(liptonDetails);
+        const courantDetails = landmarkDetails.get("1008627");
+        if (courantDetails) courantSource.add(courantDetails);
+        for (const id of ["1078952", "1077346"]) {
+          const details = landmarkDetails.get(id);
+          if (details) sternSource.add(details);
+        }
+        sternSource.add(createSternRotundaDetails());
+        const lipton = bakeLandmarkAsSingleMesh(liptonSource, "Clickable merged Lipton Hall");
+        const courant = bakeLandmarkAsSingleMesh(courantSource, "Clickable merged Courant Institute");
+        const stern = bakeLandmarkAsSingleMesh(sternSource, "Clickable merged Stern building pair");
+        registerClickableLandmark(lipton);
+        registerClickableLandmark(courant);
+        registerClickableLandmark(stern);
+        createGouldPlaza(scene);
+        createCourantGarden(scene);
+        for (const [id, details] of landmarkDetails) {
+          if (!["1008875", "1008627", "1077346", "1078952"].includes(id)) scene.add(details);
+        }
         logLoad("Ambient geometry ready");
         const roadSurfaces: CityGmlSurface[] = planimetrics.roadbeds.map((roadbed) => ({
           kind: "ground",
@@ -904,81 +1573,30 @@ export default function Nyc3dMap() {
         ));
         logLoad("Road and park geometry ready");
         if (park.fountain) {
-          const fountainSurface: CityGmlSurface = {
-            kind: "ground",
-            ring: park.fountain.ring.map(([x, z]) => [x, 0.8, z]),
-            holes: [],
-          };
-          const fountain = new THREE.Mesh(
-            makeSurfaceGeometry([fountainSurface]),
-            new THREE.MeshStandardMaterial({ color: 0xb8c2c0, roughness: 0.9, side: THREE.DoubleSide }),
-          );
-          fountain.name = "OpenStreetMap Washington Square fountain footprint";
-          scene.add(fountain);
+          const fountain = createSimpleFountain(park.fountain);
+          scene.add(fountain.group);
+          ambientAnimations.push(fountain.animation);
         }
-        if (park.arch) {
-          loadBlenderArch(park.arch, (arch) => {
-            if (disposed) {
-              arch.traverse((object) => {
-                if (object instanceof THREE.Mesh) object.geometry.dispose();
-              });
-              return;
-            }
-            scene.add(arch);
-          }, () => {
-            if (!disposed) scene.add(createSimpleArch(
-              park.arch!,
-              new THREE.MeshStandardMaterial({ color: 0xf1ede4, roughness: 0.86 }),
-            ));
+        if (park.arch) void loadBlenderArch(park.arch, abortController.signal)
+          .then((arch) => { if (!disposed) scene.add(arch); })
+          .catch((error) => {
+            if (!disposed && error.name !== "AbortError") scene.add(createSimpleArch(park.arch!, new THREE.MeshStandardMaterial({ color: 0xf1ede4, roughness: 0.86 })));
           });
-        }
+        void loadBobstLibrary(abortController.signal)
+          .then((bobst) => {
+            if (!disposed) {
+              registerClickableLandmark(bobst);
+            }
+          })
+          .catch((error) => { if (error.name !== "AbortError") console.warn(LOAD_LOG_PREFIX, "Bobst GLB failed", error); });
 
-        const surfaces: Record<SurfaceKind, CityGmlSurface[]> = { ground: [], roof: [], wall: [] };
-        const bobstFallback: Record<SurfaceKind, CityGmlSurface[]> = { ground: [], roof: [], wall: [] };
-        for (const building of data.buildings) {
-          if (building.bin === "1088400") continue;
-          const id = building.bin ?? building.doittId ?? building.sourceId ?? "building";
-          for (const surface of building.surfaces) {
-            const target = id === BOBST_BIN ? bobstFallback : surfaces;
-            target[surface.kind].push({ ...surface, color: buildingColor(id, surface.kind) });
-          }
-        }
-        const materials: Record<SurfaceKind, THREE.MeshStandardMaterial> = {
-          roof: new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
-          wall: new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
-          ground: new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
-        };
-        for (const kind of ["ground", "wall", "roof"] as const) {
-          const mesh = new THREE.Mesh(makeSurfaceGeometry(surfaces[kind]), materials[kind]);
-          mesh.castShadow = kind !== "ground";
-          mesh.receiveShadow = true;
-          mesh.name = `NYC CityGML ${kind} surfaces`;
-          scene.add(mesh);
-        }
-        logLoad("CityGML geometry ready", {
-          groundSurfaces: surfaces.ground.length,
-          wallSurfaces: surfaces.wall.length,
-          roofSurfaces: surfaces.roof.length,
-        });
-        loadBobstLibrary((bobst) => {
-          if (!disposed) scene.add(bobst);
-        }, () => {
-          if (disposed) return;
-          for (const kind of ["ground", "wall", "roof"] as const) {
-            const mesh = new THREE.Mesh(makeSurfaceGeometry(bobstFallback[kind]), materials[kind]);
-            mesh.castShadow = kind !== "ground";
-            mesh.receiveShadow = true;
-            mesh.name = `Bobst CityGML ${kind} fallback`;
-            scene.add(mesh);
-          }
-        });
-        setStatus("");
-        logLoad("Scene ready");
-      })
-      .catch((error: Error) => {
+        await cityTilesReady;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
         console.error(LOAD_LOG_PREFIX, "Scene load failed", error);
-        setStatus(error.message);
-      });
+        setStatus(error instanceof Error ? error.message : "Scene load failed");
+      }
+    })();
 
     const resize = () => {
       if (!mount.clientWidth || !mount.clientHeight) return;
@@ -995,21 +1613,127 @@ export default function Nyc3dMap() {
     observer.observe(mount);
     resize();
 
+    let isIntersecting = true;
+    let animationRunning = false;
+    const shouldAnimate = () => isIntersecting && document.visibilityState === "visible" && !disposed;
+    const startAnimation = () => {
+      if (animationRunning || !shouldAnimate()) return;
+      animationRunning = true;
+      timer.reset();
+      frame = requestAnimationFrame(animate);
+    };
+    const intersectionObserver = new IntersectionObserver(([entry]) => {
+      isIntersecting = entry.isIntersecting;
+      if (shouldAnimate()) startAnimation();
+      else {
+        cancelAnimationFrame(frame);
+        animationRunning = false;
+      }
+    }, { threshold: 0.01 });
+    intersectionObserver.observe(mount);
+    const handleVisibility = () => {
+      if (shouldAnimate()) startAnimation();
+      else {
+        cancelAnimationFrame(frame);
+        animationRunning = false;
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const pointerPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const pointerWorld = new THREE.Vector3();
+    const updatePointerRay = (event: { clientX: number; clientY: number }) => {
+      const bounds = renderer.domElement.getBoundingClientRect();
+      pointer.set(
+        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(pointer, camera);
+    };
+    const landmarkAtPointer = (event: { clientX: number; clientY: number }) => {
+      updatePointerRay(event);
+      const intersections = raycaster.intersectObjects(raycastRoots, true);
+      for (const intersection of intersections) {
+        let object: THREE.Object3D | null = intersection.object;
+        while (object) {
+          const landmark = landmarkByRoot.get(object);
+          if (landmark) return landmark;
+          object = object.parent;
+        }
+      }
+      return null;
+    };
+    const selectLandmark = (landmark: ClickableLandmark) => {
+      clickableLandmarks.forEach((candidate) => { candidate.selected = candidate === landmark; });
+      landmark.root.updateWorldMatrix(true, true);
+      const center = new THREE.Box3().setFromObject(landmark.root).getCenter(new THREE.Vector3());
+      desiredCameraTarget.set(center.x, Math.max(18, center.y * 0.72), center.z);
+      const isBobst = landmark.root.name.includes("Bobst");
+      const isLipton = landmark.root.name.includes("Lipton");
+      const isCourant = landmark.root.name.includes("Courant");
+      const isStern = landmark.root.name.includes("Stern");
+      if (isCourant) desiredCameraTarget.add(new THREE.Vector3(-10, 0, -24));
+      desiredCameraAzimuth = isCourant
+        ? 0
+        : isStern ? Math.PI / 2 + 0.42
+          : isBobst ? Math.PI - 0.42 : 0;
+      desiredCameraHeight = isLipton ? 273 : isStern ? 252 : 210;
+      desiredCameraRadius = isLipton ? 285 : 365;
+      desiredCameraZoom = 2.41;
+      cameraLocked = true;
+      cameraTransitioning = true;
+      blockedZoomStartedAt = 0;
+    };
+    const clearLandmarkSelection = () => {
+      clickableLandmarks.forEach((landmark) => {
+        landmark.selected = false;
+        landmark.hovered = false;
+      });
+      desiredCameraTarget.copy(overviewCameraTarget);
+      desiredCameraAzimuth = 0;
+      desiredCameraHeight = 560;
+      desiredCameraRadius = 630;
+      desiredCameraZoom = 1;
+      cameraLocked = false;
+      cameraTransitioning = true;
+      blockedZoomStartedAt = 0;
+      renderer.domElement.style.cursor = "default";
+    };
+
     let dragging = false;
     let pointerX = 0;
+    let pointerDownX = 0;
+    let pointerDownY = 0;
+    let pointerMoved = false;
     const pointerDown = (event: PointerEvent) => {
-      dragging = true;
+      dragging = !cameraLocked;
       pointerX = event.clientX;
+      pointerDownX = event.clientX;
+      pointerDownY = event.clientY;
+      pointerMoved = false;
       renderer.domElement.setPointerCapture(event.pointerId);
-      renderer.domElement.classList.add("is-dragging");
+      if (dragging) renderer.domElement.classList.add("is-dragging");
     };
     const pointerMove = (event: PointerEvent) => {
-      if (!dragging) return;
-      cameraAzimuth -= (event.clientX - pointerX) * 0.005;
-      pointerX = event.clientX;
-      updateCamera();
+      pointerMoved ||= Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY) > 5;
+      if (dragging) {
+        cameraAzimuth -= (event.clientX - pointerX) * 0.005;
+        desiredCameraAzimuth = cameraAzimuth;
+        pointerX = event.clientX;
+        updateCamera();
+        return;
+      }
+      const hovered = landmarkAtPointer(event);
+      clickableLandmarks.forEach((landmark) => { landmark.hovered = landmark === hovered; });
+      renderer.domElement.style.cursor = hovered ? "pointer" : "default";
     };
     const pointerUp = (event: PointerEvent) => {
+      if (!pointerMoved) {
+        const landmark = landmarkAtPointer(event);
+        if (landmark) selectLandmark(landmark);
+      }
       dragging = false;
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       renderer.domElement.classList.remove("is-dragging");
@@ -1018,12 +1742,113 @@ export default function Nyc3dMap() {
     renderer.domElement.addEventListener("pointermove", pointerMove);
     renderer.domElement.addEventListener("pointerup", pointerUp);
     renderer.domElement.addEventListener("pointercancel", pointerUp);
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && cameraLocked) clearLandmarkSelection();
+    };
+    const wheel = (event: WheelEvent) => {
+      if (cameraLocked) {
+        if (event.deltaY > 0) {
+          event.preventDefault();
+          clearLandmarkSelection();
+        }
+        return;
+      }
+      if (event.deltaY >= 0) return;
+      event.preventDefault();
+      const hovered = landmarkAtPointer(event);
+      if (hovered) {
+        selectLandmark(hovered);
+        return;
+      }
+      const isFirstEventInGesture = !blockedZoomGestureActive;
+      blockedZoomGestureActive = true;
+      window.clearTimeout(blockedZoomGestureReleaseTimer);
+      blockedZoomGestureReleaseTimer = window.setTimeout(() => {
+        blockedZoomGestureActive = false;
+      }, WHEEL_GESTURE_SETTLE_MS);
+      if (isFirstEventInGesture) {
+        updatePointerRay(event);
+        blockedZoomOrigin.copy(cameraTarget);
+        if (raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) {
+          blockedZoomFocus.copy(pointerWorld).setY(cameraTarget.y);
+        } else {
+          blockedZoomFocus.copy(cameraTarget);
+        }
+        blockedZoomStartedAt = performance.now();
+      }
+    };
+    window.addEventListener("keydown", keyDown);
+    renderer.domElement.addEventListener("wheel", wheel, { passive: false });
 
-    const animate = () => {
+    let previousRender = 0;
+    let renderSamples = 0;
+    let renderCostTotal = 0;
+    function animate(now = performance.now()) {
+      if (!shouldAnimate()) {
+        animationRunning = false;
+        return;
+      }
       frame = requestAnimationFrame(animate);
+      if (!dragging && now - previousRender < 1000 / 30) return;
+      previousRender = now;
       timer.update();
       const delta = Math.min(timer.getDelta(), 0.05);
       const elapsed = timer.getElapsed();
+      const interactionEase = 1 - Math.exp(-delta * 9);
+      const selectedLandmark = clickableLandmarks.find((landmark) => landmark.selected);
+      for (const landmark of clickableLandmarks) {
+        const lift = !landmark.selected && landmark.hovered ? 4.5 : 0;
+        const previousY = landmark.root.position.y;
+        landmark.root.position.y = THREE.MathUtils.lerp(
+          landmark.root.position.y,
+          landmark.baseY + lift,
+          interactionEase,
+        );
+        if (Math.abs(landmark.root.position.y - previousY) > 0.001) renderer.shadowMap.needsUpdate = true;
+        const glowMaterial = (landmark.glow.children[0] as THREE.Mesh | undefined)?.material;
+        if (glowMaterial instanceof THREE.MeshBasicMaterial) {
+          const enchantmentWave = 0.5 + Math.sin(elapsed * 3.4 + landmark.baseY * 0.17) * 0.5;
+          const enchantmentHue = 0.56 + Math.sin(elapsed * 0.85 + landmark.baseY * 0.11) * 0.095;
+          glowMaterial.color.setHSL(enchantmentHue, 0.72, 0.72);
+          const glowSuppressed = selectedLandmark && selectedLandmark !== landmark;
+          glowMaterial.opacity = THREE.MathUtils.lerp(
+            glowMaterial.opacity,
+            glowSuppressed
+              ? 0
+              : (landmark.hovered || landmark.selected ? 0.18 : 0.1) + enchantmentWave * 0.12,
+            interactionEase,
+          );
+        }
+      }
+      if (cameraTransitioning) {
+        cameraTarget.lerp(desiredCameraTarget, interactionEase);
+        cameraAzimuth = THREE.MathUtils.lerp(cameraAzimuth, desiredCameraAzimuth, interactionEase);
+        cameraHeight = THREE.MathUtils.lerp(cameraHeight, desiredCameraHeight, interactionEase);
+        cameraRadius = THREE.MathUtils.lerp(cameraRadius, desiredCameraRadius, interactionEase);
+        camera.zoom = THREE.MathUtils.lerp(camera.zoom, desiredCameraZoom, interactionEase);
+        camera.updateProjectionMatrix();
+        updateCamera();
+        if (
+          cameraTarget.distanceTo(desiredCameraTarget) < 0.05
+          && Math.abs(cameraAzimuth - desiredCameraAzimuth) < 0.0005
+          && Math.abs(cameraHeight - desiredCameraHeight) < 0.05
+          && Math.abs(cameraRadius - desiredCameraRadius) < 0.05
+          && Math.abs(camera.zoom - desiredCameraZoom) < 0.0005
+        ) cameraTransitioning = false;
+      }
+      if (blockedZoomStartedAt) {
+        const progress = Math.min(1, (now - blockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
+        const pulse = Math.sin(progress * Math.PI);
+        camera.zoom = 1 + pulse * (BLOCKED_ZOOM_SCALE - 1);
+        cameraTarget.copy(blockedZoomOrigin).lerp(blockedZoomFocus, pulse * 0.035);
+        camera.updateProjectionMatrix();
+        updateCamera();
+        if (progress >= 1) {
+          cameraTarget.copy(blockedZoomOrigin);
+          updateCamera();
+          blockedZoomStartedAt = 0;
+        }
+      }
       for (const traveler of skyTravelers) {
         const span = traveler.endX - traveler.startX;
         traveler.group.position.x = traveler.startX
@@ -1032,18 +1857,41 @@ export default function Nyc3dMap() {
         traveler.flap?.(elapsed);
       }
       ambientAnimations.forEach((animation) => animation.update(elapsed));
+      const renderStarted = performance.now();
       renderer.render(scene, camera);
-    };
-    animate();
+      renderCostTotal += performance.now() - renderStarted;
+      renderSamples += 1;
+      if (renderSamples === 120) {
+        const averageRenderMs = renderCostTotal / renderSamples;
+        const targetPixelRatio = averageRenderMs > 18
+          ? Math.max(0.75, activePixelRatio - 0.25)
+          : averageRenderMs < 8 ? Math.min(maximumPixelRatio, activePixelRatio + 0.25) : activePixelRatio;
+        if (targetPixelRatio !== activePixelRatio) {
+          activePixelRatio = targetPixelRatio;
+          renderer.setPixelRatio(activePixelRatio);
+          resize();
+          logLoad("Adaptive resolution changed", { pixelRatio: activePixelRatio, averageRenderMs: Math.round(averageRenderMs * 10) / 10 });
+        }
+        renderSamples = 0;
+        renderCostTotal = 0;
+      }
+    }
+    startAnimation();
 
     return () => {
       disposed = true;
+      abortController.abort();
       cancelAnimationFrame(frame);
+      window.clearTimeout(blockedZoomGestureReleaseTimer);
       observer.disconnect();
+      intersectionObserver.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
       renderer.domElement.removeEventListener("pointermove", pointerMove);
       renderer.domElement.removeEventListener("pointerup", pointerUp);
       renderer.domElement.removeEventListener("pointercancel", pointerUp);
+      window.removeEventListener("keydown", keyDown);
+      renderer.domElement.removeEventListener("wheel", wheel);
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           object.geometry.dispose();
