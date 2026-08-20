@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
+  // The map owns a long-lived imperative WebGL scene. React's development-only
+  // Strict Mode remount tears down the first canvas and immediately creates a
+  // second one, making large startup layers such as the rivers visibly flash.
+  reactStrictMode: false,
   async headers() {
     return [
       {

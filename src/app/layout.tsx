@@ -17,7 +17,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <link
           rel="preload"
-          href="/models/washington-roads.glb?v=2026-08-19-union-gramercy"
+          href="/models/manhattan-roads.glb?v=2026-08-20-manhattan-roads-2600-v1"
           as="fetch"
           type="model/gltf-binary"
           crossOrigin="anonymous"

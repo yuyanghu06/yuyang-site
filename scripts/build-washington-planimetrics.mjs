@@ -2,10 +2,11 @@ import { writeFile } from "node:fs/promises";
 
 const ORIGIN = [-73.99733, 40.73082];
 const METERS_PER_LONGITUDE = 111320 * Math.cos((ORIGIN[1] * Math.PI) / 180);
-// One shared road crop covers both Washington Square and Union Square views.
-const BOUNDS = { north: 40.742, west: -74.009, south: 40.721, east: -73.982 };
+// Cover the complete 5.2 km overview datum so roads do not terminate inside
+// the visible ground plane, even where the radial CityGML crop has no tiles.
+const BOUNDS = { north: 40.75418, west: -74.028, south: 40.70746, east: -73.96665 };
 const ROADBED_DATASET = "i36f-5ih7";
-const OUTPUT = "public/data/washington-square-planimetrics.json";
+const OUTPUT = "public/data/manhattan-planimetrics.json";
 
 function project([longitude, latitude]) {
   return [
@@ -33,7 +34,7 @@ function polygons(geometry) {
 
 const where = `within_box(the_geom,${BOUNDS.north},${BOUNDS.west},${BOUNDS.south},${BOUNDS.east})`;
 const url = new URL(`https://data.cityofnewyork.us/resource/${ROADBED_DATASET}.geojson`);
-url.searchParams.set("$limit", "5000");
+url.searchParams.set("$limit", "50000");
 url.searchParams.set("$where", where);
 const response = await fetch(url);
 if (!response.ok) throw new Error(`NYC Roadbed request failed (${response.status})`);

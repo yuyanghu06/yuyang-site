@@ -5,7 +5,7 @@ const METERS_PER_LONGITUDE = 111320 * Math.cos((ORIGIN[1] * Math.PI) / 180);
 const PARK_BOUNDS = { north: 40.73265, west: -74.001, south: 40.7289, east: -73.99535 };
 const MAP_BOUNDS = `${PARK_BOUNDS.west},${PARK_BOUNDS.south},${PARK_BOUNDS.east},${PARK_BOUNDS.north}`;
 const OUTPUT = "public/data/washington-square-park.json";
-const roadbeds = JSON.parse(await readFile("public/data/washington-square-planimetrics.json", "utf8")).roadbeds;
+const roadbeds = JSON.parse(await readFile("public/data/manhattan-planimetrics.json", "utf8")).roadbeds;
 
 function pointInRing([x, y], ring) {
   let inside = false;

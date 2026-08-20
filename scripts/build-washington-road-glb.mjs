@@ -13,7 +13,7 @@ class NodeFileReader {
 }
 globalThis.FileReader ??= NodeFileReader;
 
-const source = JSON.parse(await fs.readFile("public/data/washington-square-planimetrics.json", "utf8"));
+const source = JSON.parse(await fs.readFile("public/data/manhattan-planimetrics.json", "utf8"));
 const positions = []; const indices = [];
 for (const roadbed of source.roadbeds) {
   const rings = [roadbed.ring, ...roadbed.holes];
@@ -29,7 +29,7 @@ geometry.setIndex(indices); geometry.computeVertexNormals();
 const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x6f6a61, roughness: 1, side: THREE.DoubleSide }));
 mesh.name = "Pretriangulated NYC 2022 planimetric roadbeds";
 const output = await new GLTFExporter().parseAsync(mesh, { binary: true, onlyVisible: true });
-const destination = "public/models/washington-roads.glb";
+const destination = "public/models/manhattan-roads.glb";
 await fs.writeFile(destination, Buffer.from(output));
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });

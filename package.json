@@ -13,8 +13,11 @@
     "data:washington-city-tiles": "node scripts/build-washington-city-tiles.mjs",
     "data:washington-planimetrics": "node scripts/build-washington-planimetrics.mjs",
     "data:washington-roads": "node scripts/build-washington-road-glb.mjs",
+    "data:ambient-layout": "node scripts/build-ambient-layout.mjs",
     "data:washington-park": "node scripts/build-washington-park.mjs",
-    "data:union-park": "node scripts/build-union-square-park.mjs"
+    "data:union-park": "node scripts/build-union-square-park.mjs",
+    "data:hudson-waterfront": "node scripts/build-hudson-waterfront.mjs",
+    "data:manhattan-parks": "node scripts/build-manhattan-parks.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
