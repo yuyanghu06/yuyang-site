@@ -1,6 +1,6 @@
 # Current Project Milestone
 
-Last updated: 2026-08-19 17:22 PDT
+Last updated: 2026-08-19 17:23 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
@@ -22,6 +22,7 @@ The previous multi-scale atlas and Manhattan camera sequence have been retired. 
 - Mapped crosswalks use seven clearly separated, unlit warm-white zebra bars with greater length, spacing, thickness, and elevation so the stripes remain individually legible at the map camera distance.
 - Crosswalks now come from tagged OSM `highway=crossing` nodes and inherit their orientation from connected footway geometry; all earlier hand-estimated crossing coordinates were removed.
 - The downloadable CC BY Sketchfab scene `Washington Square Park v03` by `nyu_grad_alley_2020` is now imported into `assets/blender/nyu-custom-buildings.blend` as the style source for Bobst, Courant, and Stern. Bobst's missing rear wall has been closed with a cleaned mirror of its modeled five-bay front facade, retaining the source masonry, glazing, and opening materials without duplicating side-wall trim.
+- Corrected Bobst is exported as the 127 KiB `public/models/bobst-library.glb`, replaces CityGML BIN `1008626`, and is scaled to its authoritative footprint and height. Its yaw follows the long Washington Square South facade edge; a CityGML-only fallback remains for GLB load failure.
 - The orthographic camera uses a tighter crop and a 30% lower elevation. Horizontal click/touch dragging rotates around Washington Square; pan, wheel zoom, pinch zoom, and alternate view navigation remain disabled.
 - Previous generated style-reference images and the former Manhattan view hierarchy are no longer authoritative for the new implementation.
 
@@ -46,13 +47,15 @@ The previous multi-scale atlas and Manhattan camera sequence have been retired. 
 - Sixteen small birds are dispersed across independent overhead lanes, including two near-camera lanes that cover the lower-left projection, with animated wing flaps, gentle vertical drift, varied scale and speed, and seamless off-frame wraparound. White birds use the original long-winged silhouette; gray birds use a distinct pigeon model with a rounder body and head, short tan beak, broad wings, and compact tail.
 - A deterministic ambient population adds 300 low-detail instanced pedestrians across non-road, non-building ground. Every complete circular walking route is sampled with clearance probes against road and CityGML building footprints before acceptance; walkers use varied clothing, orientation changes, and a subtle bob while remaining only two render draws.
 - One hundred low-detail instanced cars use verified straight routes along the principal axes of elongated official roadbed polygons. Center and side probes across every route remain within the source road polygon, outside holes, and clear of CityGML footprints; car geometry is aligned to its travel vector. Exactly every third vehicle is taxi yellow.
+- Pedestrian and traffic route validation now uses a 64-meter spatial footprint index instead of scanning roughly 3,000 CityGML footprints for every clearance probe. This removes the multi-billion-check client startup path that could freeze the page and cause severe allocation pressure.
+- Structured `[WashingtonSquare load]` client logs report elapsed time, payload sizes, dataset counts, geometry phases, Arch/Bobst GLB completion, and load failures. Three.js `Timer` and `PCFShadowMap` replace the deprecated `Clock` and `PCFSoftShadowMap` APIs.
 - `public/data/washington-square-citygml.json` is a tracked 9.35 MiB crop of official NYC CityGML delivery area 12: 3,090 buildings, 59,414 surfaces, and 293,642 vertices within 680 meters of Washington Square.
 - `public/data/washington-square-planimetrics.json` contains 555 tracked roadbed polygons from the official NYC 2022 Planimetric Database, providing measured road shapes and widths.
 - `public/data/washington-square-addresses.json` joins current NYC Property Address Directory 26B records to CityGML buildings by BIN: 3,007 matched BINs and 4,152 unique addresses.
 - Complete downloads and temporary conversion files are gitignored under `data/raw/` and `data/work/`; only cropped runtime data is tracked.
 - Repeatable data scripts are `scripts/extract-washington-citygml.py`, `scripts/build-washington-address-index.py`, and `scripts/build-washington-planimetrics.mjs`.
 - `scripts/build-washington-park.mjs` reproducibly crops OSM park paths, the fountain, and the Washington Square Arch footprint into tracked `public/data/washington-square-park.json` under the ODbL.
-- `TODO.md` records the later cleanup of obsolete prototypes and local source data after this pipeline stabilizes.
+- `TODO.md` records later prototype cleanup and a future indexable personal blog intended to strengthen Yuyang's name SEO through author schema, canonical metadata, sitemap/RSS, social previews, and sustainable article publishing.
 - The old atlas, Manhattan overview, Washington/Union joint view, Union Square view, camera transitions, pins, and interactive camera controls are absent from the runtime.
 - ESLint and the optimized production build passed after the lighting, palette, camera, and rotation changes. The subsequent camera-height and road-color adjustments are minimal constant-only changes.
 - The working tree contains uncommitted prototype files.
@@ -62,6 +65,6 @@ The previous multi-scale atlas and Manhattan camera sequence have been retired. 
 1. Visually review the warm, rotatable CityGML and planimetric roadbed scene, including the scale, visibility, density, and speed of the dispersed white birds.
 2. Visually review the new OSM hardscape alignment and tune path widths/material contrast without adding greenery yet.
 3. Build Courant/Warren Weaver Hall and the Stern complex in Blender using Bobst's simplified geometry, material depth, and facade density as the shared style target.
-4. Isolate, optimize, export, and georeference the corrected Bobst model from the Blender source, replacing its CityGML shell in the runtime.
+4. Visually verify corrected Bobst scale, position, and street-edge rotation in the live map.
 5. Refine the new warm material, shadow, road contrast, and background treatment from user feedback.
 6. Expand beyond Washington Square only after this small study is approved.
