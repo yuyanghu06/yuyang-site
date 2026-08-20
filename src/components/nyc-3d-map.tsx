@@ -49,7 +49,7 @@ interface WashingtonParkData {
   parkRings?: Array<Array<[number, number]>>;
 }
 
-const SHARED_DATA_VERSION = "2026-08-19-union-gramercy";
+const SHARED_DATA_VERSION = "2026-08-19-union-gramercy-green-v2";
 
 function isAbortError(error: unknown) {
   return typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
@@ -278,8 +278,11 @@ function createParkPaths(
   return mesh;
 }
 
-function createWashingtonSquareTrees(park: WashingtonParkData) {
-  const random = seededRandom(0x7ee5_2026);
+function createParkTrees(
+  park: WashingtonParkData,
+  { count, seed, label }: { count: number; seed: number; label: string },
+) {
+  const random = seededRandom(seed);
   const positions: Array<{
     x: number;
     z: number;
@@ -290,6 +293,13 @@ function createWashingtonSquareTrees(park: WashingtonParkData) {
   }> = [];
   const crownPalette = [0x91ad72, 0xa5bf82, 0x7f9d67, 0xb2c990, 0x8eaa70];
   const parkRings = park.parkRings ?? [];
+  const parkPoints = parkRings.flat();
+  const bounds = parkPoints.length > 0 ? {
+    minX: Math.min(...parkPoints.map(([x]) => x)),
+    maxX: Math.max(...parkPoints.map(([x]) => x)),
+    minZ: Math.min(...parkPoints.map(([, z]) => z)),
+    maxZ: Math.max(...parkPoints.map(([, z]) => z)),
+  } : { minX: 0, maxX: 0, minZ: 0, maxZ: 0 };
   const crownGeometryRadius = 4.1;
   const boundarySafetyMargin = 0.6;
   const distanceToSegment = (x: number, z: number, from: [number, number], to: [number, number]) => {
@@ -303,7 +313,10 @@ function createWashingtonSquareTrees(park: WashingtonParkData) {
     from: path.points[index],
     to: point,
     clearance: Math.min(path.width, 6) / 2 + 4.4,
-  }))).filter(({ from, to }) => Math.hypot(from[0], from[1]) < 230 || Math.hypot(to[0], to[1]) < 230);
+  }))).filter(({ from, to }) => [from, to].some(([x, z]) => (
+    x >= bounds.minX - 12 && x <= bounds.maxX + 12
+    && z >= bounds.minZ - 12 && z <= bounds.maxZ + 12
+  )));
   const fountainCenter = park.fountain
     ? park.fountain.ring.reduce((sum, [x, z]) => [sum[0] + x, sum[1] + z] as [number, number], [0, 0] as [number, number])
       .map((value) => value / park.fountain!.ring.length) as [number, number]
@@ -316,9 +329,9 @@ function createWashingtonSquareTrees(park: WashingtonParkData) {
       .map((value) => value / (park.arch!.footprint.length - 1)) as [number, number]
     : [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY] as [number, number];
 
-  for (let attempt = 0; positions.length < 88 && attempt < 12000; attempt += 1) {
-    const x = (random() - 0.5) * 310;
-    const z = (random() - 0.5) * 285 + 10;
+  for (let attempt = 0; positions.length < count && attempt < count * 240; attempt += 1) {
+    const x = THREE.MathUtils.lerp(bounds.minX, bounds.maxX, random());
+    const z = THREE.MathUtils.lerp(bounds.minZ, bounds.maxZ, random());
     const isTall = random() < 0.18;
     const crownSize = 0.68 + random() * 0.68;
     const crownScale: [number, number, number] = [
@@ -382,7 +395,7 @@ function createWashingtonSquareTrees(park: WashingtonParkData) {
   trunks.castShadow = true;
   crowns.castShadow = true;
   group.add(trunks, crowns);
-  group.name = `${positions.length} boundary- and path-cleared Washington Square trees`;
+  group.name = `${positions.length} boundary- and path-cleared ${label} trees`;
   return {
     group,
     footprints: positions.map(({ x, z }) => Array.from({ length: 10 }, (_, index) => {
@@ -797,8 +810,11 @@ function createPedestrians(
   planimetrics: WashingtonPlanimetricsData,
   fountain: WashingtonParkData["fountain"],
   parkObstacles: Array<Array<[number, number]>> = [],
+  areas: Array<{ center: [number, number]; radius: number; count: number }> = [
+    { center: [0, 0], radius: 620, count: 300 },
+  ],
 ): AmbientAnimation {
-  const count = 300;
+  const count = areas.reduce((sum, area) => sum + area.count, 0);
   const random = seededRandom(0x57a5_2026);
   const roadFootprints = planimetrics.roadbeds.map((roadbed) => roadbed.ring);
   const pedestrianObstacles = [...buildingFootprints, ...parkObstacles];
@@ -820,26 +836,29 @@ function createPedestrians(
   const roadIndex = createFootprintIndex(roadFootprints);
   const walkers: Array<{ x: number; z: number; heading: number; phase: number; radius: number; speed: number }> = [];
 
-  for (let attempt = 0; walkers.length < count && attempt < 50000; attempt += 1) {
-    const x = (random() - 0.5) * 1260;
-    const z = (random() - 0.5) * 1260;
-    if (x * x + z * z > 620 * 620) continue;
-    const walker = {
-      x,
-      z,
-      heading: random() * Math.PI * 2,
-      phase: random() * Math.PI * 2,
-      radius: 1.5 + random() * 5,
-      speed: 0.18 + random() * 0.22,
-    };
-    const entireRouteIsClear = Array.from({ length: 16 }, (_, sample) => {
-      const angle = (sample / 16) * Math.PI * 2;
-      const routeX = walker.x + Math.cos(angle) * walker.radius;
-      const routeZ = walker.z + Math.sin(angle) * walker.radius;
-      return !collidesWithFootprints(routeX, routeZ, roadIndex, 1.2)
-        && !collidesWithFootprints(routeX, routeZ, buildingIndex, 1.8);
-    }).every(Boolean);
-    if (entireRouteIsClear) walkers.push(walker);
+  for (const area of areas) {
+    const target = walkers.length + area.count;
+    for (let attempt = 0; walkers.length < target && attempt < area.count * 220; attempt += 1) {
+      const x = area.center[0] + (random() - 0.5) * area.radius * 2;
+      const z = area.center[1] + (random() - 0.5) * area.radius * 2;
+      if ((x - area.center[0]) ** 2 + (z - area.center[1]) ** 2 > area.radius ** 2) continue;
+      const walker = {
+        x,
+        z,
+        heading: random() * Math.PI * 2,
+        phase: random() * Math.PI * 2,
+        radius: 1.5 + random() * 5,
+        speed: 0.18 + random() * 0.22,
+      };
+      const entireRouteIsClear = Array.from({ length: 16 }, (_, sample) => {
+        const angle = (sample / 16) * Math.PI * 2;
+        const routeX = walker.x + Math.cos(angle) * walker.radius;
+        const routeZ = walker.z + Math.sin(angle) * walker.radius;
+        return !collidesWithFootprints(routeX, routeZ, roadIndex, 1.2)
+          && !collidesWithFootprints(routeX, routeZ, buildingIndex, 1.8);
+      }).every(Boolean);
+      if (entireRouteIsClear) walkers.push(walker);
+    }
   }
 
   const bodyGeometry = new THREE.BoxGeometry(1.25, 2.45, 0.85);
@@ -854,7 +873,7 @@ function createPedestrians(
   heads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   bodies.castShadow = false;
   heads.castShadow = false;
-  bodies.name = "300 low-detail walking pedestrians";
+  bodies.name = `${walkers.length} low-detail walking pedestrians across both square views`;
   heads.name = "Pedestrian heads";
   scene.add(bodies, heads);
 
@@ -1041,6 +1060,8 @@ const INTERACTIVE_BUILDING_COLORS: Record<string, Record<SurfaceKind, number>> =
   "1008627": { wall: 0x6f5d54, roof: 0x8d8176, ground: 0x63534c },
   "1077346": { wall: 0x8f5e50, roof: 0xaaa094, ground: 0x785047 },
   "1078952": { wall: 0xa9aaa5, roof: 0xc4c0b6, ground: 0x96958f },
+  "1087304": { wall: 0xc49b72, roof: 0x94a184, ground: 0xa98568 },
+  "1017906": { wall: 0xc7aa83, roof: 0x9b9384, ground: 0xa18d72 },
 };
 
 function createInteractiveBuildingGroup(
@@ -1122,6 +1143,8 @@ function createLandmarkDetails(details: WashingtonCityRuntimeData["details"]) {
     "1008627": { window: 0x263238, frame: 0x8b7569, spacing: 3.45 },
     "1077346": { window: 0x4e5b5e, frame: 0xa56d5c, spacing: 3.2 },
     "1078952": { window: 0x58666a, frame: 0xc3c0b8, spacing: 3.3 },
+    "1087304": { window: 0x596568, frame: 0xb78e6d, spacing: 3.15 },
+    "1017906": { window: 0x4f5b5e, frame: 0xb69a78, spacing: 3.05 },
   };
   for (const [id, surfaces] of Object.entries(details)) {
     const style = styles[id];
@@ -1227,6 +1250,10 @@ function createLandmarkDetails(details: WashingtonCityRuntimeData["details"]) {
         "1008875": [[0.2, 0.25], [0.5, 0.25], [0.8, 0.25]],
       };
       const layout = layouts[id];
+      // Most interactive landmarks only need facade windows. Rooftop
+      // equipment is intentionally limited to buildings with an explicit,
+      // reviewed layout; an absent layout must not abort the entire scene.
+      if (!layout) continue;
       for (const [roofIndex, roof] of roofSurfaces.entries()) {
         if (id === "1077346" && roofIndex > 0) continue;
         const placements = roofIndex === 0 ? layout : layout.slice(0, Math.min(2, layout.length));
@@ -1435,12 +1462,14 @@ export default function Nyc3dMap() {
   const mountRef = useRef<HTMLDivElement>(null);
   const switchStudyRef = useRef<(next: "washington" | "union", updateUrl?: boolean) => void>(() => undefined);
   const [status, setStatus] = useState("");
-  const [roadsReady, setRoadsReady] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0.04);
 
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
-    setRoadsReady(false);
+    setSceneReady(false);
+    setLoadProgress(0.04);
     let activeStudy: "washington" | "union" = "washington";
     const isUnion = false;
     const studyName = isUnion ? "Union Square" : "Washington Square";
@@ -1449,6 +1478,8 @@ export default function Nyc3dMap() {
     const parkCenter = new THREE.Vector3(isUnion ? 545 : 0, 0, isUnion ? -580 : 0);
     let disposed = false;
     let frame = 0;
+    let sceneMountComplete = false;
+    let sceneReadyReported = false;
     const abortController = new AbortController();
     const visibilityWaiters = new Set<() => void>();
     const waitForVisible = () => {
@@ -1542,6 +1573,7 @@ export default function Nyc3dMap() {
     renderer.shadowMap.needsUpdate = true;
     renderer.domElement.className = "washington-canvas is-ready";
     mount.appendChild(renderer.domElement);
+    setLoadProgress(0.14);
     logLoad("Renderer ready", {
       pixelRatio: renderer.getPixelRatio(),
       viewport: `${mount.clientWidth}x${mount.clientHeight}`,
@@ -1639,9 +1671,9 @@ export default function Nyc3dMap() {
         gltf.scene.visible = false;
         gltf.scene.name = "Precompiled NYC 2022 planimetric roadbeds";
         scene.add(gltf.scene);
+        setLoadProgress((progress) => Math.max(progress, 0.42));
         const surfaceRevealAt = performance.now();
         arrivingTiles.push({ root: gltf.scene, materials: [roadMaterial], startedAt: surfaceRevealAt + 100, distance: 0, rise: 34, fade: false });
-        requestAnimationFrame(() => { if (!disposed) setRoadsReady(true); });
         return surfaceRevealAt + 100;
       })
       .catch((error) => {
@@ -1684,6 +1716,7 @@ export default function Nyc3dMap() {
           footprints: runtime.footprints.length,
           tiles: manifest.tiles.length,
         });
+        setLoadProgress((progress) => Math.max(progress, 0.3));
         // Begin the nearest city-tile downloads before the synchronous route and
         // landmark construction below. Network/decode work can overlap that CPU
         // phase instead of sitting behind it in the startup waterfall.
@@ -1777,7 +1810,10 @@ export default function Nyc3dMap() {
             if (disposed || requestId !== neighborhoodRequest) return;
             await Promise.all(orderedTiles.slice(index, index + 4).map((tile) => loadTile(tile, center)));
             if (disposed || requestId !== neighborhoodRequest) return;
-            if (initial && index === 0) logLoad("First city tiles ready", { loadedTiles });
+            if (initial && index === 0) {
+              logLoad("First city tiles ready", { loadedTiles });
+              setLoadProgress((progress) => Math.max(progress, 0.56));
+            }
             await yieldToMainThread();
           }
           window.setTimeout(() => {
@@ -1798,15 +1834,31 @@ export default function Nyc3dMap() {
             }
           }, 1800);
         };
-        requestNeighborhood = (center) => { void loadNeighborhood(center); };
+        requestNeighborhood = (center) => {
+          void loadNeighborhood(center).catch((error) => {
+            if (!isAbortError(error)) console.warn(loadLogPrefix, "Neighborhood load failed", error);
+          });
+        };
         let cityTilesReady = Promise.resolve();
-        const parkTrees = createWashingtonSquareTrees(washingtonPark);
-        scene.add(parkTrees.group);
+        let cityTilesError: unknown;
+        const washingtonTrees = createParkTrees(washingtonPark, {
+          count: 88,
+          seed: 0x7ee5_2026,
+          label: "Washington Square",
+        });
+        const unionAndGramercyTrees = createParkTrees(unionPark, {
+          count: 96,
+          seed: 0x6a4d_2026,
+          label: "Union Square and Gramercy Park",
+        });
+        scene.add(washingtonTrees.group, unionAndGramercyTrees.group);
         const addCustomLandmarks = async () => {
           const landmarkDetails = createLandmarkDetails(runtime.details);
           const liptonSource = createInteractiveBuildingGroup(runtime.details, ["1008875"], "Lipton Hall source geometry");
           const courantSource = createInteractiveBuildingGroup(runtime.details, ["1008627"], "Courant source geometry");
           const sternSource = createInteractiveBuildingGroup(runtime.details, ["1078952", "1077346"], "Stern source geometry");
+          const goldbellySource = createInteractiveBuildingGroup(runtime.details, ["1087304"], "25 Union Square West source geometry");
+          const unionSquareCafeSource = createInteractiveBuildingGroup(runtime.details, ["1017906"], "235 Park Avenue South source geometry");
           const liptonDetails = landmarkDetails.get("1008875");
           if (liptonDetails) liptonSource.add(liptonDetails);
           const courantDetails = landmarkDetails.get("1008627");
@@ -1816,19 +1868,29 @@ export default function Nyc3dMap() {
             if (details) sternSource.add(details);
           }
           sternSource.add(createSternRotundaDetails());
+          const goldbellyDetails = landmarkDetails.get("1087304");
+          if (goldbellyDetails) goldbellySource.add(goldbellyDetails);
+          const unionSquareCafeDetails = landmarkDetails.get("1017906");
+          if (unionSquareCafeDetails) unionSquareCafeSource.add(unionSquareCafeDetails);
           const lipton = bakeLandmarkAsSingleMesh(liptonSource, "Clickable merged Lipton Hall");
           const courant = bakeLandmarkAsSingleMesh(courantSource, "Clickable merged Courant Institute");
           const stern = bakeLandmarkAsSingleMesh(sternSource, "Clickable merged Stern building pair");
+          const goldbelly = bakeLandmarkAsSingleMesh(goldbellySource, "Clickable merged 25 Union Square West");
+          const unionSquareCafe = bakeLandmarkAsSingleMesh(unionSquareCafeSource, "Clickable merged 235 Park Avenue South");
           registerClickableLandmark(lipton);
           queueSpringArrival(lipton, 0);
           registerClickableLandmark(courant);
           queueSpringArrival(courant, 120);
           registerClickableLandmark(stern);
           queueSpringArrival(stern, 240);
+          registerClickableLandmark(goldbelly);
+          queueSpringArrival(goldbelly, 280);
+          registerClickableLandmark(unionSquareCafe);
+          queueSpringArrival(unionSquareCafe, 300);
           createGouldPlaza(scene);
           createCourantGarden(scene);
           for (const [id, details] of landmarkDetails) {
-            if (!["1008875", "1008627", "1077346", "1078952"].includes(id)) {
+            if (!["1008875", "1008627", "1077346", "1078952", "1087304", "1017906"].includes(id)) {
               scene.add(details);
               queueSpringArrival(details, 320);
             }
@@ -1879,7 +1941,14 @@ export default function Nyc3dMap() {
         logLoad("Critical park geometry ready");
         const roadRevealAt = await roadVisualReady;
         buildingRevealAt = Math.max(performance.now(), roadRevealAt + 1170);
-        cityTilesReady = loadNeighborhood(parkCenter, true);
+        // Attach abort handling immediately. This promise is awaited only after
+        // deferred scene construction, so React teardown can otherwise reject
+        // it before an await has installed a handler and trigger an unhandled
+        // rejection in the browser.
+        cityTilesReady = loadNeighborhood(parkCenter, true).catch((error) => {
+          if (isAbortError(error)) return;
+          cityTilesError = error;
+        });
         const planimetrics = await planimetricsReady;
         if (disposed || !planimetrics) return;
         await waitForVisible();
@@ -1889,7 +1958,11 @@ export default function Nyc3dMap() {
           runtime.footprints,
           planimetrics,
           washingtonPark.fountain,
-          parkTrees.footprints,
+          [...washingtonTrees.footprints, ...unionAndGramercyTrees.footprints],
+          [
+            { center: [0, 0], radius: 620, count: 300 },
+            { center: [545, -580], radius: 520, count: 300 },
+          ],
         ));
         await yieldToMainThread();
         await waitForVisible();
@@ -1901,25 +1974,29 @@ export default function Nyc3dMap() {
           new THREE.MeshStandardMaterial({ color: 0xc6baa6, roughness: 1 }),
         ));
         logLoad("Deferred routes ready", { roadbeds: planimetrics.roadbeds.length });
+        setLoadProgress((progress) => Math.max(progress, 0.7));
         if (washingtonPark.fountain) {
           const fountain = createSimpleFountain(washingtonPark.fountain);
           scene.add(fountain.group);
           ambientAnimations.push(fountain.animation);
         }
         await cityTilesReady;
-        await new Promise<void>((resolve) => window.setTimeout(resolve, 1450));
+        if (cityTilesError) throw cityTilesError;
+        setLoadProgress((progress) => Math.max(progress, 0.84));
         await waitForVisible();
         if (disposed) return;
         await addCustomLandmarks();
-        await new Promise<void>((resolve) => window.setTimeout(resolve, 1700));
+        setLoadProgress((progress) => Math.max(progress, 0.94));
         if (!disposed) {
           skyTravelers = createSkyTravelers(scene);
           navigationArrowSpringStartedAt = performance.now() + 320;
+          sceneMountComplete = true;
         }
       } catch (error) {
         if (isAbortError(error)) return;
         console.error(loadLogPrefix, "Scene load failed", error);
         setStatus(error instanceof Error ? error.message : "Scene load failed");
+        setSceneReady(true);
       }
     })();
 
@@ -2008,13 +2085,22 @@ export default function Nyc3dMap() {
       const isLipton = landmark.root.name.includes("Lipton");
       const isCourant = landmark.root.name.includes("Courant");
       const isStern = landmark.root.name.includes("Stern");
+      const isGoldbelly = landmark.root.name.includes("25 Union Square West");
+      const isUnionSquareCafe = landmark.root.name.includes("235 Park Avenue South");
       if (isCourant) desiredCameraTarget.add(new THREE.Vector3(-10, 0, -24));
       desiredCameraAzimuth = isCourant
         ? 0
         : isStern ? Math.PI / 2 + 0.42
-          : isBobst ? Math.PI - 0.42 : 0;
-      desiredCameraHeight = isLipton ? 273 : isStern ? 252 : 210;
-      desiredCameraRadius = isLipton ? 285 : 365;
+          : isBobst ? Math.PI - 0.42
+            : isGoldbelly ? Math.PI / 2 + 0.34
+              : isUnionSquareCafe ? -Math.PI * 5 / 12 : 0;
+      desiredCameraHeight = isLipton ? 273 : isStern ? 252 : isGoldbelly ? 160 : isUnionSquareCafe ? 235 : 210;
+      desiredCameraRadius = isLipton ? 285 : isGoldbelly ? 270 : isUnionSquareCafe ? 330 : 365;
+      if (isGoldbelly) {
+        const originalElevation = Math.atan2(160 - desiredCameraTarget.y, desiredCameraRadius);
+        desiredCameraHeight = desiredCameraTarget.y
+          + Math.tan(originalElevation + Math.PI / 12) * desiredCameraRadius;
+      }
       desiredCameraZoom = 2.41;
       cameraLocked = true;
       cameraTransitioning = true;
@@ -2025,7 +2111,11 @@ export default function Nyc3dMap() {
         landmark.selected = false;
         landmark.hovered = false;
       });
-      desiredCameraTarget.copy(overviewCameraTarget);
+      desiredCameraTarget.set(
+        activeStudy === "union" ? 545 : overviewCameraTarget.x,
+        28,
+        activeStudy === "union" ? -580 : overviewCameraTarget.z,
+      );
       desiredCameraAzimuth = 0;
       desiredCameraHeight = 560;
       desiredCameraRadius = 630;
@@ -2234,6 +2324,11 @@ export default function Nyc3dMap() {
       }
       const renderStarted = performance.now();
       renderer.render(scene, camera);
+      if (sceneMountComplete && !sceneReadyReported) {
+        sceneReadyReported = true;
+        setLoadProgress(1);
+        setSceneReady(true);
+      }
       renderCostTotal += performance.now() - renderStarted;
       renderSamples += 1;
       if (renderSamples === 120) {
@@ -2255,7 +2350,11 @@ export default function Nyc3dMap() {
 
     return () => {
       disposed = true;
-      abortController.abort();
+      // Do not abort the shared browser fetch signal during React/HMR teardown.
+      // Some response/body promises owned by the browser can reject outside
+      // the explicit async chain and surface as an unhandled AbortError. Every
+      // async scene branch checks `disposed` before mounting decoded results,
+      // so letting in-flight requests settle is safe and keeps cleanup quiet.
       for (const resolve of visibilityWaiters) resolve();
       visibilityWaiters.clear();
       cancelAnimationFrame(frame);
@@ -2285,7 +2384,7 @@ export default function Nyc3dMap() {
 
   return (
     <main className="washington-study">
-      <MapLoadingScreen ready={roadsReady} />
+      <MapLoadingScreen ready={sceneReady} progress={loadProgress} />
       <div ref={mountRef} className="washington-study__viewport" />
       {status && <div className="washington-study__loading">{status}</div>}
       <a className="washington-study__credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">

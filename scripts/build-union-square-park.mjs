@@ -37,6 +37,7 @@ for (const match of xml.matchAll(/<node\b([^>]*)>[\s\S]*?<\/node>/g)) {
 
 const paths = [];
 const parkRings = [];
+const openParkPoints = [];
 const ways = new Map();
 for (const match of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
   const body = match[2];
@@ -50,7 +51,14 @@ for (const match of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
     .map(project);
   if (points.length < 2) continue;
   ways.set(attributes(match[1]).id, points);
-  if (tags.leisure === "park" && points.length >= 4) parkRings.push(points);
+  // Standalone park ways are already complete rings. Open ways are commonly
+  // just one member of a multipolygon relation and must not be triangulated on
+  // their own, because the implicit closing edge cuts across the park.
+  if (tags.leisure === "park" && points.length >= 4 && points[0].toString() === points.at(-1).toString()) {
+    parkRings.push(points);
+  } else if (tags.leisure === "park" && points.length >= 4) {
+    openParkPoints.push(...points);
+  }
   if (!["footway", "path", "pedestrian"].includes(tags.highway)) continue;
   paths.push({
     sourceId: attributes(match[1]).id,
@@ -79,18 +87,47 @@ for (const match of xml.matchAll(/<relation\b[^>]*>([\s\S]*?)<\/relation>/g)) {
       joined = false;
       for (let index = 0; index < outerWays.length; index += 1) {
         const candidate = outerWays[index];
+        const start = ring[0].toString();
         const end = ring.at(-1).toString();
         if (candidate[0].toString() === end) ring.push(...candidate.slice(1));
         else if (candidate.at(-1).toString() === end) ring.push(...candidate.toReversed().slice(1));
+        else if (candidate.at(-1).toString() === start) ring.unshift(...candidate.slice(0, -1));
+        else if (candidate[0].toString() === start) ring.unshift(...candidate.toReversed().slice(0, -1));
         else continue;
         outerWays.splice(index, 1);
         joined = true;
         break;
       }
     }
-    if (ring.length >= 4) parkRings.push(ring);
+    if (ring.length >= 4 && ring[0].toString() === ring.at(-1).toString()) parkRings.push(ring);
+    else if (ring.length >= 4) openParkPoints.push(...ring);
   }
 }
+
+// Union Square's mapped green is split across several open lawn-edge ways.
+// Their outer hull is the visual park boundary requested by this miniature;
+// mapped paths and fixtures are rendered separately above the continuous lawn.
+function convexHull(points) {
+  const unique = [...new Map(points.map((point) => [point.toString(), point])).values()]
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (unique.length < 3) return [];
+  const cross = (origin, a, b) => (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0]);
+  const lower = [];
+  for (const point of unique) {
+    while (lower.length >= 2 && cross(lower.at(-2), lower.at(-1), point) <= 0) lower.pop();
+    lower.push(point);
+  }
+  const upper = [];
+  for (const point of unique.toReversed()) {
+    while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), point) <= 0) upper.pop();
+    upper.push(point);
+  }
+  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  return [...hull, hull[0]];
+}
+
+const unionSquareRing = convexHull(openParkPoints.filter(([x]) => x < 800));
+if (unionSquareRing.length >= 4) parkRings.push(unionSquareRing);
 
 const payload = {
   source: "OpenStreetMap",

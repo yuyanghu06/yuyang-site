@@ -59,92 +59,39 @@ body {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: var(--ground);
+  background: #fff;
   opacity: 1;
   pointer-events: none;
-  transition: opacity 360ms ease-out;
+  transition: background-color 420ms ease-out, opacity 480ms ease-out 360ms;
 }
 
 .map-prelude.is-ready {
+  background-color: var(--ground);
   opacity: 0;
 }
 
-.map-prelude__drawing {
-  width: min(18rem, 48vw);
-  height: auto;
-  opacity: 0.62;
+.map-prelude__bar {
+  width: min(13rem, 46vw);
+  height: 2px;
+  overflow: hidden;
+  background: rgb(69 74 71 / 14%);
 }
 
-.map-prelude__roads {
-  fill: none;
-  stroke: #e5e1d7;
-  stroke-width: 0.55;
-  vector-effect: non-scaling-stroke;
+.map-prelude__fill {
+  display: block;
+  height: 100%;
+  background: #454a47;
+  transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.map-prelude__roads--quiet {
-  opacity: 0.28;
+.map-prelude.is-ready .map-prelude__fill {
+  width: 100%;
+  transition-duration: 180ms;
 }
 
-.map-prelude__roads--draw path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: map-prelude-draw 1800ms cubic-bezier(0.45, 0, 0.25, 1) infinite;
-}
-
-.map-prelude__roads--draw path:nth-child(2) {
-  animation-delay: 180ms;
-}
-
-.map-prelude__roads--draw path:nth-child(3) {
-  animation-delay: 360ms;
-}
-
-.map-prelude__roads--draw path:nth-child(4) {
-  animation-delay: 540ms;
-}
-
-.map-prelude__square {
-  fill: rgb(229 225 215 / 7%);
-  stroke: #e5e1d7;
-  stroke-width: 0.42;
+.map-prelude.is-ready .map-prelude__bar {
   opacity: 0;
-  animation: map-prelude-square 1800ms ease-in-out 620ms infinite;
-  vector-effect: non-scaling-stroke;
-}
-
-@keyframes map-prelude-draw {
-  0% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-
-  18% {
-    opacity: 0.9;
-  }
-
-  70%, 100% {
-    stroke-dashoffset: 0;
-    opacity: 0.2;
-  }
-}
-
-@keyframes map-prelude-square {
-  0%, 18% {
-    opacity: 0;
-    transform: scale(0.94);
-    transform-origin: center;
-  }
-
-  45%, 78% {
-    opacity: 0.8;
-    transform: scale(1);
-    transform-origin: center;
-  }
-
-  100% {
-    opacity: 0.15;
-  }
+  transition: opacity 180ms ease-out 160ms;
 }
 
 .washington-canvas {
@@ -214,11 +161,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .map-prelude__roads--draw path,
-  .map-prelude__square {
-    animation: none;
-    opacity: 0.5;
-    stroke-dashoffset: 0;
+  .map-prelude__fill {
+    transition: none;
   }
 
   .washington-canvas {

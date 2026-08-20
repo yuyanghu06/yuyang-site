@@ -12,8 +12,8 @@ const ROOT = process.cwd();
 const SOURCE = path.join(ROOT, "public/data/washington-square-citygml.json");
 const OUTPUT = path.join(ROOT, "public/models/washington-city");
 const TILE_SIZE = 192;
-const OMITTED_BINS = new Set(["1088400", "1008626", "1008875", "1008627", "1077346", "1078952"]);
-const DETAIL_BINS = new Set(["1008875", "1008627", "1008629", "1077346", "1078952"]);
+const OMITTED_BINS = new Set(["1088400", "1008626", "1008875", "1008627", "1077346", "1078952", "1087304", "1017906"]);
+const DETAIL_BINS = new Set(["1008875", "1008627", "1008629", "1077346", "1078952", "1087304", "1017906"]);
 
 const PALETTE = [0xb9a98d, 0xc49b72, 0xa96f61, 0xb77b5f, 0x788878, 0x858983, 0xd2c3a6, 0x71675c];
 const LANDMARKS = {
@@ -24,6 +24,8 @@ const LANDMARKS = {
   "1008629": { wall: 0x8f5e50, roof: 0xaaa094, ground: 0x785047 },
   "1077346": { wall: 0x8f5e50, roof: 0xaaa094, ground: 0x785047 },
   "1078952": { wall: 0xa9aaa5, roof: 0xc4c0b6, ground: 0x96958f },
+  "1087304": { wall: 0xc49b72, roof: 0x94a184, ground: 0xa98568 },
+  "1017906": { wall: 0xc7aa83, roof: 0x9b9384, ground: 0xa18d72 },
 };
 
 class NodeFileReader {
