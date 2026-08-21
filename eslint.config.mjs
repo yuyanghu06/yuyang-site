@@ -8,7 +8,7 @@ export default defineConfig([
     files: ["**/*.{js,mjs,cjs,ts,tsx}"],
     ignores: ["src/generated/**"],
     rules: {
-      "max-lines": ["error", { max: 1100, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 900, skipBlankLines: true, skipComments: true }],
     },
   },
 ]);

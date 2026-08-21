@@ -26,6 +26,9 @@ import {
 import { createAdaptiveResolution } from "../animation/adaptive-resolution";
 import { startManhattanLoading } from "../manhattan/loading/manhattan-loader";
 import { disposeScenes } from "./dispose-runtime";
+import { createHitTesting } from "../interaction/hit-testing";
+import { createInputController } from "../interaction/input-controller";
+import { createViewportLifecycle } from "./viewport-lifecycle";
 
 export default function GlobalMap() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -162,7 +165,7 @@ export default function GlobalMap() {
       if (globeBlockedZoomStartedAt) return;
       globeBlockedZoomOriginDistance = globeCameraDistance;
       globeBlockedZoomStartedAt = performance.now();
-      globeInteractionFullRateUntil = performance.now() + BLOCKED_ZOOM_DURATION_MS;
+      inputController?.keepFullFrameRateUntil(performance.now() + BLOCKED_ZOOM_DURATION_MS);
     };
     const zoomGlobeOut = (requestedDistance: number) => {
       if (requestedDistance > GLOBE_MAX_CAMERA_DISTANCE) {
@@ -520,59 +523,39 @@ export default function GlobalMap() {
       viewport: `${mount.clientWidth}x${mount.clientHeight}`,
     });
 
-    let isIntersecting = true;
-    let animationRunning = false;
-    const shouldAnimate = () => isIntersecting && document.visibilityState === "visible" && !disposed;
-    const startAnimation = () => {
-      if (animationRunning || !shouldAnimate()) return;
-      animationRunning = true;
-      timer.reset();
-      frame = requestAnimationFrame(animate);
-    };
-    const intersectionObserver = new IntersectionObserver(([entry]) => {
-      isIntersecting = entry.isIntersecting;
-      if (shouldAnimate()) startAnimation();
-      else {
-        cancelAnimationFrame(frame);
-        animationRunning = false;
-      }
-    }, { threshold: 0.01 });
-    intersectionObserver.observe(mount);
-    const handleVisibility = () => {
-      if (shouldAnimate()) {
-        for (const resolve of visibilityWaiters) resolve();
-        visibilityWaiters.clear();
-        startAnimation();
-      }
-      else {
-        cancelAnimationFrame(frame);
-        animationRunning = false;
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
+    const viewportLifecycle = createViewportLifecycle({
+      mount,
+      timer,
+      isDisposed: () => disposed,
+      visibilityWaiters,
+      requestFrame: () => requestAnimationFrame(animate),
+      cancelFrame: (activeFrame) => cancelAnimationFrame(activeFrame),
+    });
+    const { shouldAnimate, startAnimation } = viewportLifecycle;
 
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const pointerPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const pointerWorld = new THREE.Vector3();
-    const updatePointerRay = (event: { clientX: number; clientY: number }) => {
-      const bounds = renderer.domElement.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
-        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, camera);
-    };
-    const globeManhattanAtPointer = (event: { clientX: number; clientY: number }) => {
-      if (activeStudy !== "globe" || globeTransitionStartedAt) return false;
-      const bounds = renderer.domElement.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
-        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, globeCamera);
-      return raycaster.intersectObject(manhattanGlobeMarker, true).length > 0;
-    };
+    const {
+      globeManhattanAtPointer,
+      landmarkAtPointer,
+      navigationAtPointer,
+      manhattanMarkerAtPointer,
+      parkDestinationAtPointer,
+      pointerPlane,
+      pointerWorld,
+      raycaster,
+      updatePointerRay,
+    } = createHitTesting({
+      renderer,
+      camera,
+      globeCamera,
+      manhattanGlobeMarker,
+      raycastRoots,
+      landmarkByRoot,
+      manhattanMarkerDestinations,
+      getActiveView: () => activeStudy,
+      isGlobeTransitioning: () => globeTransitionStartedAt > 0,
+      getNavigationArrow: () => navigationArrow,
+      getDestinationMarkers: () => manhattanDestinationMarkers,
+    });
     const enterManhattanFromGlobe = () => {
       if (activeStudy !== "globe" || globeTransitionStartedAt) return;
       globeTransitionStartedAt = performance.now();
@@ -590,48 +573,6 @@ export default function GlobalMap() {
       reverseTransitionStartZoom = camera.zoom;
       window.history.pushState({ study: "globe" }, "", "/");
       renderer.domElement.style.cursor = "default";
-    };
-    const landmarkAtPointer = (event: { clientX: number; clientY: number }) => {
-      if (activeStudy === "manhattan") return null;
-      updatePointerRay(event);
-      const intersections = raycaster.intersectObjects(raycastRoots, true);
-      for (const intersection of intersections) {
-        let object: THREE.Object3D | null = intersection.object;
-        while (object) {
-          const landmark = landmarkByRoot.get(object);
-          if (landmark) return landmark;
-          object = object.parent;
-        }
-      }
-      return null;
-    };
-    const navigationAtPointer = (event: { clientX: number; clientY: number }) => {
-      if (!navigationArrow || activeStudy === "manhattan") return false;
-      updatePointerRay(event);
-      return raycaster.intersectObject(navigationArrow, true).length > 0;
-    };
-    const manhattanMarkerAtPointer = (event: { clientX: number; clientY: number }): MapView | null => {
-      if (!manhattanDestinationMarkers || activeStudy !== "manhattan") return null;
-      updatePointerRay(event);
-      const intersections = raycaster.intersectObject(manhattanDestinationMarkers, true);
-      for (const intersection of intersections) {
-        let object: THREE.Object3D | null = intersection.object;
-        while (object && object !== manhattanDestinationMarkers) {
-          const destination = manhattanMarkerDestinations.get(object);
-          if (destination) return destination;
-          object = object.parent;
-        }
-      }
-      return null;
-    };
-    const parkDestinationAtPointer = (event: { clientX: number; clientY: number }): MapView | null => {
-      if (activeStudy !== "manhattan") return null;
-      updatePointerRay(event);
-      if (!raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) return null;
-      const washingtonDistance = Math.hypot(pointerWorld.x - WASHINGTON_CENTER.x, pointerWorld.z - WASHINGTON_CENTER.z);
-      const unionDistance = Math.hypot(pointerWorld.x - UNION_CENTER.x, pointerWorld.z - UNION_CENTER.z);
-      if (washingtonDistance > PARK_ZOOM_HIT_RADIUS && unionDistance > PARK_ZOOM_HIT_RADIUS) return null;
-      return washingtonDistance <= unionDistance ? "washington" : "union";
     };
     const selectLandmark = (landmark: ClickableLandmark) => {
       clickableLandmarks.forEach((candidate) => { candidate.selected = candidate === landmark; });
@@ -683,64 +624,24 @@ export default function GlobalMap() {
       renderer.domElement.style.cursor = "default";
     };
 
-    let dragging = false;
-    let globeDragging = false;
-    const globeTouchPointers = new Map<number, { x: number; y: number }>();
-    let globeTouchDistance = 0;
-    let globeMultiTouchGesture = false;
-    let globeInteractionFullRateUntil = 0;
-    let pointerX = 0;
-    let pointerY = 0;
-    let pointerDownX = 0;
-    let pointerDownY = 0;
-    let pointerMoved = false;
-    let lastPointerHitTestAt = Number.NEGATIVE_INFINITY;
-    const pointerDown = (event: PointerEvent) => {
-      dragging = !cameraLocked && activeStudy !== "manhattan" && activeStudy !== "globe";
-      if (event.pointerType === "touch" && activeStudy === "globe" && !globeTransitionStartedAt) {
-        globeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-        globeDragging = true;
-        if (globeTouchPointers.size >= 2) {
-          const touches = [...globeTouchPointers.values()];
-          globeTouchDistance = Math.hypot(touches[1].x - touches[0].x, touches[1].y - touches[0].y);
-          globeMultiTouchGesture = true;
-        }
-      } else {
-        globeDragging = activeStudy === "globe" && !globeTransitionStartedAt;
-      }
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      pointerDownX = event.clientX;
-      pointerDownY = event.clientY;
-      pointerMoved = false;
-      renderer.domElement.setPointerCapture(event.pointerId);
-      if (dragging || globeDragging) renderer.domElement.classList.add("is-dragging");
-    };
-    const pointerMove = (event: PointerEvent) => {
-      if (activeStudy === "globe") globeInteractionFullRateUntil = performance.now() + 180;
-      if (event.pointerType === "touch" && globeTouchPointers.has(event.pointerId)) {
-        globeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-        if (globeTouchPointers.size >= 2) {
-          const touches = [...globeTouchPointers.values()];
-          const touchDistance = Math.hypot(touches[1].x - touches[0].x, touches[1].y - touches[0].y);
-          if (globeTouchDistance > 0 && touchDistance > 0) {
-            const requestedDistance = globeCameraDistance * (globeTouchDistance / touchDistance);
-            if (requestedDistance < globeCameraDistance) {
-              if (currentGlobeMarkerFacing > 0.94) enterManhattanFromGlobe();
-              else blockGlobeZoom();
-            } else {
-              zoomGlobeOut(requestedDistance);
-            }
-          }
-          globeTouchDistance = touchDistance;
-          pointerMoved = true;
-          return;
-        }
-      }
-      pointerMoved ||= Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY) > 5;
-      if (globeDragging) {
-        const yaw = (event.clientX - pointerX) * 0.0045;
-        const pitch = (event.clientY - pointerY) * 0.0032;
+    const inputController = createInputController({
+      renderer,
+      clickableLandmarks,
+      globeManhattanAtPointer,
+      landmarkAtPointer,
+      navigationAtPointer,
+      manhattanMarkerAtPointer,
+      parkDestinationAtPointer,
+      getActiveView: () => activeStudy,
+      getCameraLocked: () => cameraLocked,
+      isGlobeTransitioning: () => globeTransitionStartedAt > 0,
+      getGlobeCameraDistance: () => globeCameraDistance,
+      getGlobeMarkerFacing: () => currentGlobeMarkerFacing,
+      enterManhattanFromGlobe,
+      enterGlobeFromManhattan,
+      blockGlobeZoom,
+      zoomGlobeOut,
+      rotateGlobe: (yaw, pitch) => {
         globeOrbitYaw += yaw;
         globeOrbitPitch = THREE.MathUtils.clamp(
           globeOrbitPitch + pitch,
@@ -748,154 +649,37 @@ export default function GlobalMap() {
           THREE.MathUtils.degToRad(85),
         );
         updateGlobeOrbit();
-        pointerX = event.clientX;
-        pointerY = event.clientY;
-        return;
-      }
-      if (dragging) {
-        cameraAzimuth -= (event.clientX - pointerX) * 0.005;
+      },
+      rotateNeighborhood: (deltaX) => {
+        cameraAzimuth -= deltaX * 0.005;
         desiredCameraAzimuth = cameraAzimuth;
-        pointerX = event.clientX;
         updateCamera();
-        return;
-      }
-      // Pointer devices can dispatch substantially faster than the 30 FPS idle
-      // render loop. Raycasting more often cannot produce a visible update.
-      if (event.timeStamp - lastPointerHitTestAt < 1000 / 30) return;
-      lastPointerHitTestAt = event.timeStamp;
-      if (activeStudy === "globe") {
-        renderer.domElement.style.cursor = globeManhattanAtPointer(event) ? "pointer" : "default";
-        return;
-      }
-      const hovered = landmarkAtPointer(event);
-      clickableLandmarks.forEach((landmark) => { landmark.hovered = landmark === hovered; });
-      renderer.domElement.style.cursor = hovered
-        || navigationAtPointer(event)
-        || manhattanMarkerAtPointer(event)
-        || parkDestinationAtPointer(event)
-        ? "pointer"
-        : "default";
-    };
-    const pointerUp = (event: PointerEvent) => {
-      const endedMultiTouchGesture = globeMultiTouchGesture;
-      if (event.pointerType === "touch") {
-        globeTouchPointers.delete(event.pointerId);
-        if (globeTouchPointers.size < 2) globeDragging = false;
-        if (globeTouchPointers.size === 0) globeMultiTouchGesture = false;
-      }
-      if (!pointerMoved && !endedMultiTouchGesture) {
-        if (globeManhattanAtPointer(event)) {
-          enterManhattanFromGlobe();
-          return;
-        }
-        const markerDestination = manhattanMarkerAtPointer(event);
-        if (markerDestination) {
-          switchStudyRef.current(markerDestination);
-          return;
-        }
-        const parkDestination = parkDestinationAtPointer(event);
-        if (parkDestination) {
-          switchStudyRef.current(parkDestination);
-          return;
-        }
-        if (navigationAtPointer(event)) {
-          switchStudyRef.current(activeStudy === "union" ? "washington" : "union");
-        }
-        const landmark = landmarkAtPointer(event);
-        if (landmark) selectLandmark(landmark);
-      }
-      dragging = false;
-      if (event.pointerType !== "touch") globeDragging = false;
-      if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
-      renderer.domElement.classList.remove("is-dragging");
-    };
-    renderer.domElement.addEventListener("pointerdown", pointerDown);
-    renderer.domElement.addEventListener("pointermove", pointerMove);
-    renderer.domElement.addEventListener("pointerup", pointerUp);
-    renderer.domElement.addEventListener("pointercancel", pointerUp);
-    const keyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && cameraLocked) clearLandmarkSelection();
-    };
-    const wheel = (event: WheelEvent) => {
-      if (activeStudy === "globe") {
-        event.preventDefault();
-        globeInteractionFullRateUntil = performance.now() + 180;
-        if (event.ctrlKey) {
-          if (event.deltaY < 0) {
-            if (globeManhattanAtPointer(event)) enterManhattanFromGlobe();
-            else blockGlobeZoom();
-          } else {
-            zoomGlobeOut(globeCameraDistance * Math.exp(event.deltaY * 0.004));
-          }
-        } else if (event.deltaY < 0) {
-          if (globeManhattanAtPointer(event)) enterManhattanFromGlobe();
-          else blockGlobeZoom();
-        } else if (!globeTransitionStartedAt) {
-          zoomGlobeOut(globeCameraDistance * Math.exp(event.deltaY * 0.0025));
-        }
-        return;
-      }
-      if (event.deltaY > 0) {
-        event.preventDefault();
-        window.clearTimeout(zoomOutGestureReset);
-        zoomOutGestureReset = window.setTimeout(() => {
-          zoomOutGestureActive = false;
-        }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
-        if (zoomOutGestureActive) return;
-        zoomOutGestureActive = true;
-      }
-      if (cameraLocked) {
-        if (event.deltaY > 0) {
-          clearLandmarkSelection();
-        }
-        return;
-      }
-      if (event.deltaY > 0) {
-        if (activeStudy === "manhattan") enterGlobeFromManhattan();
-        else switchStudyRef.current("manhattan");
-        return;
-      }
-      if (event.deltaY >= 0) return;
-      event.preventDefault();
-      window.clearTimeout(blockedZoomGestureReset);
-      blockedZoomGestureReset = window.setTimeout(() => {
-        blockedZoomGestureActive = false;
-      }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
-      if (blockedZoomGestureActive) return;
-      blockedZoomGestureActive = true;
-      const parkDestination = parkDestinationAtPointer(event);
-      if (parkDestination) {
-        switchStudyRef.current(parkDestination);
-        return;
-      }
-      const hovered = landmarkAtPointer(event);
-      if (hovered) {
-        selectLandmark(hovered);
-        return;
-      }
-      updatePointerRay(event);
-      blockedZoomOrigin.copy(cameraTarget);
-      blockedZoomOriginZoom = camera.zoom;
-      if (raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) {
-        blockedZoomFocus.copy(pointerWorld).setY(cameraTarget.y);
-      } else {
-        blockedZoomFocus.copy(cameraTarget);
-      }
-      blockedZoomStartedAt = performance.now();
-    };
-    window.addEventListener("keydown", keyDown);
-    renderer.domElement.addEventListener("wheel", wheel, { passive: false });
+      },
+      switchView: (view) => switchStudyRef.current(view),
+      selectLandmark,
+      clearLandmarkSelection,
+      triggerBlockedZoom: (event) => {
+        updatePointerRay(event);
+        blockedZoomOrigin.copy(cameraTarget);
+        blockedZoomOriginZoom = camera.zoom;
+        if (raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) {
+          blockedZoomFocus.copy(pointerWorld).setY(cameraTarget.y);
+        } else blockedZoomFocus.copy(cameraTarget);
+        blockedZoomStartedAt = performance.now();
+      },
+    });
 
     let previousRender = 0;
     function animate(now = performance.now()) {
       if (!shouldAnimate()) {
-        animationRunning = false;
+        viewportLifecycle.markAnimationStopped();
         return;
       }
       frame = requestAnimationFrame(animate);
-      const interactionNeedsFullFrameRate = dragging
-        || globeDragging
-        || now < globeInteractionFullRateUntil
+      viewportLifecycle.setFrame(frame);
+      const interactionNeedsFullFrameRate = inputController.isDragging()
+        || inputController.isGlobeDragging()
+        || now < inputController.getInteractionFullRateUntil()
         || cameraTransitioning
         || blockedZoomStartedAt > 0
         || globeTransitionStartedAt > 0;
@@ -1051,19 +835,10 @@ export default function GlobalMap() {
       // so letting in-flight requests settle is safe and keeps cleanup quiet.
       for (const resolve of visibilityWaiters) resolve();
       visibilityWaiters.clear();
-      cancelAnimationFrame(frame);
       observer.disconnect();
-      intersectionObserver.disconnect();
-      document.removeEventListener("visibilitychange", handleVisibility);
+      viewportLifecycle.dispose();
       window.removeEventListener("popstate", handlePopState);
-      renderer.domElement.removeEventListener("pointerdown", pointerDown);
-      renderer.domElement.removeEventListener("pointermove", pointerMove);
-      renderer.domElement.removeEventListener("pointerup", pointerUp);
-      renderer.domElement.removeEventListener("pointercancel", pointerUp);
-      window.removeEventListener("keydown", keyDown);
-      renderer.domElement.removeEventListener("wheel", wheel);
-      window.clearTimeout(blockedZoomGestureReset);
-      window.clearTimeout(zoomOutGestureReset);
+      inputController.dispose();
       disposeScenes(renderer, [scene, globeScene, skyOverlayScene]);
       timer.dispose();
       cloudVeil.remove();

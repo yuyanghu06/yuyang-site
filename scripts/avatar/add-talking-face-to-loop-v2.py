@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,7 +42,7 @@ def create_canvas(armature: bpy.types.Object) -> bpy.types.Object:
 
     columns, rows = 12, 16
     width, height = 0.205, 0.255
-    center_x, center_y, center_z = -0.004, -0.166, 1.475
+    center_x, center_y, center_z = -0.004, -0.166, 1.440
     vertices = []
     uvs = []
     for row in range(rows + 1):
@@ -102,16 +103,25 @@ def create_material(canvas: bpy.types.Object) -> None:
     texture = nodes.new("ShaderNodeTexImage")
     texture.image = bpy.data.images.load(str(ATLAS), check_existing=True)
     texture.extension = "CLIP"
-    texture.interpolation = "Linear"
+    texture.interpolation = "Cubic"
+    saturation = nodes.new("ShaderNodeHueSaturation")
+    saturation.name = "FaceColorDepth"
+    saturation.inputs["Saturation"].default_value = 1.45
+    saturation.inputs["Value"].default_value = 0.72
+    contrast = nodes.new("ShaderNodeBrightContrast")
+    contrast.name = "FaceContrast"
+    contrast.inputs["Contrast"].default_value = 0.22
 
     links = material.node_tree.links
     links.new(texcoord.outputs["UV"], mapping.inputs["Vector"])
     links.new(mapping.outputs["Vector"], texture.inputs["Vector"])
-    links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+    links.new(texture.outputs["Color"], saturation.inputs["Color"])
+    links.new(saturation.outputs["Color"], contrast.inputs["Color"])
+    links.new(contrast.outputs["Color"], shader.inputs["Base Color"])
     links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
     if "Emission Color" in shader.inputs:
-        links.new(texture.outputs["Color"], shader.inputs["Emission Color"])
-        shader.inputs["Emission Strength"].default_value = 0.35
+        links.new(contrast.outputs["Color"], shader.inputs["Emission Color"])
+        shader.inputs["Emission Strength"].default_value = 0.08
     links.new(shader.outputs["BSDF"], output.inputs["Surface"])
     canvas.data.materials.append(material)
 
@@ -133,6 +143,16 @@ def main() -> None:
     create_material(canvas)
 
     scene = bpy.context.scene
+    scene.render.resolution_x = 1080
+    scene.render.resolution_y = 1440
+    scene.render.resolution_percentage = 100
+    # Review the avatar head-on so atlas placement is not obscured by the
+    # earlier three-quarter camera foreshortening.
+    camera = scene.camera
+    camera.location = (0.0, -4.8, 0.85)
+    camera.rotation_euler = (Vector((0.0, 0.0, 0.85)) - camera.location).to_track_quat(
+        "-Z", "Y"
+    ).to_euler()
     scene.frame_start = FRAME_START
     scene.frame_end = FRAME_END
     scene.frame_set(FRAME_START)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import Image from "next/image";
+import AvatarIdleView from "./avatar-idle-view";
 
 export default function AvatarCall() {
   const [expanded, setExpanded] = useState(true);
@@ -62,6 +62,7 @@ export default function AvatarCall() {
     animation.onfinish = () => {
       setOpening(false);
       dockOriginRef.current = null;
+      window.dispatchEvent(new Event("avatar-call-resize"));
     };
     return () => animation.cancel();
   }, [expanded, opening]);
@@ -89,7 +90,9 @@ export default function AvatarCall() {
         }}
         aria-label="Open Yuyang's guide window"
       >
-        <span className="avatar-call__screen" aria-hidden="true" />
+        <span className="avatar-call__screen" aria-hidden="true">
+          <AvatarIdleView framing="bust" />
+        </span>
       </button>
     );
   }
@@ -110,16 +113,8 @@ export default function AvatarCall() {
         <button type="button" className="avatar-call__close" onClick={close} aria-label="Close expanded guide">
           ×
         </button>
-        <div className="avatar-call__avatar-stage" aria-label="Full avatar placeholder">
-          <Image
-            className="avatar-call__avatar-placeholder"
-            src="/style-references/avatar/yuyang-avatar-neutral-keyframe-smiling-candidate.png"
-            alt="Yuyang avatar placeholder"
-            fill
-            priority
-            unoptimized
-            sizes="(max-width: 600px) 90vw, 34rem"
-          />
+        <div className="avatar-call__avatar-stage">
+          <AvatarIdleView />
         </div>
       </div>
     </section>

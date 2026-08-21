@@ -32,13 +32,17 @@
 
 ## Authoritative avatar rig
 
-- The current avatar base is the 54-bone V2 rig. Its authored animation sources are `assets/blender/yuyang-avatar-idle-loop-v2.blend` and `assets/blender/yuyang-avatar-talking-loop-v2.blend`; their public web exports are `public/models/yuyang-avatar-idle-loop-v2.glb` and `public/models/yuyang-avatar-talking-loop-v2.glb`.
+- The only active avatar Blender source is `assets/blender/yuyang-avatar-talking-loop-face-v2.blend`. Its 54-bone V2 skeleton retains the corrected talking body/hand Action and the approved animated 2D face canvas. Earlier avatar `.blend`/`.blend1` sources are recovery-only under ignored `data/raw/avatar-blender-archive-2026-08-20/`; do not restore them to `assets/blender/` unless the user explicitly reopens that work.
 - Use this 54-bone rig for all new avatar work. It contains the complete 24-bone Meshy humanoid body skeleton plus three connected deform joints for every thumb, index, middle, ring, and pinky on both hands.
 - The original generated hand topology and blank-face v2 body are preserved in this rig. The face remains intentionally featureless until the approved cohesive 2D facial atlas is bound through the head's actual UV/material path.
 - Do not resume work from the older static, A-pose, arms-down-static, unrigged blank-face, rejected procedural-hand, or rejected Quaternius hand-motion test assets.
 - The hand hierarchy now matches the library template's three-joint-per-digit structure, while preserving the original hand silhouette in the neutral pose. Gesture deformation still requires visual approval before production use.
 - The retained Actions are `Yuyang_Idle_Loop_v2`, a 2.5-second exact loop retargeted from `Idle_Loop`, and `Yuyang_Talking_Loop_v2`, a 2.933-second exact loop retargeted from `Idle_Talking_Loop`. The idle keeps the V2 digit chains neutral. The talking loop maps both complete shoulder-to-hand chains and all 30 finger bones with restrained per-chain motion scaling; do not revert it to upper-arm-only retargeting.
-- `assets/blender/yuyang-avatar-talking-loop-face-v2.blend` is the combined talking-body/approved-2D-face review source. Its head-weighted curved `Yuyang_BlankFace_Canvas` samples the cheek-free eight-state atlas and keys two blink arcs plus restrained talking-mouth holds. The review MP4 is `public/style-references/avatar/yuyang-avatar-talking-loop-face-v2.mp4`; material-state animation still needs a runtime WebGL implementation before this facial animation can be treated as a self-playing GLB.
+- `assets/blender/yuyang-avatar-talking-loop-face-v2.blend` is the combined talking-body/approved-2D-face review source. Its head-weighted curved `Yuyang_BlankFace_Canvas` samples the cheek-free eight-state atlas and keys two blink arcs plus restrained talking-mouth holds. The authoritative review is a straight-on 1080x1440 render at `public/style-references/avatar/yuyang-avatar-talking-loop-face-v2.mp4`; material-state animation still needs a runtime WebGL implementation before this facial animation can be treated as a self-playing GLB.
+
+## Authoritative globe source
+
+- The only active globe Blender source is `assets/blender/lowpoly-earth-watercolor.blend`. Its automatic `.blend1` backup and the obsolete yellow-facet preview pair are recovery-only under ignored `data/raw/globe-blender-archive-2026-08-20/`.
 
 ## Figma workflow
 
