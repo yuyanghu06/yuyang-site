@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320" viewBox="0 0 256 320">
+  <defs>
+    <filter id="poi-glow" x="-80%" y="-55%" width="260%" height="210%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="near-blur"/>
+      <feFlood flood-color="#f2c94c" flood-opacity="0.95" result="near-color"/>
+      <feComposite in="near-color" in2="near-blur" operator="in" result="near-glow"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="19" result="outer-blur"/>
+      <feFlood flood-color="#f2c94c" flood-opacity="0.62" result="outer-color"/>
+      <feComposite in="outer-color" in2="outer-blur" operator="in" result="outer-glow"/>
+      <feMerge><feMergeNode in="outer-glow"/><feMergeNode in="near-glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#poi-glow)">
+    <rect x="104" y="47" width="48" height="170" fill="#f2c94c" stroke="#17140f" stroke-width="8"/>
+    <circle cx="128" cy="263" r="24" fill="#f2c94c" stroke="#17140f" stroke-width="8"/>
+  </g>
+</svg>

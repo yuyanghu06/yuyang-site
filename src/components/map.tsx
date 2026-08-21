@@ -106,6 +106,8 @@ const UNION_ARROW_POSITION = new THREE.Vector2(125, -345);
 const MANHATTAN_CENTER = new THREE.Vector3(220, 28, -400);
 const WASHINGTON_CENTER = new THREE.Vector3(0, 28, 0);
 const UNION_CENTER = new THREE.Vector3(545, 28, -580);
+const WASHINGTON_PARK_VISUAL_CENTER = new THREE.Vector2(-22.2, -7.6);
+const UNION_PARK_VISUAL_CENTER = new THREE.Vector2(579.8, -555.4);
 const MANHATTAN_TILE_RADIUS = 2600;
 const NEIGHBORHOOD_TILE_RADIUS = 900;
 const PARK_ZOOM_HIT_RADIUS = 165;
@@ -116,6 +118,59 @@ const HUDSON_MIN_CITY_TILE_X = -1152;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 type MapView = "globe" | "manhattan" | "washington" | "union";
+
+function createManhattanDestinationMarker(
+  destination: "washington" | "union",
+  imageUrl: string,
+  displayScale = 1,
+) {
+  const group = new THREE.Group();
+  group.name = `${destination === "washington" ? "Washington" : "Union"} Square Manhattan destination marker`;
+  const fallbackCanvas = document.createElement("canvas");
+  fallbackCanvas.width = 256;
+  fallbackCanvas.height = 320;
+  const context = fallbackCanvas.getContext("2d");
+  if (!context) throw new Error("Could not create the SVG marker fallback canvas");
+  context.shadowColor = "rgba(242, 201, 76, 0.92)";
+  context.shadowBlur = 30;
+  context.fillStyle = "#f2c94c";
+  context.fillRect(104, 47, 48, 170);
+  context.strokeStyle = "#17140f";
+  context.lineWidth = 8;
+  context.strokeRect(104, 47, 48, 170);
+  context.beginPath();
+  context.arc(128, 263, 24, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  const fallbackTexture = new THREE.CanvasTexture(fallbackCanvas);
+  fallbackTexture.colorSpace = THREE.SRGBColorSpace;
+  const pinMaterial = new THREE.SpriteMaterial({
+    map: fallbackTexture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  new THREE.TextureLoader().load(
+    imageUrl,
+    (svgTexture) => {
+      svgTexture.colorSpace = THREE.SRGBColorSpace;
+      pinMaterial.map = svgTexture;
+      pinMaterial.needsUpdate = true;
+      fallbackTexture.dispose();
+    },
+    undefined,
+    (error) => console.warn(`[Map] Could not decode ${imageUrl}; retaining marker fallback`, error),
+  );
+  const pin = new THREE.Sprite(pinMaterial);
+  pin.name = `${group.name} placeholder point-of-interest pin`;
+  pin.position.y = 85 * displayScale;
+  pin.scale.set(108 * displayScale, 135 * displayScale, 1);
+  pin.renderOrder = 21;
+  group.add(pin);
+  group.userData.baseY = 8;
+  return group;
+}
 
 const GLOBE_RADIUS = 360;
 const GLOBE_START_CAMERA_DISTANCE = 1920;
@@ -2086,9 +2141,20 @@ export default function GlobalMap() {
     updateCamera();
     let requestNeighborhood: ((center: THREE.Vector3, radius: number) => void) | null = null;
     let navigationArrow: THREE.Group | null = null;
+    let manhattanDestinationMarkers: THREE.Group | null = null;
+    let washingtonDestinationMarker: THREE.Group | null = null;
+    let unionDestinationMarker: THREE.Group | null = null;
+    const neighborhoodBuildingMarkers = new Map<"washington" | "union", THREE.Group[]>([
+      ["washington", []],
+      ["union", []],
+    ]);
+    let manhattanMarkerExitStartedAt = 0;
+    let manhattanMarkerEnterStartedAt = 0;
+    const manhattanMarkerDestinations = new Map<THREE.Object3D, "washington" | "union">();
     let navigationArrowSpringStartedAt = Number.POSITIVE_INFINITY;
     let navigationArrowSpringComplete = false;
     switchStudyRef.current = (next, updateUrl = true) => {
+      const previousStudy = activeStudy;
       activeStudy = next;
       if (next === "globe") {
         if (globeTransitionDirection !== "out") {
@@ -2127,6 +2193,27 @@ export default function GlobalMap() {
         navigationArrow.position.z = next === "union" ? UNION_ARROW_POSITION.y : WASHINGTON_ARROW_POSITION.y;
         navigationArrow.rotation.y = next === "union" ? Math.PI - 0.754 : -0.754;
       }
+      if (manhattanDestinationMarkers) {
+        if (isManhattan) {
+          manhattanMarkerExitStartedAt = 0;
+          manhattanMarkerEnterStartedAt = previousStudy === "washington" || previousStudy === "union"
+            ? performance.now()
+            : 0;
+          manhattanDestinationMarkers.visible = true;
+          manhattanDestinationMarkers.traverse((object) => {
+            if (object instanceof THREE.Sprite) object.material.opacity = manhattanMarkerEnterStartedAt ? 0 : 1;
+          });
+        } else if (previousStudy === "manhattan") {
+          manhattanMarkerEnterStartedAt = 0;
+          manhattanMarkerExitStartedAt = performance.now();
+          manhattanDestinationMarkers.visible = true;
+        } else {
+          manhattanDestinationMarkers.visible = false;
+        }
+      }
+      neighborhoodBuildingMarkers.forEach((markers, view) => {
+        markers.forEach((marker) => { marker.visible = next === view; });
+      });
       if (!isManhattan && !neighborhoodBirdsLoaded) {
         skyTravelers.push(...createNeighborhoodBirdTravelers(scene));
         neighborhoodBirdsLoaded = true;
@@ -2180,6 +2267,23 @@ export default function GlobalMap() {
     navigationArrow.visible = false;
     navigationArrow.scale.setScalar(0.001);
     scene.add(navigationArrow);
+    manhattanDestinationMarkers = new THREE.Group();
+    manhattanDestinationMarkers.name = "Manhattan neighborhood destination markers";
+    washingtonDestinationMarker = createManhattanDestinationMarker(
+      "washington",
+      "/branding/washington-square-poi-placeholder.svg",
+    );
+    washingtonDestinationMarker.position.set(WASHINGTON_PARK_VISUAL_CENTER.x, 8, WASHINGTON_PARK_VISUAL_CENTER.y);
+    unionDestinationMarker = createManhattanDestinationMarker(
+      "union",
+      "/branding/union-square-poi-placeholder.svg",
+    );
+    unionDestinationMarker.position.set(UNION_PARK_VISUAL_CENTER.x, 8, UNION_PARK_VISUAL_CENTER.y);
+    manhattanDestinationMarkers.add(washingtonDestinationMarker, unionDestinationMarker);
+    manhattanDestinationMarkers.visible = false;
+    manhattanMarkerDestinations.set(washingtonDestinationMarker, "washington");
+    manhattanMarkerDestinations.set(unionDestinationMarker, "union");
+    scene.add(manhattanDestinationMarkers);
     const sun = new THREE.DirectionalLight(0xffdca8, 1.4);
     sun.position.copy(parkCenter).add(new THREE.Vector3(-720, 1080, 460));
     sun.castShadow = true;
@@ -2252,7 +2356,28 @@ export default function GlobalMap() {
       clickableLandmarks.push(landmark);
       landmarkByRoot.set(root, landmark);
       raycastRoots.push(root);
-    renderer.shadowMap.needsUpdate = true;
+      renderer.shadowMap.needsUpdate = true;
+      return landmark;
+    };
+    const addNeighborhoodBuildingMarker = (
+      view: "washington" | "union",
+      landmark: ClickableLandmark,
+    ) => {
+      landmark.root.updateWorldMatrix(true, true);
+      const bounds = new THREE.Box3().setFromObject(landmark.root);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const marker = createManhattanDestinationMarker(
+        view,
+        `/branding/${view === "washington" ? "washington-square" : "union-square"}-poi-placeholder.svg`,
+        0.25,
+      );
+      marker.position.set(center.x, bounds.max.y - 4, center.z);
+      marker.userData.baseY = marker.position.y;
+      marker.visible = activeStudy === view;
+      neighborhoodBuildingMarkers.get(view)?.push(marker);
+      landmarkByRoot.set(marker, landmark);
+      raycastRoots.push(marker);
+      scene.add(marker);
     };
     const timer = new THREE.Timer();
     timer.connect(document);
@@ -2494,15 +2619,20 @@ export default function GlobalMap() {
           const stern = bakeLandmarkAsSingleMesh(sternSource, "Clickable merged Stern building pair");
           const goldbelly = bakeLandmarkAsSingleMesh(goldbellySource, "Clickable merged 25 Union Square West");
           const unionSquareCafe = bakeLandmarkAsSingleMesh(unionSquareCafeSource, "Clickable merged 235 Park Avenue South");
-          registerClickableLandmark(lipton);
+          const liptonLandmark = registerClickableLandmark(lipton);
+          addNeighborhoodBuildingMarker("washington", liptonLandmark);
           queueSpringArrival(lipton, 0);
-          registerClickableLandmark(courant);
+          const courantLandmark = registerClickableLandmark(courant);
+          addNeighborhoodBuildingMarker("washington", courantLandmark);
           queueSpringArrival(courant, 120);
-          registerClickableLandmark(stern);
+          const sternLandmark = registerClickableLandmark(stern);
+          addNeighborhoodBuildingMarker("washington", sternLandmark);
           queueSpringArrival(stern, 240);
-          registerClickableLandmark(goldbelly);
+          const goldbellyLandmark = registerClickableLandmark(goldbelly);
+          addNeighborhoodBuildingMarker("union", goldbellyLandmark);
           queueSpringArrival(goldbelly, 280);
-          registerClickableLandmark(unionSquareCafe);
+          const unionSquareCafeLandmark = registerClickableLandmark(unionSquareCafe);
+          addNeighborhoodBuildingMarker("union", unionSquareCafeLandmark);
           queueSpringArrival(unionSquareCafe, 300);
           createGouldPlaza(scene);
           createCourantGarden(scene);
@@ -2528,7 +2658,8 @@ export default function GlobalMap() {
           customLoads.push(loadBobstLibrary(abortController.signal)
             .then((bobst) => {
               if (disposed) return;
-              registerClickableLandmark(bobst);
+              const bobstLandmark = registerClickableLandmark(bobst);
+              addNeighborhoodBuildingMarker("washington", bobstLandmark);
               queueSpringArrival(bobst, 480);
             })
             .catch((error) => { if (!isAbortError(error)) console.warn(loadLogPrefix, "Bobst GLB failed", error); }));
@@ -2638,6 +2769,13 @@ export default function GlobalMap() {
       camera.top = height / 2;
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
+      const halfPixelWorld = 0.5 * width / (mount.clientWidth * 0.3);
+      if (washingtonDestinationMarker) {
+        washingtonDestinationMarker.position.x = WASHINGTON_PARK_VISUAL_CENTER.x + halfPixelWorld;
+      }
+      if (unionDestinationMarker) {
+        unionDestinationMarker.position.x = UNION_PARK_VISUAL_CENTER.x + halfPixelWorld;
+      }
       globeCamera.aspect = mount.clientWidth / mount.clientHeight;
       globeCamera.updateProjectionMatrix();
       renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -2744,6 +2882,20 @@ export default function GlobalMap() {
       if (!navigationArrow || activeStudy === "manhattan") return false;
       updatePointerRay(event);
       return raycaster.intersectObject(navigationArrow, true).length > 0;
+    };
+    const manhattanMarkerAtPointer = (event: { clientX: number; clientY: number }): MapView | null => {
+      if (!manhattanDestinationMarkers || activeStudy !== "manhattan") return null;
+      updatePointerRay(event);
+      const intersections = raycaster.intersectObject(manhattanDestinationMarkers, true);
+      for (const intersection of intersections) {
+        let object: THREE.Object3D | null = intersection.object;
+        while (object && object !== manhattanDestinationMarkers) {
+          const destination = manhattanMarkerDestinations.get(object);
+          if (destination) return destination;
+          object = object.parent;
+        }
+      }
+      return null;
     };
     const parkDestinationAtPointer = (event: { clientX: number; clientY: number }): MapView | null => {
       if (activeStudy !== "manhattan") return null;
@@ -2890,7 +3042,12 @@ export default function GlobalMap() {
       }
       const hovered = landmarkAtPointer(event);
       clickableLandmarks.forEach((landmark) => { landmark.hovered = landmark === hovered; });
-      renderer.domElement.style.cursor = hovered || navigationAtPointer(event) || parkDestinationAtPointer(event) ? "pointer" : "default";
+      renderer.domElement.style.cursor = hovered
+        || navigationAtPointer(event)
+        || manhattanMarkerAtPointer(event)
+        || parkDestinationAtPointer(event)
+        ? "pointer"
+        : "default";
     };
     const pointerUp = (event: PointerEvent) => {
       const endedMultiTouchGesture = globeMultiTouchGesture;
@@ -2902,6 +3059,11 @@ export default function GlobalMap() {
       if (!pointerMoved && !endedMultiTouchGesture) {
         if (globeManhattanAtPointer(event)) {
           enterManhattanFromGlobe();
+          return;
+        }
+        const markerDestination = manhattanMarkerAtPointer(event);
+        if (markerDestination) {
+          switchStudyRef.current(markerDestination);
           return;
         }
         const parkDestination = parkDestinationAtPointer(event);
@@ -3186,6 +3348,50 @@ export default function GlobalMap() {
           navigationArrow.position.y = NAVIGATION_ARROW_Y + Math.sin(elapsed * 1.8) * 3;
         }
       }
+      if (manhattanDestinationMarkers?.visible) {
+        const exitProgress = manhattanMarkerExitStartedAt
+          ? THREE.MathUtils.clamp((now - manhattanMarkerExitStartedAt) / 240, 0, 1)
+          : 0;
+        const enterProgress = manhattanMarkerEnterStartedAt
+          ? THREE.MathUtils.clamp((now - manhattanMarkerEnterStartedAt) / 240, 0, 1)
+          : 1;
+        const markerOpacity = manhattanMarkerExitStartedAt
+          ? 1 - THREE.MathUtils.smoothstep(exitProgress, 0, 1)
+          : THREE.MathUtils.smoothstep(enterProgress, 0, 1);
+        manhattanDestinationMarkers.children.forEach((marker, index) => {
+          marker.position.y = marker.userData.baseY
+            + Math.sin(elapsed * 1.55 + index * 1.8) * (4 / 0.3);
+          marker.traverse((object) => {
+            if (object instanceof THREE.Sprite) object.material.opacity = markerOpacity;
+          });
+        });
+        if (manhattanMarkerEnterStartedAt && enterProgress >= 1) manhattanMarkerEnterStartedAt = 0;
+        if (exitProgress >= 1) {
+          manhattanDestinationMarkers.visible = false;
+          manhattanMarkerExitStartedAt = 0;
+        }
+      }
+      neighborhoodBuildingMarkers.forEach((markers, view) => {
+        markers.forEach((marker, index) => {
+          if (activeStudy !== view) {
+            marker.visible = false;
+            return;
+          }
+          marker.position.y = marker.userData.baseY
+            + Math.sin(elapsed * 1.55 + index * 0.72 + (view === "union" ? 1.8 : 0)) * 4;
+          let markerOpacity = 1;
+          marker.traverse((object) => {
+            if (!(object instanceof THREE.Sprite)) return;
+            object.material.opacity = THREE.MathUtils.lerp(
+              object.material.opacity,
+              cameraLocked ? 0 : 1,
+              interactionEase,
+            );
+            markerOpacity = object.material.opacity;
+          });
+          marker.visible = !cameraLocked || markerOpacity > 0.01;
+        });
+      });
       ambientAnimations.forEach((animation) => animation.update(elapsed, now));
       for (let index = arrivingTiles.length - 1; index >= 0; index -= 1) {
         const arrival = arrivingTiles[index];
