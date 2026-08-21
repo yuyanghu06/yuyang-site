@@ -137,6 +137,8 @@ body {
 }
 
 .avatar-call {
+  --avatar-glass-width: min(76rem, calc(100vw - clamp(2rem, 6vw, 5rem)));
+  --avatar-glass-height: min(48rem, calc(100vh - clamp(2rem, 6vw, 5rem)));
   --call-ink: #f4f0e6;
   --call-shell: rgb(53 67 69 / 72%);
   --call-screen: radial-gradient(circle at 50% 42%, #f8f6f0 0%, #eeeae1 72%, #e7e2d8 100%);
@@ -160,10 +162,10 @@ body {
   height: min(48rem, calc(100% - clamp(2rem, 6vw, 5rem)));
   min-height: 24rem;
   overflow: hidden;
-  background: var(--call-screen);
-  border: 1px solid rgb(69 74 71 / 35%);
+  background: transparent;
+  border: 0;
   border-radius: 2rem;
-  box-shadow: 0 1.5rem 5rem rgb(13 22 23 / 32%);
+  box-shadow: 0 1.5rem 5rem rgb(13 22 23 / 28%);
   transform: translate(-50%, -50%);
   transition:
     top 460ms cubic-bezier(0.64, 0, 0.3, 1),
@@ -193,6 +195,23 @@ body {
   cursor: pointer;
 }
 
+.avatar-call__glass {
+  pointer-events: none;
+}
+
+.avatar-call--transitioning .avatar-call__glass {
+  visibility: hidden;
+}
+
+.avatar-call__glass-placeholder {
+  position: absolute;
+  inset: 0;
+  background: rgb(232 230 221 / 30%);
+  -webkit-backdrop-filter: blur(12px) saturate(105%);
+  backdrop-filter: blur(12px) saturate(105%);
+  pointer-events: none;
+}
+
 .avatar-call__close:hover {
   background: #ff756f;
 }
@@ -213,6 +232,7 @@ body {
 
 .avatar-call__avatar-stage {
   position: absolute;
+  z-index: 1;
   inset: 0;
   display: grid;
   place-items: center;
@@ -225,13 +245,13 @@ body {
   top: 50%;
   left: 50%;
   width: var(--avatar-render-width, calc(100% - clamp(2rem, 8vw, 8rem)));
-  height: var(--avatar-render-height, calc(100% - clamp(1.5rem, 4vh, 3rem)));
+  height: var(--avatar-render-height, 130%);
   opacity: 0;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -60%);
   scale: 1;
   transition:
     opacity 260ms ease,
-    transform 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    transform 460ms linear,
     scale 460ms linear;
 }
 
@@ -273,11 +293,16 @@ body {
 }
 
 .avatar-call--docked .avatar-call__avatar-view {
-  transform: translate(-50%, -27%);
-  scale: 0.75;
+  transform: translate(-58.8%, -49%);
+  scale: 0.34;
 }
 
 @media (max-width: 600px) {
+  .avatar-call {
+    --avatar-glass-width: 100vw;
+    --avatar-glass-height: min(44rem, 100vh);
+  }
+
   .avatar-call--expanded {
     padding: 0;
   }

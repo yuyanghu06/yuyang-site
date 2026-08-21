@@ -2,14 +2,25 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { createFaceCanvas, createSmilingFaceTexture } from "./face-canvas";
-import { createFixedBodyAnimationClip } from "./fixed-body-animation";
 
-const IDLE_MODEL_URL = "/models/yuyang-avatar-idle-loop-v2.glb";
 const FACE_ATLAS_URL = "/style-references/avatar/yuyang-avatar-face-talking-atlas.png";
+const FULLSCREEN_CAMERA_CENTER = new THREE.Vector3(-0.38, 1.45, 0);
+const FULLSCREEN_VIEW_HEIGHT = 0.86;
+const VERTICAL_RENDER_OVERSCAN = 1.3;
 
-export default function AvatarIdleView() {
+export type AvatarAnimationSource = {
+  root: THREE.Object3D;
+  mixer: THREE.AnimationMixer | null;
+};
+
+type AvatarFullscreenProps = {
+  ariaLabel: string;
+  loadAvatar: () => Promise<AvatarAnimationSource>;
+  loadErrorMessage: string;
+};
+
+export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessage }: AvatarFullscreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,9 +29,8 @@ export default function AvatarIdleView() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 20);
-    const cameraCenterY = 0.85;
-    camera.position.set(0, cameraCenterY, 4.8);
-    camera.lookAt(0, cameraCenterY, 0);
+    camera.position.set(FULLSCREEN_CAMERA_CENTER.x, FULLSCREEN_CAMERA_CENTER.y, 4.8);
+    camera.lookAt(FULLSCREEN_CAMERA_CENTER);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setClearColor(0x000000, 0);
@@ -50,25 +60,24 @@ export default function AvatarIdleView() {
     const clock = new THREE.Clock();
     let animationFrame = 0;
 
-    const applyCamera = () => {
-      const viewHeight = 1.92;
-      const viewWidth = viewHeight * renderAspect;
-      camera.left = -viewWidth / 2;
-      camera.right = viewWidth / 2;
-      camera.top = viewHeight / 2;
-      camera.bottom = -viewHeight / 2;
-      camera.updateProjectionMatrix();
-    };
+    const overscannedViewHeight = FULLSCREEN_VIEW_HEIGHT * VERTICAL_RENDER_OVERSCAN;
+    const viewWidth = overscannedViewHeight * renderAspect;
+    camera.left = -viewWidth / 2;
+    camera.right = viewWidth / 2;
+    camera.top = overscannedViewHeight / 2;
+    camera.bottom = -overscannedViewHeight / 2;
+    camera.updateProjectionMatrix();
 
-    applyCamera();
+    loadAvatar()
+      .then(({ root, mixer: loadedMixer }) => {
+        if (disposed) {
+          loadedMixer?.stopAllAction();
+          return;
+        }
 
-    new GLTFLoader()
-      .loadAsync(IDLE_MODEL_URL)
-      .then((gltf) => {
-        if (disposed) return;
-        const avatarRoot = gltf.scene;
-        scene.add(avatarRoot);
-        avatarRoot.traverse((object) => {
+        mixer = loadedMixer;
+        scene.add(root);
+        root.traverse((object) => {
           if (!(object instanceof THREE.Mesh)) return;
           object.frustumCulled = false;
           const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -77,19 +86,13 @@ export default function AvatarIdleView() {
           }
         });
 
-        if (gltf.animations.length > 0) {
-          mixer = new THREE.AnimationMixer(avatarRoot);
-          mixer.clipAction(createFixedBodyAnimationClip(gltf.animations[0])).play();
-          mixer.update(0);
-        }
-
         host.dataset.ready = "true";
 
         new THREE.ImageLoader()
           .loadAsync(FACE_ATLAS_URL)
           .then((atlasImage) => {
             if (disposed) return;
-            const head = avatarRoot.getObjectByName("Head");
+            const head = root.getObjectByName("Head");
             if (!head) throw new Error("Avatar Head bone was not found");
             faceTexture = createSmilingFaceTexture(atlasImage);
             const face = createFaceCanvas(faceTexture);
@@ -103,7 +106,7 @@ export default function AvatarIdleView() {
           });
       })
       .catch((error: unknown) => {
-        console.error("[AvatarCall] Could not load idle avatar", error);
+        console.error(loadErrorMessage, error);
         host.dataset.error = "true";
       });
 
@@ -129,7 +132,7 @@ export default function AvatarIdleView() {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, []);
+  }, [loadAvatar, loadErrorMessage]);
 
-  return <div ref={hostRef} className="avatar-call__avatar-view" aria-label="Smiling Yuyang avatar idling" />;
+  return <div ref={hostRef} className="avatar-call__avatar-view" aria-label={ariaLabel} />;
 }

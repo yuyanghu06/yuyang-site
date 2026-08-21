@@ -1,2 +1,2 @@
-export { default as AvatarIdleView } from "./avatar-idle-view";
+export { default as AvatarIdle } from "./idle/idle";
 export { createFixedBodyAnimationClip } from "./fixed-body-animation";
