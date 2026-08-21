@@ -6,3 +6,7 @@ node_modules/
 npm-debug.log*
 data/raw/
 data/work/
+
+# Local avatar animation review renders; runtime GLBs and source files remain tracked.
+public/style-references/avatar/*.mp4
+public/style-references/avatar/*.gif

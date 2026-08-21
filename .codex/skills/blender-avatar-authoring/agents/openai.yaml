@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blender Avatar Authoring"
+  short_description: "Author and review the project avatar in live Blender"
+  default_prompt: "Use the live Blender window to build or review avatar facial geometry and animation with pose galleries and approval gates."

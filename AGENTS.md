@@ -5,6 +5,13 @@
 - At the start of every new session, read `milestone/current.md` if it exists before beginning work.
 - Use timestamped files in `milestone/history/` when historical context is needed; do not read the entire history by default.
 
+## Folder documentation
+
+- Every folder in the repository must contain an `INFO.md` file written in clear, readable English.
+- Each `INFO.md` must explain the folder's purpose, list and describe every direct subfolder, and list and describe every direct file in that folder.
+- Whenever a file is added, removed, renamed, or updated, update the `INFO.md` in its containing folder as part of the same change. Whenever a direct subfolder is added, removed, renamed, or repurposed, update the parent folder's `INFO.md` as part of the same change.
+- Keep each `INFO.md` accurate as the authoritative local guide to its folder; do not defer documentation updates to a later change.
+
 ## Milestone maintenance
 
 - After meaningful project work, update `milestone/current.md` with the authoritative project state, decisions, blockers, and next steps.
@@ -22,6 +29,16 @@
 
 - Whenever procedural or higher-LOD geometry (such as windows, facade panels, rooftop equipment, trim, or signs) is added to a base dataset building, bake or merge the additions with the base geometry into one selectable object before exposing it to outlines, raycasting, hover, click, lift, or camera interactions.
 - Do not keep interactive landmark details as independently transformable scene objects. Selection bounds, outlines, animation, and loading must always operate on the merged base-plus-detail object so visual layers cannot separate.
+
+## Authoritative avatar rig
+
+- The current avatar base is the 54-bone V2 rig. Its authored animation sources are `assets/blender/yuyang-avatar-idle-loop-v2.blend` and `assets/blender/yuyang-avatar-talking-loop-v2.blend`; their public web exports are `public/models/yuyang-avatar-idle-loop-v2.glb` and `public/models/yuyang-avatar-talking-loop-v2.glb`.
+- Use this 54-bone rig for all new avatar work. It contains the complete 24-bone Meshy humanoid body skeleton plus three connected deform joints for every thumb, index, middle, ring, and pinky on both hands.
+- The original generated hand topology and blank-face v2 body are preserved in this rig. The face remains intentionally featureless until the approved cohesive 2D facial atlas is bound through the head's actual UV/material path.
+- Do not resume work from the older static, A-pose, arms-down-static, unrigged blank-face, rejected procedural-hand, or rejected Quaternius hand-motion test assets.
+- The hand hierarchy now matches the library template's three-joint-per-digit structure, while preserving the original hand silhouette in the neutral pose. Gesture deformation still requires visual approval before production use.
+- The retained Actions are `Yuyang_Idle_Loop_v2`, a 2.5-second exact loop retargeted from `Idle_Loop`, and `Yuyang_Talking_Loop_v2`, a 2.933-second exact loop retargeted from `Idle_Talking_Loop`. The idle keeps the V2 digit chains neutral. The talking loop maps both complete shoulder-to-hand chains and all 30 finger bones with restrained per-chain motion scaling; do not revert it to upper-arm-only retargeting.
+- `assets/blender/yuyang-avatar-talking-loop-face-v2.blend` is the combined talking-body/approved-2D-face review source. Its head-weighted curved `Yuyang_BlankFace_Canvas` samples the cheek-free eight-state atlas and keys two blink arcs plus restrained talking-mouth holds. The review MP4 is `public/style-references/avatar/yuyang-avatar-talking-loop-face-v2.mp4`; material-state animation still needs a runtime WebGL implementation before this facial animation can be treated as a self-playing GLB.
 
 ## Figma workflow
 

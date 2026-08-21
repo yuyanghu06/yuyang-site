@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024">
+  <defs>
+    <style>
+      .brow{fill:#29231f}.eyeLine{fill:none;stroke:#332a24;stroke-width:13;stroke-linecap:round}.iris{fill:#503821}.pupil{fill:#21150d}.white{fill:#fffaf2}.nose{fill:none;stroke:#c47d56;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.mouthLine{fill:none;stroke:#a9574a;stroke-width:9;stroke-linecap:round}.mouth{fill:#8d3f3b}.tongue{fill:#df7d78}.tooth{fill:#fff8eb}.cheek{fill:#e99a87;opacity:.38}
+    </style>
+    <g id="brows" fill="#29231f"><path d="M115 157 Q176 126 226 153 L221 171 Q170 150 119 177 Z"/><path d="M286 153 Q341 126 397 157 L393 177 Q342 150 291 171 Z"/></g>
+    <g id="eyes-open"><path fill="#fffaf2" d="M106 235 Q168 186 232 233 Q172 287 106 235Z"/><path fill="#fffaf2" d="M278 233 Q343 186 406 235 Q341 287 278 233Z"/><path fill="none" stroke="#332a24" stroke-width="13" stroke-linecap="round" d="M108 235 Q169 186 230 233"/><path fill="none" stroke="#332a24" stroke-width="13" stroke-linecap="round" d="M280 233 Q343 186 404 235"/><ellipse fill="#503821" cx="174" cy="235" rx="32" ry="40"/><ellipse fill="#503821" cx="338" cy="235" rx="32" ry="40"/><ellipse fill="#21150d" cx="174" cy="239" rx="16" ry="24"/><ellipse fill="#21150d" cx="338" cy="239" rx="16" ry="24"/><circle fill="#fffaf2" cx="185" cy="220" r="7"/><circle fill="#fffaf2" cx="349" cy="220" r="7"/></g>
+    <g id="eyes-half"><path fill="#fffaf2" d="M108 242 Q169 213 230 239 Q170 263 108 242Z"/><path fill="#fffaf2" d="M280 239 Q343 213 404 242 Q341 263 280 239Z"/><path fill="none" stroke="#332a24" stroke-width="13" stroke-linecap="round" d="M109 240 Q169 210 229 238"/><path fill="none" stroke="#332a24" stroke-width="13" stroke-linecap="round" d="M281 238 Q343 210 403 240"/><ellipse fill="#503821" cx="174" cy="242" rx="27" ry="22"/><ellipse fill="#503821" cx="338" cy="242" rx="27" ry="22"/><ellipse fill="#21150d" cx="174" cy="244" rx="13" ry="14"/><ellipse fill="#21150d" cx="338" cy="244" rx="13" ry="14"/></g>
+    <g id="eyes-closed" fill="none" stroke="#332a24" stroke-width="13" stroke-linecap="round"><path d="M109 240 Q170 270 230 239"/><path d="M281 239 Q342 270 403 240"/></g>
+    <g id="nose-cheeks"><path fill="#c47d56" d="M249 253 Q248 302 228 336 Q245 352 269 340 L265 333 Q250 341 238 334 Q254 304 257 255Z"/><path fill="#c47d56" d="M275 334 Q285 328 295 337 L291 343 Q284 338 277 342Z"/></g>
+    <g id="mouth-neutral"><path fill="#a9574a" d="M202 395 Q256 422 311 395 Q260 432 202 404Z"/></g>
+    <g id="mouth-small"><path fill="#8d3f3b" d="M224 388 Q256 377 288 388 Q285 424 256 427 Q227 424 224 388Z"/><path fill="#df7d78" d="M235 411 Q256 400 277 411 Q269 427 256 428 Q242 427 235 411Z"/></g>
+    <g id="mouth-medium"><path fill="#8d3f3b" d="M205 381 Q256 366 307 381 Q302 438 256 442 Q210 438 205 381Z"/><path fill="#fff8eb" d="M214 384 Q256 374 298 384 L292 398 L220 398Z"/><path fill="#df7d78" d="M221 421 Q256 402 291 421 Q278 442 256 443 Q234 442 221 421Z"/></g>
+    <g id="mouth-wide"><path fill="#8d3f3b" d="M188 382 Q256 362 324 382 Q317 444 256 449 Q195 444 188 382Z"/><path fill="#fff8eb" d="M199 384 Q256 371 313 384 L305 401 L207 401Z"/><path fill="#df7d78" d="M207 427 Q256 401 305 427 Q286 449 256 450 Q226 449 207 427Z"/></g>
+    <g id="mouth-round"><ellipse fill="#8d3f3b" cx="256" cy="410" rx="33" ry="48"/><ellipse fill="#df7d78" cx="256" cy="432" rx="25" ry="22"/></g>
+    <g id="mouth-smile"><path fill="#8d3f3b" d="M199 386 Q256 374 313 386 Q305 435 256 440 Q207 435 199 386Z"/><path fill="#fff8eb" d="M208 388 Q256 379 304 388 L298 402 L214 402Z"/><path fill="#df7d78" d="M218 421 Q256 404 294 421 Q280 440 256 441 Q232 440 218 421Z"/></g>
+  </defs>
+  <g transform="translate(0 0)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose-cheeks"/><use href="#mouth-neutral"/></g>
+  <g transform="translate(512 0)"><use href="#brows"/><use href="#eyes-half"/><use href="#nose-cheeks"/><use href="#mouth-neutral"/></g>
+  <g transform="translate(1024 0)"><use href="#brows"/><use href="#eyes-closed"/><use href="#nose-cheeks"/><use href="#mouth-neutral"/></g>
+  <g transform="translate(1536 0)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose-cheeks"/><use href="#mouth-small"/></g>
+  <g transform="translate(0 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose-cheeks"/><use href="#mouth-medium"/></g>
+  <g transform="translate(512 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose-cheeks"/><use href="#mouth-wide"/></g>
+  <g transform="translate(1024 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose-cheeks"/><use href="#mouth-round"/></g>
+  <g transform="translate(1536 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose-cheeks"/><use href="#mouth-smile"/></g>
+</svg>

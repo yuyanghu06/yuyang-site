@@ -10,14 +10,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "data:washington-city-tiles": "node scripts/build-washington-city-tiles.mjs",
-    "data:washington-planimetrics": "node scripts/build-washington-planimetrics.mjs",
-    "data:washington-roads": "node scripts/build-washington-road-glb.mjs",
-    "data:ambient-layout": "node scripts/build-ambient-layout.mjs",
-    "data:washington-park": "node scripts/build-washington-park.mjs",
-    "data:union-park": "node scripts/build-union-square-park.mjs",
-    "data:hudson-waterfront": "node scripts/build-hudson-waterfront.mjs",
-    "data:manhattan-parks": "node scripts/build-manhattan-parks.mjs"
+    "data:washington-city-tiles": "node scripts/map-data/build-washington-city-tiles.mjs",
+    "data:washington-planimetrics": "node scripts/map-data/build-washington-planimetrics.mjs",
+    "data:washington-roads": "node scripts/map-data/build-washington-road-glb.mjs",
+    "data:ambient-layout": "node scripts/map-data/build-ambient-layout.mjs",
+    "data:washington-park": "node scripts/map-data/build-washington-park.mjs",
+    "data:union-park": "node scripts/map-data/build-union-square-park.mjs",
+    "data:hudson-waterfront": "node scripts/map-data/build-hudson-waterfront.mjs",
+    "data:manhattan-parks": "node scripts/map-data/build-manhattan-parks.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
