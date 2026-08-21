@@ -141,33 +141,38 @@ body {
   --call-shell: rgb(53 67 69 / 72%);
   --call-screen: radial-gradient(circle at 50% 42%, #f8f6f0 0%, #eeeae1 72%, #e7e2d8 100%);
   font-family: inherit;
-}
-
-.avatar-call--expanded {
   position: fixed;
   z-index: 20;
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: clamp(1rem, 3vw, 2.5rem);
+  pointer-events: none;
+}
+
+.avatar-call--expanded {
   background: transparent;
+  pointer-events: auto;
 }
 
 .avatar-call__modal {
-  position: relative;
-  width: min(76rem, 100%);
-  height: min(48rem, 100%);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(76rem, calc(100% - clamp(2rem, 6vw, 5rem)));
+  height: min(48rem, calc(100% - clamp(2rem, 6vw, 5rem)));
   min-height: 24rem;
   overflow: hidden;
   background: var(--call-screen);
   border: 1px solid rgb(69 74 71 / 35%);
   border-radius: 2rem;
   box-shadow: 0 1.5rem 5rem rgb(13 22 23 / 32%);
-}
-
-.avatar-call--expanded.is-closing .avatar-call__modal,
-.avatar-call--expanded.is-opening .avatar-call__modal {
-  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition:
+    top 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    left 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    width 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    height 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    min-height 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    border-radius 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    transform 460ms cubic-bezier(0.64, 0, 0.3, 1);
 }
 
 .avatar-call__close {
@@ -217,10 +222,17 @@ body {
 
 .avatar-call__avatar-view {
   position: absolute;
-  inset: clamp(1rem, 2.5vh, 2rem) clamp(1rem, 4vw, 4rem) clamp(0.5rem, 1.5vh, 1rem);
+  top: 50%;
+  left: 50%;
+  width: var(--avatar-render-width, calc(100% - clamp(2rem, 8vw, 8rem)));
+  height: var(--avatar-render-height, calc(100% - clamp(1.5rem, 4vh, 3rem)));
   opacity: 0;
-  filter: drop-shadow(0 1.65rem 1.15rem rgb(18 25 25 / 30%));
-  transition: opacity 260ms ease;
+  transform: translate(-50%, -50%);
+  scale: 1;
+  transition:
+    opacity 260ms ease,
+    transform 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    scale 460ms linear;
 }
 
 .avatar-call__avatar-view[data-ready="true"] {
@@ -231,6 +243,7 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .avatar-call--docked:focus-visible {
@@ -239,32 +252,29 @@ body {
 }
 
 .avatar-call--docked {
-  position: fixed;
   z-index: 10;
+}
+
+.avatar-call--docked .avatar-call__modal {
   top: 1.25rem;
-  right: 1.25rem;
+  left: calc(100% - 10.25rem);
   width: 9rem;
-  aspect-ratio: 1;
-  padding: 0;
-  overflow: hidden;
-  background: var(--call-screen);
-  border: 1px solid rgb(69 74 71 / 35%);
+  height: 9rem;
+  min-height: 0;
   border-radius: 1.4rem;
   box-shadow: 0 0.75rem 2.5rem rgb(13 22 23 / 22%);
+  transform: translate(0, 0);
+  pointer-events: auto;
   cursor: pointer;
 }
 
-.avatar-call--docked .avatar-call__screen {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: inherit;
-  box-shadow: none;
+.avatar-call--docked .avatar-call__close {
+  display: none;
 }
 
 .avatar-call--docked .avatar-call__avatar-view {
-  inset: 0;
-  filter: none;
+  transform: translate(-50%, -27%);
+  scale: 0.75;
 }
 
 @media (max-width: 600px) {
@@ -278,15 +288,17 @@ body {
   }
 
   .avatar-call__modal {
+    width: 100%;
     height: min(44rem, 100%);
     min-height: 0;
     border-radius: 1.4rem;
   }
 
-  .avatar-call--docked {
+  .avatar-call--docked .avatar-call__modal {
     top: 0.75rem;
-    right: 0.75rem;
+    left: calc(100% - 7.75rem);
     width: 7rem;
+    height: 7rem;
   }
 }
 
