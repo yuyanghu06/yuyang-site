@@ -24,7 +24,6 @@
     "next": "^16.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "simple-liquid-glass": "^4.1.0",
     "three": "^0.185.1",
     "topojson-client": "^3.1.0",
     "world-atlas": "^2.0.2"

@@ -14,4 +14,5 @@ Use these records only when historical context is needed; do not load the entire
 - `2026-08-21_08-49-41-avatar-transition-blur-and-margin.md` records the equal compact vertical modal margins and default-strength blur retained during minimize and restore.
 - `2026-08-21_08-52-00-avatar-two-pixel-margin.md` corrects the modal margin interpretation to exact 2 px viewport margins and records the selected 12 px blur.
 - `2026-08-21_08-58-00-avatar-glass-remount-hitch.md` records removal of the final full-size hitch by keeping the SVG glass instance mounted throughout the transition.
+- `2026-08-21_09-02-43-avatar-runtime-optimization.md` records the full avatar performance/memory pass, SVG glass removal, renderer reductions, shader warmup, and measured Chrome process evidence.
 - Other timestamped Markdown files are earlier append-only session handoffs.

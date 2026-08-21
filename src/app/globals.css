@@ -195,18 +195,12 @@ body {
   cursor: pointer;
 }
 
-.avatar-call__glass {
-  pointer-events: none;
-}
-
-.avatar-call--transitioning .avatar-call__glass {
-  visibility: hidden;
-}
-
-.avatar-call__glass-placeholder {
+.avatar-call__glass-surface {
   position: absolute;
   inset: 0;
-  background: rgb(232 230 221 / 30%);
+  background:
+    radial-gradient(circle at 74% 36%, rgb(255 248 231 / 18%) 0 9%, rgb(255 248 231 / 7%) 24%, transparent 46%),
+    rgb(232 230 221 / 30%);
   -webkit-backdrop-filter: blur(12px) saturate(105%);
   backdrop-filter: blur(12px) saturate(105%);
   pointer-events: none;
