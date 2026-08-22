@@ -4,6 +4,7 @@ import {
   NAVIGATION_ARROW_Y,
   WASHINGTON_ARROW_POSITION,
 } from "../shared/core";
+import type { LandmarkCameraViewId } from "@/agent/camera-views";
 
 export function createManhattanDestinationMarker(
   destination: "washington" | "union",
@@ -49,6 +50,7 @@ export function createManhattanDestinationMarker(
 export interface ClickableLandmark {
   root: THREE.Object3D;
   glow: THREE.Object3D;
+  cameraViewId: LandmarkCameraViewId;
   baseY: number;
   hovered: boolean;
   selected: boolean;
@@ -136,4 +138,3 @@ export function createWorldNavigationArrow() {
   group.name = "World-space square navigation arrow";
   return group;
 }
-

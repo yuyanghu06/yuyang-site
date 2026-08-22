@@ -1,5 +1,14 @@
 # Application source
 
-The Next.js route shell is in `app/`, reusable UI and Three.js modules are in `components/`, and deterministic build outputs are in `generated/`.
+The application source includes the Next.js route shell, server-side agent orchestration, reusable browser components, and deterministic generated map data. Authored source must remain below the ESLint line cap.
 
-Authored source must remain below the ESLint line cap.
+## Direct subfolders
+
+- `agent/` owns agent contracts, mandatory Pinecone retrieval, and the OpenAI Responses tool loop.
+- `app/` owns App Router pages, metadata, global styles, and API routes.
+- `components/` owns reusable UI and the persistent Three.js experience.
+- `generated/` contains deterministic generated map source.
+
+## Direct files
+
+- `info.md` documents this folder.

@@ -169,6 +169,15 @@ export function createInputController(options: InputControllerOptions) {
     }
     if (options.getCameraLocked()) {
       if (event.deltaY > 0) options.clearLandmarkSelection();
+      else if (event.deltaY < 0) {
+        event.preventDefault();
+        window.clearTimeout(blockedZoomGestureReset);
+        blockedZoomGestureReset = window.setTimeout(() => { blockedZoomGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
+        if (blockedZoomGestureActive) return;
+        blockedZoomGestureActive = true;
+        const hovered = options.landmarkAtPointer(event);
+        if (hovered && !hovered.selected) options.selectLandmark(hovered);
+      }
       return;
     }
     if (event.deltaY > 0) {

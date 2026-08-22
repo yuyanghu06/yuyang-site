@@ -5,11 +5,11 @@ This browser-only module provides one shared full-screen composition for animate
 ## Subfolders
 
 - `idle/` owns only the idle GLB and idle animation setup supplied to the shared renderer.
+- `vrm-animation/` contains the VRM Game Starter's MIT-licensed world-space humanoid retargeter and its VRM bone contract.
 
 ## Files
 
-- `avatar-fullscreen.tsx` owns the reusable right-offset full-screen camera, including vertical render overscan that prevents the lower torso from being clipped, scene-local key/fill lighting plus a warm camera-front light, face attachment, a 30 FPS visibility-aware WebGL render loop capped at 1.5× pixel ratio, resource cleanup, and the stable canvas used by every current and future avatar state. The minimized shell linearly translates and scales this unchanged canvas instead of switching cameras.
-- `face-canvas.ts` builds the reusable curved 2D face mesh and its atlas-derived neutral smiling texture.
+- `avatar-fullscreen.tsx` owns the reusable right-offset full-screen camera, 225% full-screen avatar scale, revised vertical composition, vertical render overscan, scene-local lighting, material response, 30 FPS visibility-aware render loop, cleanup, and stable canvas. It emits its readiness callback only after the GLB is mounted, shaders compile, and the first frame renders. Its animation source may provide a per-frame facial-state updater and disposer; the renderer forwards current talking state without remounting the Three.js scene or body animation. Its horizontal camera offset compensates for the enlarged scale so the approved left/right placement remains stable between the message stack and right viewport margin.
 - `fixed-body-animation.ts` applies the shared animation policy that locks the root, torso, hips, and legs while retaining head, arm, hand, and finger motion. Future avatar animations should pass through this helper when the body must remain fixed.
 - `index.ts` is the module's public export surface.
 - `INFO.md` documents this folder.

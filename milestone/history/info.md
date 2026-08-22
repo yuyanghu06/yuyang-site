@@ -6,6 +6,172 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-22_09-39-56-independent-talking-mouth-and-blink.md` records the independent blink/mouth compositor, faster immediate talking cadence, mouth-only assets, and corrected transparent blink artwork.
+
+- `2026-08-22_06-12-52-idle-blink-and-talking-face.md` records the approved-face closed-eye texture, two idle blinks, talking-atlas runtime states on the reused idle body loop, and verification.
+
+- `2026-08-22_06-11-06-caption-shell-interaction-guard.md` records the shell-level rule preventing all caption interactions from dragging or fullscreen-opening the docked avatar.
+
+- `2026-08-22_06-08-49-cancel-font-size.md` records correcting Cancel to Reply's exact 0.72-rem typography instead of inheriting the composer button size.
+
+- `2026-08-22_06-07-48-cancel-text-action.md` records replacing the inline composer's broken white Cancel pill with a non-shrinking plain blue text action.
+
+- `2026-08-22_06-04-41-caption-reply-spacing-and-cancel.md` records balanced standalone Reply spacing and the inline composer's white Cancel pill.
+
+- `2026-08-22_05-57-01-user-approved-manual-face-fit.md` records the user's final manual face placement, exact locked transform, live GLB export, and cache-key promotion.
+
+- `2026-08-22_05-47-42-avatar-literal-face-centering.md` records the final evaluated-bounds centering, minimal anti-clipping clearance, zero-yaw/roll camera-square Head pose, retained upward pitch, GLB export, and cache bust.
+
+- `2026-08-22_05-41-13-inline-reply-and-balanced-inset.md` records event-isolated inline Reply behavior and matching expanded-caption top/bottom insets.
+
+- `2026-08-22_05-39-14-align-pill-reply.md` records vertically centering Reply against adjacent in-bubble pill labels.
+
+- `2026-08-22_00-26-20-avatar-production-angle-head-up.md` records restoration of the original seated face after rejecting artwork/mesh shifts, the accepted 15° animated Head-up correction, live GLB export, cache bust, and round-trip validation.
+
+- `2026-08-22_00-21-57-in-bubble-pills-with-reply.md` records Yes-sized in-bubble tour/tool pills and the adjacent persistent Reply control.
+
+- `2026-08-22_00-14-00-single-caption-position.md` records keeping a lone assistant caption at its natural zero-scroll position.
+
+- `2026-08-22_00-16-18-tour-caption-limit-and-next.md` records the strict 170-character tour-caption queue and blue below-bubble deterministic Next behavior.
+
+- `2026-08-22_00-13-19-washington-tour-arrival-message.md` records the arrival-gated Washington Square NYU and Lipton Hall guided-tour caption.
+
+- `2026-08-22_00-12-00-expanded-latest-caption-anchor.md` records restoring the newest-caption default viewport whenever the docked guide expands.
+
+- `2026-08-22_00-06-47-caption-turn-limit.md` records the 170-character agent-turn ceiling, client-side overflow queue, one-segment-per-Next behavior, and final white Cancel control.
+
+- `2026-08-22_00-10-52-preserve-minimized-neighborhood-choice.md` records isolating destination-button events from the docked shell so minimized choices cannot reopen fullscreen.
+
+- `2026-08-22_00-09-03-minimize-neighborhood-choice.md` records minimizing the guide before either Manhattan neighborhood choice begins its camera transition.
+
+- `2026-08-22_00-07-43-avatar-face-chin-fit.md` records the rejected floating whole-canvas moves and the saved localized higher-chin correction with original skin clearance, complete transform locks, and verified exclusive Head weighting.
+
+- `2026-08-22_00-07-36-manhattan-neighborhood-buttons.md` records the two all-white Manhattan guided-tour destination buttons, docked-caption visibility, authored navigation actions, and verification.
+
+- `2026-08-22_00-05-58-manhattan-tour-arrival-greeting.md` records the arrival-gated Manhattan guided-tour introduction, its exact narration, one-shot tour-state guard, and verification.
+
+- `2026-08-21_21-10-00-production-world-loader.md` records the exact two-second production globe loader, audio-unlocking continue gesture, development bypass, and 500 ms post-avatar beat.
+
+- `2026-08-21_21-02-58-face-local-angle-up.md` records the explicit 4° upward rotation of the locked facial mesh itself and the revalidated five-second GLB export.
+
+- `2026-08-21_20-59-41-manual-face-lock-and-chin-up.md` records the approved manual face fit, exact Head lock, five-second idle, 4 mm face nudge, chin-up gaze, saved Blender source, and GLB validation.
+
+- `2026-08-21_20-58-52-dynamic-age-and-turn-time.md` records birthday-derived intro age and a fresh ISO UTC date/time in every current-turn agent context.
+
+- `2026-08-21_20-56-46-persistent-docked-stream-caption.md` records automatic scripted/server stream display, right alignment, persistent completion state, and explicit dismissal rules.
+
+- `2026-08-21_20-52-17-minimized-live-stream-caption.md` records showing only the active streaming caption to the left of the minimized avatar.
+
+- `2026-08-21_21-02-00-stream-dialogue-audio.md` records the CC0 streamed-dialogue blip, speech-start event, 40% pitch lift, half-volume setting, and autoplay constraint.
+
+- `2026-08-21_20-47-51-settled-agent-camera-chain.md` records the settle gate that makes multi-level agent navigation complete every intermediate authored camera.
+
+- `2026-08-21_20-45-03-live-agent-camera-registry.md` records the single registry shared by agent tools and live map cameras, all ten available views, dynamic landmark routing, and the matched blue send arrow.
+
+- `2026-08-21_20-53-00-gate-agent-on-avatar-ready.md` records first-frame avatar readiness gating for the complete agent UI and intro sequence.
+
+- `2026-08-21_20-49-00-caption-scroll-endpoints.md` records full-history upward scrolling and the default 1.5-message downward endpoint.
+
+- `2026-08-21_20-36-17-avatar-fullscreen-second-enlargement.md` records the second 50% full-screen avatar enlargement, 10%-of-height upward move, and horizontally stable scale compensation.
+
+- `2026-08-21_20-33-51-embedded-face-fixed-legs-framing.md` records the GLB-native Head-skinned face, fixed lower body, direct-facing correction, runtime overlay removal, and enlarged/lowered full-screen framing.
+
+- `2026-08-21_20-46-00-restore-latest-caption-guard.md` records the live-offset visibility guard that keeps the latest caption present without restoring stale scroll geometry.
+
+- `2026-08-21_20-43-00-pop-in-and-unclamped-scroll.md` records the assistant-card entrance animation and replacement of repeated scroll-coordinate rewriting with a one-time anchor plus native scrolling.
+
+- `2026-08-21_20-38-00-native-caption-scroll.md` records removal of custom wheel interception in favor of native scrolling within the existing caption bounds.
+
+- `2026-08-21_20-27-05-landmark-camera-scroll-transfer.md` records direct inward-scroll transfer from one selected building to another building's authored camera preset.
+
+- `2026-08-21_20-35-00-immediate-stream-placeholder-and-width.md` records the immediate animated-dot assistant card and 30% wider caption column.
+
+- `2026-08-21_20-31-00-stream-safe-caption-scroll.md` records the separation of new-message anchoring from stream-driven caption resizing so wheel movement is no longer reset per character.
+
+- `2026-08-21_20-27-00-agent-overlay-interaction-cleanup.md` records citation/status removal, corrected scroll direction, persistent scripted choices during Reply, and modal-synchronized overlay fades.
+
+- `2026-08-21_20-20-32-head-weighted-face-centering.md` records replacement of bone-origin centering with measured head-weighted mesh bounds and the stronger downward framing correction.
+
+- `2026-08-21_20-22-00-inline-composer-replaces-reply.md` records the inline composer replacing the Reply row instead of appearing beneath a separate close control.
+
+- `2026-08-21_20-19-00-reply-alignment-and-label-cleanup.md` records the reply-arrow alignment and removal of the inline composer's visible label.
+
+- `2026-08-21_20-17-20-inline-caption-reply.md` records the below-caption Reply action and normally hidden composer that expands inside the latest liquid-glass message.
+
+- `2026-08-21_20-17-21-head-synced-avatar-face.md` records the centered local face pivot, direct Head-bone alignment, synchronized head motion, and lowered avatar framing.
+
+- `2026-08-21_20-12-05-promote-open-hands-idle.md` records promotion of the approved symmetric, planted, open-hands idle into the live face-enabled avatar.
+
+- `2026-08-21_20-07-02-caption-height-and-anchor-fix.md` records the viewport-relative scroll anchor and flex-shrink correction that restore full caption text.
+
+- `2026-08-21_20-03-17-caption-scroll-limit.md` records the hard two-caption upward scroll boundary, reverse history reveal, invisible scroll room, and scripted-caption deduplication.
+
+- `2026-08-21_20-00-53-caption-stack-and-hidden-composer.md` records the half-clipped prior-caption scroll anchor, filtered-layer containment, and temporary removal of the freeform composer.
+
+- `2026-08-21_20-00-15-symmetric-arms-wider-feet.md` records the mirrored right-arm placement, farther-forward hands, and wider planted foot spacing.
+
+- `2026-08-21_19-58-11-caption-scroll-and-choice-colors.md` records caption glass cleanup, semantic liquid-glass choice colors, expanded caption spacing, midpoint auto-scroll, and the fixed top boundary.
+
+- `2026-08-21_19-57-24-arms-by-torso-planted-idle.md` records the validated idle candidate with forward arms beside the torso, preserved hands/fingers, and close planted legs.
+
+- `2026-08-21_19-55-43-caption-history-and-animated-agent-navigation.md` records streamed scripted captions, scrollable assistant history, dark fading glass choices, and the rule that all agent camera tools use authored transitions.
+
+- `2026-08-21_19-51-45-reset-shoulder-joint-experiment.md` records rejection and complete removal of the finger-damaging shoulder-joint candidate and restoration of the pristine idle.
+
+- `2026-08-21_19-51-01-facetime-caption-glass.md` records the compact dark liquid-glass FaceTime caption treatment for streamed avatar speech.
+
+- `2026-08-21_19-48-15-idle-shoulder-joints-only.md` records the clean candidate that moves only the two shoulder-to-upper-arm joints and their downstream rest-bone chains.
+
+- `2026-08-21_19-47-51-streamed-avatar-intro.md` records the speech-bubble redesign, OpenAI text streaming, persistent first-load wave/tour choice, and initial Manhattan tour branch.
+
+- `2026-08-21_19-15-21-reject-shoulder-extension.md` records deletion of the torn shoulder candidate and verified restoration of the untouched accepted idle.
+
+- `2026-08-21_19-15-05-openai-pinecone-agent-foundation.md` records the mandatory per-turn RAG pipeline, OpenAI Responses tool loop, guide chat, validated map/emote command contracts, and live endpoint verification.
+
+- `2026-08-21_19-13-54-idle-shoulder-placement-correction.md` records the revised wider and forward shoulder-chain placement after rejection of the first narrow/rearward pass.
+
+- `2026-08-21_19-10-58-idle-shoulder-extension-review.md` records the unapproved 12% symmetric shoulder-span extension candidate and its structural/loop validation.
+
+- `2026-08-21_19-04-49-animation-folder.md` records creation of the permanent public animation folder and relocation of the protected idle mapping checkpoint to `public/animations/idle.glb`.
+
+- `2026-08-21_19-00-26-public-model-cleanup.md` records removal of unused public model binaries while preserving runtime assets and the authoritative avatar mapping sources/checkpoint.
+
+- `2026-08-21_17-53-05-channel-swap-skeleton-audit.md` records the rejected channel-level arm swap and the full-body x-ray proving its crossed shoulder chains.
+- `2026-08-21_17-47-46-recovered-idle-arm-swap.md` records the isolated full upper-limb side swap applied to the recovered absolute-retarget checkpoint.
+- `2026-08-21_17-45-52-arm-swapped-checkpoint-recovery.md` records reproducible recovery of the earlier absolute-retarget rig and animated GLB with its original swapped upper-limb assignments.
+- `2026-08-21_17-41-12-idle-reference-export-fix.md` records rejection of the square source export and its replacement with a structurally preserved mannequin plus isolated idle Action.
+- `2026-08-21_17-38-15-idle-source-reference.md` records the neutral right-pinky lock, isolated untouched source idle GLB, and the remaining T-pose rebind requirement for exact pose matching.
+- `2026-08-21_17-35-07-vrm-delta-idle.md` records the matched-frame diagnosis, delta-only full-body/finger bake, corrected anatomical hand positions, and direct website playback of the embedded clip.
+- `2026-08-21_17-30-34-vrm-embedded-idle.md` records the standalone embedded idle GLB, visually detected arm-side inversion, corrected shoulder-to-fingertip mappings, and numerical validation.
+- `2026-08-21_17-24-00-vrm-face-scale.md` records the smaller head-relative face and clarifies that the idle is runtime-retargeted from the separate library rather than embedded in the avatar GLB.
+- `2026-08-21_17-21-51-vrm-rig-framing.md` records the standardized VRM candidate, upstream retargeter integration, and measured camera/face correction after the first framing failure.
+- `2026-08-21_17-11-51-vrm-animation-library-pull.md` records the separately cloned VRM Game Starter library, its preserved Quaternius-derived GLB, the visually rejected direct mapping test, and restoration of the prior idle.
+- `2026-08-21_16-55-37-hybrid-talking-only-export.md` records the dedicated one-Action talking GLB export and round-trip verification.
+- `2026-08-21_16-52-52-hybrid-animation-attachment.md` records attachment and persistence of the authoritative idle/talking loops on the hybrid 54-bone rig plus numerical and visual review gates.
+- `2026-08-21_16-34-00-hybrid-meshy-tripo-rig.md` records Tripo's 52-bone result, the corrected Meshy-body/Tripo-finger hybrid construction, rejected unsafe transfer, and final x-ray/coverage gates.
+- `2026-08-21_15-21-26-meshy-ai-rig-xray.md` records Meshy's successful 24-bone AI rig, its front/side anatomical x-ray audit, and the missing-finger limitation.
+- `2026-08-21_15-14-52-tripo-skeleton-overlay-audit.md` records the embedded V2 skeleton overlay and the exposed hand/finger bind-position mismatch.
+- `2026-08-21_15-07-59-tripo-v2-rig-transfer.md` records the definitive 54-bone transfer onto the approved Tripo quad surface and the completed structural/deformation review checks.
+- `2026-08-21_14-58-57-tripo-quad-retopology.md` records the successful paid Tripo Smart Low-Poly pass, preserved review GLB, topology statistics, and pending rig-fit gate.
+- `2026-08-21_14-07-00-autorig-face-flattening.md` records the localized rig-safe removal of the generated nose projection and the separate Blender/GLB review candidate.
+- `2026-08-21_13-58-00-meshy-autorig-animation-fit.md` records the topology-first Meshy regeneration, 24-bone auto-rig, and existing-animation fit review.
+- `2026-08-21_13-32-00-boat-hull-waterline.md` records scale-aware bottom-of-hull alignment to the globe water surface.
+- `2026-08-21_13-30-00-boat-waterline-radius.md` records aligning boat routes to the imported globe's measured inset water surface.
+- `2026-08-21_13-28-00-globe-boat-scale.md` records restoring globe boats to the approved 2× scale.
+- `2026-08-21_13-26-00-globe-satellites-and-scale.md` records the second traveler-size increase, seated boat hulls, and high-orbit satellite layer.
+- `2026-08-21_13-25-00-global-traveler-distribution.md` records the expanded, globally balanced plane and boat distribution.
+- `2026-08-21_13-21-00-slower-globe-boats.md` records the 50% globe boat speed reduction.
+- `2026-08-21_13-20-00-globe-traveler-scale.md` records the doubled plane and boat scale adjustment for globe-view readability.
+- `2026-08-21_13-16-00-globe-ambient-motion.md` records the restrained idle globe rotation and the shared plane/boat ambient traveler pass.
+- `2026-08-21_13-02-00-avatar-arm-balance.md` records the midpoint arm-angle correction after the prior pass converged too far across the torso.
+- `2026-08-21_12-44-00-avatar-hair-seam-face-offset.md` records the split-vertex hair-seam cleanup and exact 10%-of-face-height downward placement adjustment.
+- `2026-08-21_11-54-00-flat-face-rig-site-corrections.md` records the flat-face multiview deployment, full 54-bone/finger pipeline, arms-at-sides correction, clean hair material, old face restoration, and lowered face fit.
+- `2026-08-21_11-19-33-regenerated-meshy-face-atlas.md` records the new eight-state Meshy-head facial atlas, runtime integration, and iterated face scale/placement.
+- `2026-08-21_11-11-07-meshy-safe-weld-site-review.md` records the weight-safe exact-duplicate weld that repairs Meshy's split normal continuity without reshaping or retexturing the avatar.
+- `2026-08-21_11-06-45-meshy-soft-normals-face-fit.md` records the non-geometric smoothing pass and the iterated Meshy-head face-canvas size and nose alignment.
+- `2026-08-21_11-01-52-meshy-rigged-avatar-site-review.md` records deployment and round-trip validation of the rigged Meshy T2 surface in both public avatar GLBs.
+- `2026-08-21_10-55-03-meshy-v2-rig-transfer-review.md` records the second topology-first Meshy regeneration and its temporary 54-bone/finger-rig transfer candidate opened for Blender review.
+- `2026-08-21_10-39-42-document-meshy-api-key.md` records the availability and safe runtime handling policy for the local Meshy API credential without storing its value.
 - `2026-08-21_08-04-13-avatar-call-camera.md` records the expanded avatar camera reframing and preservation of the original minimized camera and scale.
 - `2026-08-21_08-14-48-shared-avatar-fullscreen.md` records the follow-up single-camera transition fix and separation of shared full-screen rendering from idle animation setup.
 - `2026-08-21_08-40-12-avatar-glass-positioning.md` records the final fullscreen/minimized vertical offsets and the stable-size, lower-cost liquid-glass resize optimization.
@@ -15,4 +181,19 @@ Use these records only when historical context is needed; do not load the entire
 - `2026-08-21_08-52-00-avatar-two-pixel-margin.md` corrects the modal margin interpretation to exact 2 px viewport margins and records the selected 12 px blur.
 - `2026-08-21_08-58-00-avatar-glass-remount-hitch.md` records removal of the final full-size hitch by keeping the SVG glass instance mounted throughout the transition.
 - `2026-08-21_09-02-43-avatar-runtime-optimization.md` records the full avatar performance/memory pass, SVG glass removal, renderer reductions, shader warmup, and measured Chrome process evidence.
+- `2026-08-21_09-03-41-avatar-camera-light.md` records the isolated warm avatar camera light and its matching CSS liquid-glass highlight.
+- `2026-08-21_09-14-37-warmer-avatar-camera-light.md` records the follow-up golden-yellow tuning for the avatar light and glass highlight.
+- `2026-08-21_09-16-11-movable-avatar-dock.md` records viewport-constrained pointer dragging for the minimized avatar tile.
+- `2026-08-21_09-17-40-avatar-dock-corner-snap.md` records nearest-corner snapping after the minimized avatar tile is dragged.
+- `2026-08-21_09-18-19-avatar-skin-material-response.md` records correction of the GLB's excessive emission and specular response to preserve deeper peach skin color.
+- `2026-08-21_09-26-46-avatar-welded-mesh-site-review.md` records the unsaved topology repair, backup, verified idle export, and cache-busted live-site review gate.
+- `2026-08-21_09-32-58-avatar-second-mesh-site-review.md` records the 75° second normal pass and its verified cache-busted site export.
+- `2026-08-21_09-39-12-avatar-skin-texture-cleanup-review.md` records rejection of a drifted generative atlas and the UV-safe pixel-local skin cleanup deployed for site review.
+- `2026-08-21_09-42-12-avatar-broad-skin-cleanup-review.md` records the broader skin-island median cleanup deployed after the conservative pass proved insufficient.
+- `2026-08-21_09-45-46-avatar-skin-cleanup-v3-review.md` records the expanded skin mask and stronger median deployed for the third site review.
+- `2026-08-21_09-47-31-avatar-fullscreen-zoom-out.md` records the roughly 8% fullscreen avatar camera zoom-out.
+- `2026-08-21_18-21-54-arm-hand-adapter.md` records the arm-only mapping diagnostics and the isolated candidate that preserves the accepted body while replacing both complete arm and finger chains.
+- `2026-08-21_18-30-20-cross-hand-weight-and-arm-direction-fix.md` records the exact cross-hand weight contamination, its localized repair, and the joint-direction arm candidate with uncrossed limb chains.
+- `2026-08-21_18-36-00-original-hands-animated-torso-arm-solve.md` records restoration of the original hand/finger tracks and the corrected shoulder solve against the animated torso.
+- `2026-08-21_18-48-07-avatar-retargeting-contract-and-source-cleanup.md` records the frozen mapping checkpoint, complete fresh-session animation-library/retargeting contract, and cleanup of obsolete active Blender review sources into the recovery archive.
 - Other timestamped Markdown files are earlier append-only session handoffs.

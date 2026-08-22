@@ -2,28 +2,38 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { createFaceCanvas, createSmilingFaceTexture } from "./face-canvas";
 
-const FACE_ATLAS_URL = "/style-references/avatar/yuyang-avatar-face-talking-atlas.png";
 const FULLSCREEN_CAMERA_CENTER = new THREE.Vector3(-0.38, 1.45, 0);
 const FULLSCREEN_VIEW_HEIGHT = 0.86;
 const VERTICAL_RENDER_OVERSCAN = 1.3;
 const MAX_PIXEL_RATIO = 1.5;
 const FRAME_INTERVAL_MS = 1000 / 30;
+const FULLSCREEN_AVATAR_SCALE = 2.25;
+const AVATAR_FRAME_CENTER_HEIGHT_RATIO = 0.83;
+const AVATAR_HORIZONTAL_CAMERA_OFFSET_RATIO = 0.56 / FULLSCREEN_AVATAR_SCALE;
 
 export type AvatarAnimationSource = {
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer | null;
+  update?: (elapsedSeconds: number, talking: boolean) => void;
+  dispose?: () => void;
 };
 
 type AvatarFullscreenProps = {
   ariaLabel: string;
   loadAvatar: () => Promise<AvatarAnimationSource>;
   loadErrorMessage: string;
+  onReady?: () => void;
+  talking?: boolean;
 };
 
-export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessage }: AvatarFullscreenProps) {
+export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessage, onReady, talking = false }: AvatarFullscreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const talkingRef = useRef(talking);
+
+  useEffect(() => {
+    talkingRef.current = talking;
+  }, [talking]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -55,15 +65,17 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     const fill = new THREE.DirectionalLight(0xdce8e2, 1.35);
     fill.position.set(2.8, 2.2, 1.6);
     scene.add(fill);
-    const cameraLight = new THREE.PointLight(0xfff7e8, 4.2, 8, 1.35);
+    const cameraLight = new THREE.PointLight(0xffd28f, 3.2, 8, 1.35);
     cameraLight.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1.2));
     scene.add(cameraLight);
 
     let mixer: THREE.AnimationMixer | null = null;
-    let faceTexture: THREE.Texture | null = null;
+    let updateAnimation: AvatarAnimationSource["update"];
+    let disposeAnimation: AvatarAnimationSource["dispose"];
     let disposed = false;
     let animationFrame = 0;
     let lastFrameTime = performance.now();
+    let animationElapsedSeconds = 0;
 
     const overscannedViewHeight = FULLSCREEN_VIEW_HEIGHT * VERTICAL_RENDER_OVERSCAN;
     const viewWidth = overscannedViewHeight * renderAspect;
@@ -73,44 +85,55 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     camera.bottom = -overscannedViewHeight / 2;
     camera.updateProjectionMatrix();
 
-    const faceAtlasPromise = new THREE.ImageLoader().loadAsync(FACE_ATLAS_URL).catch((error: unknown) => {
-      console.error("[AvatarCall] Could not load the avatar face", error);
-      host.dataset.faceError = "true";
-      return null;
-    });
-
-    Promise.all([loadAvatar(), faceAtlasPromise])
-      .then(async ([{ root, mixer: loadedMixer }, atlasImage]) => {
+    loadAvatar()
+      .then(async ({ root, mixer: loadedMixer, update, dispose }) => {
         if (disposed) {
           loadedMixer?.stopAllAction();
+          dispose?.();
           return;
         }
 
         mixer = loadedMixer;
+        updateAnimation = update;
+        disposeAnimation = dispose;
         scene.add(root);
+        root.updateWorldMatrix(true, true);
+        const avatarBounds = new THREE.Box3().setFromObject(root);
+        const avatarSize = avatarBounds.getSize(new THREE.Vector3());
+        const avatarCenter = avatarBounds.getCenter(new THREE.Vector3());
+        const avatarHeight = Math.max(avatarSize.y, 0.001);
+        const framedCenter = new THREE.Vector3(
+          avatarCenter.x - avatarHeight * AVATAR_HORIZONTAL_CAMERA_OFFSET_RATIO,
+          avatarBounds.min.y + avatarHeight * AVATAR_FRAME_CENTER_HEIGHT_RATIO,
+          avatarCenter.z,
+        );
+        const framedViewHeight = Math.max(FULLSCREEN_VIEW_HEIGHT, avatarHeight * 1.12) / FULLSCREEN_AVATAR_SCALE;
+        const framedOverscanHeight = framedViewHeight * VERTICAL_RENDER_OVERSCAN;
+        const framedViewWidth = framedOverscanHeight * renderAspect;
+        camera.position.set(framedCenter.x, framedCenter.y, avatarBounds.max.z + 4.8);
+        camera.lookAt(framedCenter);
+        camera.left = -framedViewWidth / 2;
+        camera.right = framedViewWidth / 2;
+        camera.top = framedOverscanHeight / 2;
+        camera.bottom = -framedOverscanHeight / 2;
+        camera.updateProjectionMatrix();
+        cameraLight.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1.2));
         root.traverse((object) => {
           if (!(object instanceof THREE.Mesh)) return;
           object.frustumCulled = false;
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           for (const material of materials) {
-            if ("roughness" in material) material.roughness = 0.72;
+            if ("roughness" in material) material.roughness = 1.8;
+            if (material instanceof THREE.MeshStandardMaterial) material.emissiveIntensity = 1.04;
+            if (material instanceof THREE.MeshPhysicalMaterial) material.specularIntensity = 2.5;
           }
         });
-
-        if (atlasImage) {
-          const head = root.getObjectByName("Head");
-          if (!head) throw new Error("Avatar Head bone was not found");
-          faceTexture = createSmilingFaceTexture(atlasImage);
-          const face = createFaceCanvas(faceTexture);
-          scene.add(face);
-          head.attach(face);
-          face.renderOrder = 3;
-        }
 
         await renderer.compileAsync(scene, camera);
         if (disposed) return;
         renderer.render(scene, camera);
         host.dataset.ready = "true";
+        onReady?.();
       })
       .catch((error: unknown) => {
         console.error(loadErrorMessage, error);
@@ -122,7 +145,10 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
       const elapsed = time - lastFrameTime;
       if (elapsed < FRAME_INTERVAL_MS) return;
       lastFrameTime = time - (elapsed % FRAME_INTERVAL_MS);
-      mixer?.update(Math.min(elapsed / 1000, 0.1));
+      const elapsedSeconds = Math.min(elapsed / 1000, 0.1);
+      animationElapsedSeconds += elapsedSeconds;
+      mixer?.update(elapsedSeconds);
+      updateAnimation?.(animationElapsedSeconds, talkingRef.current);
       renderer.render(scene, camera);
     };
 
@@ -145,6 +171,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
       cancelAnimationFrame(animationFrame);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       mixer?.stopAllAction();
+      disposeAnimation?.();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Sprite) {
           object.geometry?.dispose();
@@ -152,11 +179,10 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
           for (const material of materials) material.dispose();
         }
       });
-      faceTexture?.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [loadAvatar, loadErrorMessage]);
+  }, [loadAvatar, loadErrorMessage, onReady]);
 
   return <div ref={hostRef} className="avatar-call__avatar-view" aria-label={ariaLabel} />;
 }

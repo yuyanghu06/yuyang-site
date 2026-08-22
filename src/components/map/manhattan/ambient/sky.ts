@@ -188,6 +188,83 @@ export function createGlobeClouds() {
   return cloudLayer;
 }
 
+export function createPassengerPlane(color = 0xffffff) {
+  const plane = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false });
+  const detailMaterial = new THREE.MeshBasicMaterial({ color: 0x46545a, side: THREE.DoubleSide });
+  const fuselage = new THREE.Mesh(new THREE.CapsuleGeometry(5.2, 58, 5, 10), material);
+  fuselage.rotation.z = Math.PI / 2;
+  plane.add(fuselage);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(5.15, 13, 10), material);
+  nose.rotation.z = -Math.PI / 2;
+  nose.position.x = 42;
+  plane.add(nose);
+  const wingGeometry = new THREE.BufferGeometry();
+  wingGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
+    12, 0, 0, -12, 0, 49, -24, 0, 47,
+    12, 0, 0, -24, 0, 47, -7, 0, 0,
+    12, 0, 0, -24, 0, -47, -12, 0, -49,
+    12, 0, 0, -7, 0, 0, -24, 0, -47,
+  ], 3));
+  wingGeometry.computeVertexNormals();
+  plane.add(new THREE.Mesh(wingGeometry, material));
+  const tailWing = new THREE.Mesh(new THREE.BoxGeometry(12, 1.5, 29), material);
+  tailWing.position.x = -31;
+  plane.add(tailWing);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(12, 19, 2.4), material);
+  tail.position.set(-32, 8, 0);
+  plane.add(tail);
+  for (const z of [-18, 18]) {
+    const engine = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 4.1, 12, 8), material);
+    engine.rotation.z = Math.PI / 2;
+    engine.position.set(-3, -4, z);
+    plane.add(engine);
+  }
+  const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.2, 6.8), detailMaterial);
+  cockpit.position.set(35.8, 2.8, 0);
+  plane.add(cockpit);
+  for (let index = 0; index < 9; index += 1) {
+    for (const side of [-1, 1]) {
+      const window = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.25, 0.35), detailMaterial);
+      window.position.set(24 - index * 5.3, 2.8, side * 5.05);
+      plane.add(window);
+    }
+  }
+  plane.name = "Low-poly passenger airplane";
+  return plane;
+}
+
+export function createPassengerBoat() {
+  const boat = new THREE.Group();
+  const boatWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.78 });
+  const boatHullMaterial = new THREE.MeshStandardMaterial({ color: 0x42565b, roughness: 0.82 });
+  const boatWindowMaterial = new THREE.MeshBasicMaterial({ color: 0x34474d });
+  const hull = new THREE.Mesh(new THREE.CapsuleGeometry(7, 31, 4, 8), boatHullMaterial);
+  hull.rotation.x = Math.PI / 2;
+  hull.scale.x = 1.45;
+  boat.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(9.8, 17, 8), boatHullMaterial);
+  bow.rotation.x = -Math.PI / 2;
+  bow.position.z = -24;
+  boat.add(bow);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(17, 2.2, 32), boatWhite);
+  deck.position.y = 5.5;
+  boat.add(deck);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(14, 8, 18), boatWhite);
+  cabin.position.set(0, 10.5, 4);
+  boat.add(cabin);
+  for (const x of [-7.15, 7.15]) {
+    const windows = new THREE.Mesh(new THREE.BoxGeometry(0.45, 3.4, 12), boatWindowMaterial);
+    windows.position.set(x, 11.5, 2);
+    boat.add(windows);
+  }
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(9, 3.2, 0.45), boatWindowMaterial);
+  windshield.position.set(0, 11.5, -5.15);
+  boat.add(windshield);
+  boat.name = "Small passenger boat";
+  return boat;
+}
+
 export function createSkyTravelers(scene: THREE.Scene, overlayScene: THREE.Scene) {
   const travelers: SkyTraveler[] = [];
   const cloudMaterial = new THREE.MeshStandardMaterial({
@@ -258,57 +335,12 @@ export function createSkyTravelers(scene: THREE.Scene, overlayScene: THREE.Scene
     });
   }
 
-  const createPlane = (color: number) => {
-    const plane = new THREE.Group();
-    const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false });
-    const detailMaterial = new THREE.MeshBasicMaterial({ color: 0x46545a, side: THREE.DoubleSide });
-    const fuselage = new THREE.Mesh(new THREE.CapsuleGeometry(5.2, 58, 5, 10), material);
-    fuselage.rotation.z = Math.PI / 2;
-    plane.add(fuselage);
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(5.15, 13, 10), material);
-    nose.rotation.z = -Math.PI / 2;
-    nose.position.x = 42;
-    plane.add(nose);
-    const wingGeometry = new THREE.BufferGeometry();
-    wingGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
-      12, 0, 0, -12, 0, 49, -24, 0, 47,
-      12, 0, 0, -24, 0, 47, -7, 0, 0,
-      12, 0, 0, -24, 0, -47, -12, 0, -49,
-      12, 0, 0, -7, 0, 0, -24, 0, -47,
-    ], 3));
-    wingGeometry.computeVertexNormals();
-    plane.add(new THREE.Mesh(wingGeometry, material));
-    const tailWing = new THREE.Mesh(new THREE.BoxGeometry(12, 1.5, 29), material);
-    tailWing.position.x = -31;
-    plane.add(tailWing);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(12, 19, 2.4), material);
-    tail.position.set(-32, 8, 0);
-    plane.add(tail);
-    for (const z of [-18, 18]) {
-      const engine = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 4.1, 12, 8), material);
-      engine.rotation.z = Math.PI / 2;
-      engine.position.set(-3, -4, z);
-      plane.add(engine);
-    }
-    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.2, 6.8), detailMaterial);
-    cockpit.position.set(35.8, 2.8, 0);
-    plane.add(cockpit);
-    for (let index = 0; index < 9; index += 1) {
-      for (const side of [-1, 1]) {
-        const window = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.25, 0.35), detailMaterial);
-        window.position.set(24 - index * 5.3, 2.8, side * 5.05);
-        plane.add(window);
-      }
-    }
-    plane.name = "Manhattan overview airplane";
-    return plane;
-  };
   const planeSettings = [
     { x: -430, y: 940, z: 1150, speed: -48, phase: 0.8, scale: 1 },
     { x: 890, y: 760, z: -1650, speed: 39, phase: 3.7, scale: 0.82 },
   ];
   planeSettings.forEach((setting, index) => {
-    const plane = createPlane(0xffffff);
+    const plane = createPassengerPlane();
     plane.position.set(setting.x, setting.y, setting.z);
     plane.rotation.y = setting.speed < 0 ? Math.PI / 2 : -Math.PI / 2;
     plane.scale.setScalar(setting.scale);
@@ -325,32 +357,7 @@ export function createSkyTravelers(scene: THREE.Scene, overlayScene: THREE.Scene
     });
   });
 
-  const boat = new THREE.Group();
-  const boatWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.78 });
-  const boatHullMaterial = new THREE.MeshStandardMaterial({ color: 0x42565b, roughness: 0.82 });
-  const boatWindowMaterial = new THREE.MeshBasicMaterial({ color: 0x34474d });
-  const hull = new THREE.Mesh(new THREE.CapsuleGeometry(7, 31, 4, 8), boatHullMaterial);
-  hull.rotation.x = Math.PI / 2;
-  hull.scale.x = 1.45;
-  boat.add(hull);
-  const bow = new THREE.Mesh(new THREE.ConeGeometry(9.8, 17, 8), boatHullMaterial);
-  bow.rotation.x = -Math.PI / 2;
-  bow.position.z = -24;
-  boat.add(bow);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(17, 2.2, 32), boatWhite);
-  deck.position.y = 5.5;
-  boat.add(deck);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(14, 8, 18), boatWhite);
-  cabin.position.set(0, 10.5, 4);
-  boat.add(cabin);
-  for (const x of [-7.15, 7.15]) {
-    const windows = new THREE.Mesh(new THREE.BoxGeometry(0.45, 3.4, 12), boatWindowMaterial);
-    windows.position.set(x, 11.5, 2);
-    boat.add(windows);
-  }
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(9, 3.2, 0.45), boatWindowMaterial);
-  windshield.position.set(0, 11.5, -5.15);
-  boat.add(windshield);
+  const boat = createPassengerBoat();
   boat.position.set(-1620, 5.5, 820);
   boat.name = "Small Hudson River passenger boat";
   scene.add(boat);

@@ -1,5 +1,53 @@
 # Guided-Tour Avatar Animation System
 
+## Fresh-session source of truth
+
+- The only authoritative editable avatar source is `assets/blender/yuyang-avatar-talking-loop-face-v2.blend`. It has the definitive 54-bone V2 hierarchy: the fitted 24-bone Meshy body plus three connected deform joints for every digit on both hands.
+- The reusable external motion source is `public/models/quaternius-vrm-animation-library.glb`, a byte-identical copy of `src/assets/AnimationLibrary.glb` from the separately cloned `norio/vrm-game-starter` repository at commit `b14c236fd8150855348ad085b7820c298eac4b30`. The starter retargeting code is MIT-licensed; the Quaternius animation asset keeps its separate license.
+- `public/models/quaternius-idle-loop-reference.glb` is the untouched source mannequin reduced to the original three-second `Idle_Loop`. Use this—not a re-export or screenshot—as the definitive source pose and motion reference.
+- The accepted current mapping checkpoint is `public/animations/idle.glb`, and the live avatar loader plays its embedded `Idle_Loop`. Preserve it byte-for-byte before making another candidate. All future standalone exported animation GLBs must also live under `public/animations/`, not `public/models/`.
+- The matching midpoint audits are `public/style-references/avatar/quaternius-idle-loop-base-skeleton-xray.png` and `public/style-references/avatar/yuyang-avatar-vrm1-idle-direction-arms-original-hands-torso-corrected-xray.png`.
+
+## Skeleton matching and retargeting contract
+
+These are permanent mapping rules, not fixes tailored to one idle clip:
+
+1. Identify left and right from the skeleton's physical bind-space position and hierarchy, then record the semantic VRM assignment once. Do not infer side from a misleading source name and do not repair sides by exchanging animation channel targets.
+2. Preserve the target mesh, skin, inverse bind matrices, bone lengths, joint locations, hierarchy, and fitted rest transforms. Source and target bones may represent the same joint while having very different displayed lengths; retarget rotation and joint direction, never source bone length or source joint translation.
+3. Preserve all currently accepted body, hips, leg, neck, head, hand, and finger tracks unless the review explicitly identifies one of those chains. Changes must be isolated to the named chain.
+4. For shoulders, upper arms, and forearms, solve the source parent-to-child joint direction in world space against the target chain at each sampled frame. Convert the result back to target-local rotation through the target parent's animated world transform. In particular, shoulders must be solved relative to the animated torso, not the rest torso.
+5. Keep the recovered original target hand rotations and all 30 finger tracks for the current idle baseline. Do not direction-retarget, reflect, globally invert, or side-swap hands/fingers unless a later gesture is being authored and reviewed independently.
+6. Preserve the localized cross-hand weight repair: vertices spatially belonging to one hand may not carry opposite-side shoulder, arm, hand, or finger influence. Renormalize after removing invalid influences.
+7. Treat bone roll and local quaternion axes as rig-specific. A visually mirrored hierarchy can still have different local bases; raw quaternion copying, metadata-only side swaps, channel swaps, or sagittal reflection are invalid substitutes for basis conversion.
+8. Retarget source motion deltas relative to a known source reference pose when bind poses differ. Never impose the Quaternius mannequin's absolute T/A-pose on the fitted arms-down avatar.
+9. Animation-specific tuning is limited to small, documented rotation offsets or motion scaling after the structural mapping passes. Never change hierarchy, side assignment, rest pose, bone length, or weights merely to make one frame of one clip look correct.
+10. Every new library clip must go through the same mapping adapter. Do not hand-author a second mapping for each animation.
+
+## Required review and validation
+
+Before presenting or deploying any new retargeted GLB:
+
+- Duplicate the accepted checkpoint to a new review filename; never overwrite the checkpoint during iteration.
+- Inspect the GLB directly. Browser verification is optional unless the website renderer itself changed.
+- Confirm the expected animation name, duration, channel targets, finite samples, nonzero motion, and exact first/last loop closure.
+- Confirm the VRM humanoid mapping, hierarchy, skin, inverse bind matrices, mesh/materials, and bone count are preserved.
+- Render the source skeleton and target skeleton at the same normalized animation time. Also render an X-ray with bones visibly inside the target mesh.
+- Inspect front, back, both sides, both hands, shoulders/clavicles, elbows, wrists, hips, knees, ankles, and the top of the head. Skeleton endpoints should remain inside the mesh except for deliberate helper/non-deform tips.
+- Run the stretched-edge/weight audit across multiple frames. Reject cross-body spikes, opposite-side hand influence, finger inversion, shoulder crossing, foot sliding, or mesh collapse.
+- Compare the animated mesh to the approved avatar surface and the untouched source animation reference. A structurally valid skeleton is insufficient if deformation or silhouette no longer matches either reference.
+- Record separately which changes improve the reusable mapping and which are clip-specific tuning. Default to preserving the mapping after approval and making only small adjustments.
+
+## Known rejected approaches
+
+- Metadata-only left/right swaps.
+- Swapping complete arm or finger animation channel targets without converting between local bases.
+- Raw local-quaternion copying between the Quaternius and fitted rigs.
+- Global or sagittal arm reflection.
+- Applying the source mannequin's absolute T/A-pose to the target bind.
+- Direction-retargeting the current idle's hands/fingers after their original tracks were restored.
+- Solving shoulders against the target rest torso instead of its animated transform.
+- Judging skeleton fit from a surface render alone without an X-ray.
+
 ## Product role
 
 The small Yuyang avatar is a persistent guided-tour presenter. It accompanies streamed building descriptions and follow-up answers so the experience feels like Yuyang is personally guiding the visitor through the location.
@@ -30,6 +78,14 @@ The duplicated thumbs-up request maps to the same `thumbs_up` clip. No additiona
 - Optional game-dialogue audio consists of short synthesized robot-like `da`/bleep sounds at a throttled character/word cadence. It does not reproduce the response as speech.
 - If an emote is requested during text streaming, the client may finish the current sentence pause, play the silent emote, then resume talking if the response is still streaming.
 - Blinking may be baked naturally into a reviewed talking clip or scheduled independently for a model-based runtime. It must not produce prolonged closure or reset visibly at a loop boundary.
+
+## Embedded face attachment contract
+
+- Facial artwork used by an exported avatar GLB must be an actual mesh inside that GLB. Do not recreate or mirror the face with a separate Three.js canvas at runtime.
+- Fit each new face manually against the visible head in Blender. The artist-approved location, rotation, scale, and depth are authoritative; do not replace that fit with bounding-box, bone-origin, shrinkwrap, or procedural surface estimates.
+- After approval, preserve the exact object transform and weight every facial-mesh vertex 100% to the avatar's `Head` joint through the same armature used by the body animation. Lock location, rotation, and scale against accidental editing.
+- Export the body, active armature Action, and embedded face together. Validate that the face node is skinned, every exported face vertex has total Head influence `1.0`, the expected texture is embedded, and no runtime face overlay remains.
+- Future facial states reuse the same approved mesh transform and attachment. Change texture/material state or an explicitly reviewed facial mesh, not its spatial fit.
 
 ## Canonical neutral bookends
 

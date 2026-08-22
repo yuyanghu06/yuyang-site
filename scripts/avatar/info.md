@@ -1,3 +1,27 @@
 # Avatar scripts
 
-Blender/Python authoring and retargeting scripts live here. The only active source is `assets/blender/yuyang-avatar-talking-loop-face-v2.blend`. Earlier pipeline inputs referenced by the reconstruction scripts are archived under ignored `data/raw/avatar-blender-archive-2026-08-20/`; restore them only for an explicitly requested rebuild. The final source uses the 54-bone V2 rig and approved cheek-free atlas on a curved, head-weighted face canvas.
+Avatar authoring, rigging, conversion, and retargeting scripts live here. Earlier pipeline inputs referenced by reconstruction scripts are archived under ignored `data/raw/avatar-blender-archive-2026-08-20/`.
+
+The permanent source/library/checkpoint contract and mandatory retargeting review gates are documented in `docs/avatar-animation-system.md`. New scripts must preserve that mapping contract and create a new review output rather than overwrite the accepted checkpoint.
+
+## Files
+
+- `add-talking-face-to-loop-v2.py` combines the approved face canvas with the V2 talking source.
+- `audit-glb-stretched-vertices.py` samples an animated GLB and reports the mesh edges with the largest deformation-to-bind length ratios together with their vertex-group weights, for diagnosing finger-driven spikes.
+- `create-vrm1-from-tripo-rig.mjs` reproducibly adds a complete 52-bone VRM 1.0 humanoid declaration and standardized bone names to the direct Tripo rig without changing mesh, weights, textures, or bind matrices. Setting `YUYANG_VRM_ORIGINAL_ARM_SIDES=1` recreates the earlier swapped-arm checkpoint.
+- `embed-vrm-idle-absolute-recovery.mts` reconstructs the earlier absolute-retarget idle; `--swap-arm-motion` corrects reversed rig-side labels while converting opposite source motion through each physical target arm's rest basis, and `--mirror-arms` remains a rejected double-reflection diagnostic.
+- `embed-vrm-idle.mts` loads the standardized VRM rig and external library, conjugates each source motion delta through the source/target rest-axis difference while preserving the fitted target pose, and writes a standalone GLB containing the complete baked idle Action.
+- `extract-glb-animation.mjs` preserves an input GLB's exact scene, mesh, skin, materials, and buffers while reducing its animation table to one requested named clip.
+- `fix-cross-hand-skin-weights.mjs` removes opposite-side shoulder, arm, hand, and finger influences from spatially separated hand vertices and renormalizes the remaining weights, repairing cross-hand mesh spikes without changing animation tracks or geometry.
+- `create-yuyang-avatar-idle-loop-v2.py` authors the retained V2 idle loop.
+- `create-yuyang-avatar-idle.py` reconstructs the earlier idle avatar source.
+- `create-yuyang-avatar-talking-loop-v2.py` authors the retained V2 talking loop.
+- `retarget-quaternius-idles.py` retargets Quaternius idle motions in Blender.
+- `retarget-vrm-arms-by-direction.mts` drives only target shoulders, upper arms, and forearms from source joint directions, avoiding incompatible left/right names and bone-roll quaternions while preserving the input hand, finger, body, and leg tracks.
+- `render-glb-skeleton-xray.py` renders a posed GLB armature as blue bones and orange joints through a translucent mesh, with optional hand-only framing for deformation audits.
+- `mirror-recovered-vrm-arms.mts` supports target-space arm-mirror diagnostics and can splice a separately calibrated replacement clip onto only the shoulder, arm, hand, and finger tracks while preserving all recovered body tracks.
+- `rig-yuyang-original-hands.py` reconstructs the earlier original-hand rig pass.
+- `swap-vrm-arm-animation-channels.mjs` creates the rejected diagnostic channel-level arm swap used to prove that mirrored left/right local axes require quaternion conversion rather than target exchange.
+- `info.md` documents this folder.
+
+There are no direct subfolders.

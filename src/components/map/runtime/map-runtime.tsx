@@ -15,6 +15,7 @@ import { createInteractiveBuildingGroup, bakeLandmarkAsSingleMesh, createLandmar
 import { createHudsonWaterAndPier, createEastRiverWaterAndPiers } from "../manhattan/waterfront";
 import { createMapRenderer, renderMapFrame } from "../shared/rendering";
 import { animateGlobeClouds } from "../animation/globe-clouds";
+import { animateGlobeTravelers, createGlobeTravelers } from "../animation/globe-travelers";
 import { animateLandmarks } from "../animation/landmarks";
 import { animateTravelers } from "../animation/travelers";
 import { animateArrivals, type SpringArrival } from "../animation/arrivals";
@@ -29,11 +30,14 @@ import { disposeScenes } from "./dispose-runtime";
 import { createHitTesting } from "../interaction/hit-testing";
 import { createInputController } from "../interaction/input-controller";
 import { createViewportLifecycle } from "./viewport-lifecycle";
+import { AGENT_COMMAND_EVENT, createMapViewSettledReporter, type AgentCommand } from "@/agent/types";
+import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId, type GeographicMapView } from "@/agent/camera-views";
 
-export default function GlobalMap() {
+export default function GlobalMap({ experienceStarted }: { experienceStarted: boolean }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const switchStudyRef = useRef<(next: MapView, updateUrl?: boolean) => void>(() => undefined);
   const [status, setStatus] = useState("");
+  const [currentView, setCurrentView] = useState<CameraViewId>("globe");
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -79,9 +83,11 @@ export default function GlobalMap() {
       placeholder: globePlaceholder,
     } = createWatercolorGlobe();
     const globeClouds = createGlobeClouds();
+    const globeTravelers = createGlobeTravelers();
     const globeCloudLocalDown = new THREE.Vector3(0, -1, 0);
     const globeCloudInward = new THREE.Vector3();
     globe.add(globeClouds);
+    globe.add(globeTravelers);
     globeScene.add(globe);
     void loadGlb("/models/low-poly-planet-earth-e54e8607.glb", abortController.signal)
       .then((gltf) => {
@@ -194,8 +200,9 @@ export default function GlobalMap() {
     let desiredCameraAzimuth = cameraAzimuth;
     let desiredCameraZoom = 0.3;
     camera.zoom = desiredCameraZoom;
-    let cameraLocked = false;
-    let cameraTransitioning = false;
+    let cameraLocked = false, cameraTransitioning = false; const reportSettledView = createMapViewSettledReporter();
+    let pendingAgentDestination: CameraViewId | null = null, navigateAgentCamera: (destination: CameraViewId) => void = () => undefined;
+    let selectLandmark: (landmark: ClickableLandmark) => void = () => undefined;
     let blockedZoomStartedAt = 0;
     let blockedZoomGestureActive = false;
     let blockedZoomGestureReset = 0;
@@ -230,6 +237,7 @@ export default function GlobalMap() {
     switchStudyRef.current = (next, updateUrl = true) => {
       const previousStudy = activeStudy;
       activeStudy = next;
+      setCurrentView(next);
       if (next === "globe") {
         if (globeTransitionDirection !== "out") {
           globeTransitionStartedAt = 0;
@@ -304,6 +312,11 @@ export default function GlobalMap() {
       false,
     );
     window.addEventListener("popstate", handlePopState);
+    const handleAgentCommand = (event: Event) => {
+      const command = (event as CustomEvent<AgentCommand>).detail;
+      if (command?.type === "navigate_map") navigateAgentCamera(command.destination);
+    };
+    window.addEventListener(AGENT_COMMAND_EVENT, handleAgentCommand);
     window.history.replaceState({ study: "globe" }, "", "/");
 
     const rendererState = createMapRenderer();
@@ -388,11 +401,12 @@ export default function GlobalMap() {
     const landmarkByRoot = new Map<THREE.Object3D, ClickableLandmark>();
     const raycastRoots: THREE.Object3D[] = [];
     const registerClickableLandmark = (root: THREE.Object3D) => {
+      const cameraView = getLandmarkCameraViewForRoot(root.name); if (!cameraView) throw new Error(`Interactive landmark ${root.name} has no registered camera view.`);
       const glow = createBuildingGlow(root);
       glow.visible = activeStudy !== "manhattan";
       root.add(glow);
       scene.add(root);
-      const landmark = { root, glow, baseY: root.position.y, hovered: false, selected: false };
+      const landmark = { root, glow, cameraViewId: cameraView.id, baseY: root.position.y, hovered: false, selected: false };
       clickableLandmarks.push(landmark);
       landmarkByRoot.set(root, landmark);
       raycastRoots.push(root);
@@ -574,35 +588,60 @@ export default function GlobalMap() {
       window.history.pushState({ study: "globe" }, "", "/");
       renderer.domElement.style.cursor = "default";
     };
-    const selectLandmark = (landmark: ClickableLandmark) => {
+    navigateAgentCamera = (destination) => {
+      const cameraView = getCameraView(destination);
+      if (!cameraView) return;
+      if (cameraView.kind === "landmark") {
+        const landmark = clickableLandmarks.find((candidate) => candidate.cameraViewId === cameraView.id);
+        if (activeStudy === cameraView.neighborhood && landmark) {
+          pendingAgentDestination = null; selectLandmark(landmark); return;
+        }
+        pendingAgentDestination = destination;
+        if (activeStudy === "globe") enterManhattanFromGlobe();
+        else if (activeStudy !== cameraView.neighborhood) switchStudyRef.current(cameraView.neighborhood);
+        return;
+      }
+      const geographicDestination: GeographicMapView = cameraView.id;
+      if (geographicDestination === activeStudy && !cameraTransitioning && !globeTransitionStartedAt) return;
+      if (activeStudy === "globe") {
+        pendingAgentDestination = geographicDestination === "manhattan" ? null : geographicDestination;
+        enterManhattanFromGlobe();
+        return;
+      }
+      if (geographicDestination === "globe") {
+        if (activeStudy === "manhattan") {
+          pendingAgentDestination = null;
+          enterGlobeFromManhattan();
+        } else {
+          pendingAgentDestination = "globe";
+          switchStudyRef.current("manhattan");
+        }
+        return;
+      }
+      pendingAgentDestination = null;
+      switchStudyRef.current(geographicDestination);
+    };
+    selectLandmark = (landmark) => {
+      const cameraView = getCameraView(landmark.cameraViewId);
+      if (!cameraView || cameraView.kind !== "landmark") return;
       clickableLandmarks.forEach((candidate) => { candidate.selected = candidate === landmark; });
       landmark.root.updateWorldMatrix(true, true);
       const center = new THREE.Box3().setFromObject(landmark.root).getCenter(new THREE.Vector3());
       desiredCameraTarget.set(center.x, Math.max(18, center.y * 0.72), center.z);
-      const isBobst = landmark.root.name.includes("Bobst");
-      const isLipton = landmark.root.name.includes("Lipton");
-      const isCourant = landmark.root.name.includes("Courant");
-      const isStern = landmark.root.name.includes("Stern");
-      const isGoldbelly = landmark.root.name.includes("25 Union Square West");
-      const isUnionSquareCafe = landmark.root.name.includes("235 Park Avenue South");
-      if (isCourant) desiredCameraTarget.add(new THREE.Vector3(-10, 0, -24));
-      desiredCameraAzimuth = isCourant
-        ? 0
-        : isStern ? Math.PI / 2 + 0.42
-          : isBobst ? Math.PI - 0.42
-            : isGoldbelly ? Math.PI / 2 + 0.34
-              : isUnionSquareCafe ? -Math.PI * 5 / 12 : 0;
-      desiredCameraHeight = isLipton ? 273 : isStern ? 252 : isGoldbelly ? 160 : isUnionSquareCafe ? 235 : 210;
-      desiredCameraRadius = isLipton ? 285 : isGoldbelly ? 270 : isUnionSquareCafe ? 330 : 365;
-      if (isGoldbelly) {
-        const originalElevation = Math.atan2(160 - desiredCameraTarget.y, desiredCameraRadius);
+      if (cameraView.targetOffset) desiredCameraTarget.add(new THREE.Vector3(...cameraView.targetOffset));
+      desiredCameraAzimuth = cameraView.azimuth;
+      desiredCameraHeight = cameraView.height;
+      desiredCameraRadius = cameraView.radius;
+      if (cameraView.elevationAngleOffset) {
+        const originalElevation = Math.atan2(cameraView.height - desiredCameraTarget.y, desiredCameraRadius);
         desiredCameraHeight = desiredCameraTarget.y
-          + Math.tan(originalElevation + Math.PI / 12) * desiredCameraRadius;
+          + Math.tan(originalElevation + cameraView.elevationAngleOffset) * desiredCameraRadius;
       }
-      desiredCameraZoom = 2.41;
+      desiredCameraZoom = cameraView.zoom;
       cameraLocked = true;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
+      setCurrentView(cameraView.id);
     };
     const clearLandmarkSelection = () => {
       clickableLandmarks.forEach((landmark) => {
@@ -622,6 +661,7 @@ export default function GlobalMap() {
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
       renderer.domElement.style.cursor = "default";
+      setCurrentView(activeStudy);
     };
 
     const inputController = createInputController({
@@ -691,6 +731,11 @@ export default function GlobalMap() {
       const interactionEase = 1 - Math.exp(-delta * 9);
       if (activeStudy === "globe") {
         animateGlobeClouds(globeClouds, delta, globeCloudLocalDown, globeCloudInward);
+        animateGlobeTravelers(globeTravelers, delta, elapsed);
+        if (!globeTransitionStartedAt && !inputController.isGlobeDragging()) {
+          globeOrbitYaw += delta * 0.018;
+          updateGlobeOrbit();
+        }
       }
       manhattanGlobeMarker.getWorldPosition(markerWorldPosition);
       globeCameraDirection.copy(globeCamera.position).normalize();
@@ -755,10 +800,22 @@ export default function GlobalMap() {
           }
         }
         if (progress >= 1) {
+          const completedDirection = globeTransitionDirection;
           globeTransitionStartedAt = 0;
           globeTransitionLanded = false;
           globeTransitionDirection = null;
           cloudVeil.style.opacity = "0";
+          if (completedDirection === "in" && pendingAgentDestination && pendingAgentDestination !== "globe") {
+            const destination = pendingAgentDestination;
+            navigateAgentCamera(destination);
+          }
+        }
+      }
+      if (pendingAgentDestination && !globeTransitionStartedAt && !cameraTransitioning) {
+        const pendingView = getCameraView(pendingAgentDestination);
+        if (pendingView?.kind === "landmark" && activeStudy === pendingView.neighborhood) {
+          const landmark = clickableLandmarks.find((candidate) => candidate.cameraViewId === pendingView.id);
+          if (landmark) { pendingAgentDestination = null; selectLandmark(landmark); }
         }
       }
       animateLandmarks(clickableLandmarks, elapsed, interactionEase, renderer);
@@ -777,6 +834,11 @@ export default function GlobalMap() {
           && Math.abs(cameraRadius - desiredCameraRadius) < 0.05
           && Math.abs(camera.zoom - desiredCameraZoom) < 0.0005
         ) cameraTransitioning = false;
+      }
+      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
+      if (!cameraTransitioning && !globeTransitionStartedAt && pendingAgentDestination === "globe" && activeStudy === "manhattan") {
+        pendingAgentDestination = null;
+        enterGlobeFromManhattan();
       }
       if (blockedZoomStartedAt) {
         const progress = Math.min(1, (now - blockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
@@ -838,6 +900,7 @@ export default function GlobalMap() {
       observer.disconnect();
       viewportLifecycle.dispose();
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener(AGENT_COMMAND_EVENT, handleAgentCommand);
       inputController.dispose();
       disposeScenes(renderer, [scene, globeScene, skyOverlayScene]);
       timer.dispose();
@@ -849,7 +912,7 @@ export default function GlobalMap() {
   return (
     <main className="washington-study">
       <div ref={mountRef} className="washington-study__viewport" />
-      <AvatarCall />
+      <AvatarCall currentView={currentView} experienceStarted={experienceStarted} />
       {status && <div className="washington-study__loading">{status}</div>}
       <div className="washington-study__credit">
         <a href="https://sketchfab.com/3d-models/lowpoly-earth-5f6ea1111fda4cf6a7b36cf4ce200d1b" target="_blank" rel="noreferrer">
