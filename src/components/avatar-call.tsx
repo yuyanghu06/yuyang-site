@@ -8,11 +8,13 @@ import type { MapDestination } from "@/agent/types";
 type DockPosition = { left: number; top: number };
 
 const getDockMargin = () => window.matchMedia("(max-width: 600px)").matches ? 12 : 20;
+const MINIMIZE_TRANSITION_MS = 460;
 
 export default function AvatarCall({ currentView, experienceStarted }: { currentView: MapDestination; experienceStarted: boolean }) {
   const [expanded, setExpanded] = useState(true);
+  const [expandedSettled, setExpandedSettled] = useState(true);
   const [avatarReady, setAvatarReady] = useState(false);
-  const [agentReady, setAgentReady] = useState(false);
+  const [introWaveComplete, setIntroWaveComplete] = useState(false);
   const [agentStreaming, setAgentStreaming] = useState(false);
   const [dockedCaptionVisible, setDockedCaptionVisible] = useState(false);
   const [dockPosition, setDockPosition] = useState<DockPosition | null>(null);
@@ -20,36 +22,69 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   const dragRef = useRef({ pointerId: -1, offsetX: 0, offsetY: 0, startX: 0, startY: 0, moved: false });
   const suppressNextClickRef = useRef(false);
   const expandedRef = useRef(expanded);
+  const dockedCaptionDismissedRef = useRef(false);
+  const dockedCaptionRevealTimerRef = useRef<number | null>(null);
+  const expandedCaptionRevealTimerRef = useRef<number | null>(null);
+  const dockSettledRef = useRef(false);
 
   useEffect(() => {
     expandedRef.current = expanded;
   }, [expanded]);
 
-  useEffect(() => {
-    if (!avatarReady || !experienceStarted) return;
-    const timer = window.setTimeout(() => setAgentReady(true), 500);
-    return () => window.clearTimeout(timer);
-  }, [avatarReady, experienceStarted]);
+  const agentReady = avatarReady && introWaveComplete && experienceStarted;
 
   const open = useCallback(() => {
+    if (dockedCaptionRevealTimerRef.current !== null) window.clearTimeout(dockedCaptionRevealTimerRef.current);
+    dockedCaptionRevealTimerRef.current = null;
+    dockSettledRef.current = false;
+    expandedRef.current = true;
+    setExpandedSettled(false);
     setExpanded(true);
     setDockedCaptionVisible(false);
+    if (expandedCaptionRevealTimerRef.current !== null) window.clearTimeout(expandedCaptionRevealTimerRef.current);
+    expandedCaptionRevealTimerRef.current = window.setTimeout(() => {
+      expandedCaptionRevealTimerRef.current = null;
+      setExpandedSettled(true);
+    }, MINIMIZE_TRANSITION_MS);
   }, []);
 
   const close = useCallback(() => {
+    if (!expandedRef.current) return;
+    expandedRef.current = false;
+    dockSettledRef.current = false;
+    setExpandedSettled(false);
     setExpanded(false);
-    if (agentStreaming) setDockedCaptionVisible(true);
-  }, [agentStreaming]);
+    setDockedCaptionVisible(false);
+    if (dockedCaptionRevealTimerRef.current !== null) window.clearTimeout(dockedCaptionRevealTimerRef.current);
+    if (expandedCaptionRevealTimerRef.current !== null) window.clearTimeout(expandedCaptionRevealTimerRef.current);
+    expandedCaptionRevealTimerRef.current = null;
+    dockedCaptionRevealTimerRef.current = window.setTimeout(() => {
+      dockedCaptionRevealTimerRef.current = null;
+      dockSettledRef.current = true;
+      if (agentReady && !dockedCaptionDismissedRef.current) setDockedCaptionVisible(true);
+    }, MINIMIZE_TRANSITION_MS);
+  }, [agentReady]);
 
   const handleAgentStreamingChange = useCallback((streaming: boolean) => {
     setAgentStreaming(streaming);
-    if (streaming && !expandedRef.current) setDockedCaptionVisible(true);
+    if (streaming) dockedCaptionDismissedRef.current = false;
+    if (streaming && !expandedRef.current && dockSettledRef.current) setDockedCaptionVisible(true);
   }, []);
 
-  const dismissDockedCaption = useCallback(() => setDockedCaptionVisible(false), []);
+  const dismissDockedCaption = useCallback(() => {
+    dockedCaptionDismissedRef.current = true;
+    setDockedCaptionVisible(false);
+  }, []);
+  const revealDockedCaption = useCallback(() => {
+    dockedCaptionDismissedRef.current = false;
+    if (!expandedRef.current && dockSettledRef.current) setDockedCaptionVisible(true);
+  }, []);
 
   const handleAvatarReady = useCallback(() => {
     setAvatarReady(true);
+  }, []);
+  const handleIntroWaveComplete = useCallback(() => {
+    setIntroWaveComplete(true);
   }, []);
 
   useEffect(() => {
@@ -61,6 +96,11 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [close]);
+
+  useEffect(() => () => {
+    if (dockedCaptionRevealTimerRef.current !== null) window.clearTimeout(dockedCaptionRevealTimerRef.current);
+    if (expandedCaptionRevealTimerRef.current !== null) window.clearTimeout(expandedCaptionRevealTimerRef.current);
+  }, []);
 
   const handleDockPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (expanded || event.button !== 0) return;
@@ -118,7 +158,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
 
   return (
     <section
-      className={`avatar-call ${expanded ? "avatar-call--expanded" : "avatar-call--docked"}`}
+      className={`avatar-call ${expanded ? `avatar-call--expanded${expandedSettled ? " avatar-call--expanded-settled" : ""}` : "avatar-call--docked"}`}
       aria-label={expanded ? "Yuyang video guide" : "Open Yuyang's guide window"}
       role={expanded ? "dialog" : "button"}
       aria-modal={expanded ? "true" : undefined}
@@ -150,7 +190,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
           ×
         </button>
         <div className="avatar-call__avatar-stage">
-          <AvatarIdle onReady={handleAvatarReady} talking={agentStreaming} />
+          <AvatarIdle onReady={handleAvatarReady} onWaveComplete={handleIntroWaveComplete} talking={agentStreaming} />
         </div>
         {agentReady && (
           <AgentChat
@@ -158,6 +198,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
             expanded={expanded}
             dockedCaptionVisible={dockedCaptionVisible}
             onDismissDockedCaption={dismissDockedCaption}
+            onRevealDockedCaption={revealDockedCaption}
             onStreamingChange={handleAgentStreamingChange}
             onMinimize={close}
           />

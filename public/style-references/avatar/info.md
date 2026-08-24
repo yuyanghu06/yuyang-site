@@ -4,6 +4,13 @@ This directory contains avatar concepts, atlases, renders, and animation reviews
 
 Do not use the checkerboard draft, a detached DOM face, a separate face panel, or rejected sculpted facial animation as production input.
 
+## Parameterized voxel review
+
+- `yuyang-voxel-avatar-review-v1.png` is the first rendered review of the portrait-derived voxel/low-poly hybrid generator. It is an unapproved candidate with tall proportions, dark center-part hair, forest crewneck, white undershirt, charcoal jeans, dark shoes, and a left-wrist watch.
+- `yuyang-voxel-avatar-review-v2.png` is the rejected coarse rounded-face revision.
+- `yuyang-voxel-avatar-review-v3.png` is the rejected volumetric-head diagnostic whose facial features were hidden behind the curved shell.
+- `yuyang-voxel-avatar-review-v4.png` is the current unapproved review with corrected facial depth, wider shoulders, aligned arms, no watch, and revised hands.
+
 ## Approved 2026 flat-face Meshy references
 
 - `quaternius-idle-loop-base-skeleton-xray.png` shows the untouched base mannequin skeleton at the midpoint of its original `Idle_Loop`; use it as the authoritative source-pose reference for shoulder, elbow, wrist, and hand placement before any further retargeting.
@@ -46,3 +53,9 @@ Do not use the checkerboard draft, a detached DOM face, a separate face panel, o
 - `yuyang-avatar-neutral-face-blink-closed.png` preserves that approved neutral identity while replacing only both open eyes with symmetric dark-brown closed-eyelid curves. The runtime uses it for two brief blinks per five-second loop, including while speech mouth states advance independently.
 - `yuyang-avatar-face-talking-atlas.png` remains the approved 2048×1024 transparent four-by-two source atlas.
 - `yuyang-avatar-talking-mouth-0.png`, `yuyang-avatar-talking-mouth-1.png`, `yuyang-avatar-talking-mouth-2.png`, and `yuyang-avatar-talking-mouth-3.png` are transparent mouth-only derivatives from the atlas's bottom row. The runtime composites these over the independently selected open- or closed-eye face, so talking never controls blinking.
+
+## Voxel face review
+
+- `yuyang-avatar-face-voxel-talking-atlas-v1.svg` is the editable eight-state voxel-style face candidate. Its neutral, half-blink, closed-blink, four speech openings, and smiling speech state preserve the approved atlas layout while replacing curves with crisp, flat blocks on an eight-pixel grid.
+- `yuyang-avatar-face-voxel-talking-atlas-v1.png` is the rasterized 2048×1024 review/runtime candidate generated from the SVG. It is not approved or connected to the authoritative Blender avatar.
+- `yuyang-avatar-face-voxel-talking-contact-sheet-v1.png` is the labeled review sheet for evaluating all eight states before the candidate is bound to the curved face canvas.

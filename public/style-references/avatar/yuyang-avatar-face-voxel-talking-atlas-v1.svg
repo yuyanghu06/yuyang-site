@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024" shape-rendering="crispEdges">
+  <defs>
+    <!-- A restrained voxel face: every edge lands on an 8 px grid and all
+         features use flat color blocks so texture filtering cannot reintroduce
+         the earlier illustrated curves. -->
+    <g id="brows">
+      <path fill="#302720" d="M96 152h24v-8h80v8h24v32h-24v-8h-80v8H96z"/>
+      <path fill="#302720" d="M288 152h24v-8h80v8h24v32h-24v-8h-80v8h-24z"/>
+    </g>
+    <g id="eyes-open">
+      <path fill="#f3eee3" d="M88 216h24v-16h88v16h24v48h-24v16h-88v-16H88z"/>
+      <path fill="#f3eee3" d="M288 216h24v-16h88v16h24v48h-24v16h-88v-16h-24z"/>
+      <path fill="#6b4a2d" d="M136 200h48v80h-48zM336 200h48v80h-48z"/>
+      <path fill="#24170f" d="M152 216h32v48h-32zM352 216h32v48h-32z"/>
+      <path fill="#fffdf5" d="M152 208h16v16h-16zM352 208h16v16h-16z"/>
+    </g>
+    <g id="eyes-half">
+      <path fill="#f3eee3" d="M96 232h112v32H96zM296 232h112v32H296z"/>
+      <path fill="#6b4a2d" d="M136 232h48v32h-48zM336 232h48v32h-48z"/>
+      <path fill="#24170f" d="M152 240h32v24h-32zM352 240h32v24h-32z"/>
+      <path fill="#302720" d="M96 216h112v16H96zM296 216h112v16H296z"/>
+    </g>
+    <g id="eyes-closed">
+      <path fill="#302720" d="M96 240h112v16H96zM296 240h112v16H296z"/>
+      <path fill="#4a382b" d="M112 256h80v8h-80zM312 256h80v8h-80z"/>
+    </g>
+    <g id="nose">
+      <path fill="#9b8e79" d="M248 272h16v64h-16zM232 320h16v24h-16zM264 328h24v16h-24z"/>
+      <path fill="#7f7567" d="M280 336h16v16h-16z"/>
+    </g>
+    <g id="mouth-neutral">
+      <path fill="#b76658" d="M208 392h16v8h16v8h48v-8h16v-8h16v16h-16v8h-16v8h-48v-8h-16v-8h-16z"/>
+    </g>
+    <g id="mouth-small">
+      <path fill="#743a35" d="M232 384h48v8h16v40h-16v8h-48v-8h-16v-40h16z"/>
+      <path fill="#df8279" d="M232 416h48v16h-48z"/>
+    </g>
+    <g id="mouth-medium">
+      <path fill="#743a35" d="M216 376h80v8h16v56h-16v8h-80v-8h-16v-56h16z"/>
+      <path fill="#f5eee1" d="M216 384h80v16h-80z"/>
+      <path fill="#df8279" d="M224 424h64v16h-64z"/>
+    </g>
+    <g id="mouth-wide">
+      <path fill="#743a35" d="M192 376h128v8h16v56h-16v8H192v-8h-16v-56h16z"/>
+      <path fill="#f5eee1" d="M192 384h128v16H192z"/>
+      <path fill="#df8279" d="M208 424h96v16h-96z"/>
+    </g>
+    <g id="mouth-round">
+      <path fill="#743a35" d="M232 368h48v16h16v64h-16v16h-48v-16h-16v-64h16z"/>
+      <path fill="#df8279" d="M232 424h48v24h-48z"/>
+    </g>
+    <g id="mouth-smile">
+      <path fill="#743a35" d="M200 384h112v8h16v40h-16v8h-16v8h-80v-8h-16v-8h-16v-40h16z"/>
+      <path fill="#f5eee1" d="M200 392h112v16H200z"/>
+      <path fill="#df8279" d="M224 424h64v16h-64z"/>
+    </g>
+  </defs>
+  <g transform="translate(0 0)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose"/><use href="#mouth-neutral"/></g>
+  <g transform="translate(512 0)"><use href="#brows"/><use href="#eyes-half"/><use href="#nose"/><use href="#mouth-neutral"/></g>
+  <g transform="translate(1024 0)"><use href="#brows"/><use href="#eyes-closed"/><use href="#nose"/><use href="#mouth-neutral"/></g>
+  <g transform="translate(1536 0)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose"/><use href="#mouth-small"/></g>
+  <g transform="translate(0 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose"/><use href="#mouth-medium"/></g>
+  <g transform="translate(512 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose"/><use href="#mouth-wide"/></g>
+  <g transform="translate(1024 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose"/><use href="#mouth-round"/></g>
+  <g transform="translate(1536 512)"><use href="#brows"/><use href="#eyes-open"/><use href="#nose"/><use href="#mouth-smile"/></g>
+</svg>

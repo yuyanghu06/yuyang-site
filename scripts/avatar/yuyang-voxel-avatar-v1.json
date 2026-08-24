@@ -1,0 +1,34 @@
+{
+  "name": "YuyangVoxelAvatarReviewV1",
+  "sourcePhoto": "/var/folders/_c/w_qsbh8s1z33hchwb803ssfc0000gp/T/codex-clipboard-TAfBI4.png",
+  "style": "tall_voxel_hybrid",
+  "proportions": {
+    "height": 3.72,
+    "headScale": 1.22,
+    "shoulderWidth": 1.08,
+    "bodyDepth": 0.44,
+    "voxelSize": 0.105,
+    "edgeBevel": 0.012
+  },
+  "appearance": {
+    "skin": "#C9855D",
+    "skinHighlight": "#D99A70",
+    "hair": "#171311",
+    "hairHighlight": "#2A211D",
+    "brow": "#201815",
+    "eye": "#211813",
+    "shirt": "#263D35",
+    "undershirt": "#E9E4D8",
+    "pants": "#242326",
+    "shoes": "#171719",
+    "watch": "#8D8983"
+  },
+  "features": {
+    "hairStyle": "tousled_center_part",
+    "faceShape": "soft_rectangular",
+    "facialHair": "subtle_mustache_shadow",
+    "eyeShape": "narrow_almond_voxel",
+    "outfit": "forest_crewneck_white_undershirt_charcoal_jeans",
+    "watchSide": "left"
+  }
+}

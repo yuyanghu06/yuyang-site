@@ -11,10 +11,49 @@ const FRAME_INTERVAL_MS = 1000 / 30;
 const FULLSCREEN_AVATAR_SCALE = 2.25;
 const AVATAR_FRAME_CENTER_HEIGHT_RATIO = 0.83;
 const AVATAR_HORIZONTAL_CAMERA_OFFSET_RATIO = 0.56 / FULLSCREEN_AVATAR_SCALE;
+const ILLUSTRATED_FACE_MESH_NAME = "Yuyang_EmbeddedFace";
+
+const createToonGradient = () => {
+  const gradient = new THREE.DataTexture(new Uint8Array([88, 148, 205, 244]), 4, 1, THREE.RedFormat);
+  gradient.minFilter = THREE.NearestFilter;
+  gradient.magFilter = THREE.NearestFilter;
+  gradient.generateMipmaps = false;
+  gradient.needsUpdate = true;
+  return gradient;
+};
+
+const createToonMaterial = (source: THREE.MeshStandardMaterial, gradientMap: THREE.Texture) => {
+  const material = new THREE.MeshToonMaterial({
+    name: `${source.name || "Avatar"}_Toon`,
+    color: source.color,
+    map: source.map,
+    gradientMap,
+    lightMap: source.lightMap,
+    lightMapIntensity: source.lightMapIntensity,
+    aoMap: source.aoMap,
+    aoMapIntensity: source.aoMapIntensity,
+    emissive: source.emissive,
+    emissiveMap: source.emissiveMap,
+    emissiveIntensity: 0.38,
+    alphaMap: source.alphaMap,
+    alphaTest: source.alphaTest,
+    opacity: source.opacity,
+    transparent: source.transparent,
+    side: source.side,
+    depthTest: source.depthTest,
+    depthWrite: source.depthWrite,
+    vertexColors: source.vertexColors,
+  });
+  material.clippingPlanes = source.clippingPlanes;
+  material.clipIntersection = source.clipIntersection;
+  material.clipShadows = source.clipShadows;
+  return material;
+};
 
 export type AvatarAnimationSource = {
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer | null;
+  start?: () => void;
   update?: (elapsedSeconds: number, talking: boolean) => void;
   dispose?: () => void;
 };
@@ -40,6 +79,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     if (!host) return;
 
     const scene = new THREE.Scene();
+    const toonGradient = createToonGradient();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 20);
     camera.position.set(FULLSCREEN_CAMERA_CENTER.x, FULLSCREEN_CAMERA_CENTER.y, 4.8);
     camera.lookAt(FULLSCREEN_CAMERA_CENTER);
@@ -86,7 +126,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     camera.updateProjectionMatrix();
 
     loadAvatar()
-      .then(async ({ root, mixer: loadedMixer, update, dispose }) => {
+      .then(async ({ root, mixer: loadedMixer, start, update, dispose }) => {
         if (disposed) {
           loadedMixer?.stopAllAction();
           dispose?.();
@@ -118,20 +158,36 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
         camera.bottom = -framedOverscanHeight / 2;
         camera.updateProjectionMatrix();
         cameraLight.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1.2));
+        const toonMaterials = new Map<THREE.Material, THREE.Material>();
         root.traverse((object) => {
           if (!(object instanceof THREE.Mesh)) return;
+          if (object.name !== ILLUSTRATED_FACE_MESH_NAME) {
+            const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
+            const convertedMaterials = sourceMaterials.map((sourceMaterial) => {
+              if (!(sourceMaterial instanceof THREE.MeshStandardMaterial)) return sourceMaterial;
+              const existing = toonMaterials.get(sourceMaterial);
+              if (existing) return existing;
+              const toonMaterial = createToonMaterial(sourceMaterial, toonGradient);
+              toonMaterials.set(sourceMaterial, toonMaterial);
+              sourceMaterial.dispose();
+              return toonMaterial;
+            });
+            object.material = Array.isArray(object.material) ? convertedMaterials : convertedMaterials[0];
+          }
           object.frustumCulled = false;
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           for (const material of materials) {
-            if ("roughness" in material) material.roughness = 1.8;
-            if (material instanceof THREE.MeshStandardMaterial) material.emissiveIntensity = 1.04;
-            if (material instanceof THREE.MeshPhysicalMaterial) material.specularIntensity = 2.5;
+            if (object.name === ILLUSTRATED_FACE_MESH_NAME && material instanceof THREE.MeshStandardMaterial) {
+              material.roughness = 1;
+              material.emissiveIntensity = 0.72;
+            }
           }
         });
 
         await renderer.compileAsync(scene, camera);
         if (disposed) return;
         renderer.render(scene, camera);
+        start?.();
         host.dataset.ready = "true";
         onReady?.();
       })
@@ -180,6 +236,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
         }
       });
       renderer.dispose();
+      toonGradient.dispose();
       renderer.domElement.remove();
     };
   }, [loadAvatar, loadErrorMessage, onReady]);

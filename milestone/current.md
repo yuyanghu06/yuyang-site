@@ -1,12 +1,16 @@
 # Current Project Milestone
 
-Last updated: 2026-08-22 06:11 PDT
+Last updated: 2026-08-24 09:19 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
 ## Milestone status
 
 The approved Washington Square visual language now extends from a new globe entry view into the base Manhattan overview. The single persistent renderer starts at globe scale, flies into Manhattan, and retains Washington Square and Union Square as zoomable neighborhood views.
+
+The expanded FaceTime shell uses its original centered bounded dimensions with equal surrounding map margins. Its transparent outer layer, rounded clipping, and shadow are restored, so the background remains visible as an intentional balanced border without any global filter or fill.
+
+The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50%)`. Its desktop maximum width is `82.08rem`, a 10% reduction from the preceding 91.2-rem review. The expanded Three.js camera uses its earlier `0.56 / FULLSCREEN_AVATAR_SCALE` horizontal offset again; vertical framing remains unchanged.
 
 ## Current visual direction
 
@@ -52,6 +56,36 @@ The approved Washington Square visual language now extends from a new globe entr
 - The prototype now boots into the persistent Manhattan overview rather than directly into Washington Square. Its temporary determinate loading treatment remains transitional pending the planned avatar/AI conversational startup experience.
 
 ## Current codebase
+
+- The complete editable avatar working set was preserved before the current repository commit under ignored `data/raw/avatar-working-snapshot-2026-08-24_09-19-39/`. It contains the authoritative 54-bone avatar source and Blender backup, the wave derivative and backup, and all four voxel review rigs. `SHA256SUMS` verifies every preserved Blender file; the committed active sources under `assets/blender/` remain unchanged.
+
+- The unapproved parameterized voxel-avatar generator lives at `scripts/avatar/generate-parameterized-voxel-avatar.py`. After the user rejected V1's flat rectangular head and robot-like arms, V2–V4 shifted facial art direction to the supplied illustrated avatar while retaining the portrait's clothing/palette. Current review V4 has a dense rounded volumetric head, visible large brown eyes and smile, wider shoulders, vertically continuous arms without sleeve clipping, no watch, and separated palm/finger blocks. All visible pieces remain one rigidly weighted mesh on an 18-bone humanoid armature. V1–V3 are rejected provenance; V4 remains unapproved, is not wired into the site, and does not replace the authoritative 54-bone avatar or `public/animations/idle.glb`.
+
+- Agent captions are now gated behind the full 460 ms avatar-shell transition in both directions. Minimizing hides the bubble during the shrink and reveals it only after the dock settles; expanding delays the fullscreen caption fade until the modal reaches its final geometry. A dock-settled ref ensures later streamed dialogue can still reveal immediately when already minimized, while streams begun mid-transition wait for settlement.
+
+- The expansion gate now uses an explicit `expandedSettled` state rather than CSS delay alone. Opening clears docked caption opacity, keeps the chat hidden through all 460 ms of modal resizing, then adds `avatar-call--expanded-settled` and begins a 220 ms fade. This fixes the docked bubble's prior opacity carrying visibly through expansion.
+
+- Scroll-driven arrival at the settled Washington Square camera now triggers the existing NYU/Washington dialogue even when the visitor entered through map interaction rather than the scripted destination button. The trigger is allowed from the pending Washington phase, the Manhattan choice phase, or free exploration, and a session ref guarantees it runs only once without interrupting a declined or different active script.
+
+- The Three.js avatar presentation shifts the fullscreen canvas upward from `translateY(-60%)` to `-62%`, restoring a slightly higher composition without touching the approved GLB or minimized crop. The user restored the first 2D anime-style rendering pass: body, hair, and clothing MeshStandard materials become texture-preserving four-step MeshToon materials at runtime, while the embedded animated face keeps its dedicated MeshStandard/canvas material path.
+
+- The later unlit-material, screen-space outline, face-canvas depth override, and painted chin-curve experiments were rejected and fully removed. The renderer again uses direct scene rendering with no EffectComposer or outline passes, and the runtime face canvas contains only the approved face states and talking-mouth compositor.
+
+- The first avatar appearance now plays `public/animations/wave-hello-review-v2.glb` once before any greeting text begins. `AvatarFullscreen` starts the one-shot only after the avatar's shaders compile and its first frame renders. The call shell does not mount `AgentChat` until the wave mixer emits completion, so the scripted introduction cannot overlap the wave. Runtime normalization keeps all translations/scales and the hips, torso, neck, head, and non-arm rotations at the exact `idle.glb` opening values, removes the wave nod, and overwrites the moving arm chains' first/last samples with the same idle values. The wave therefore stays at idle height and hands off without a pose snap; the existing face texture/blink system stays on the same mounted avatar scene.
+
+- Quaternius Universal Animation Library 2 Standard remains preserved as `public/models/quaternius-vrm-animation-library-2.glb`. The attempted `Yes` thumbs-up retarget was abandoned after repeated hand and sleeve review failures. At the user's direction, its clean open-hand recovery was retained instead as `public/animations/wave-hello-review-v2.glb`, with the Action renamed to `wave_hello`; the misleading `thumbs-up-review.glb` path was removed. The retained wave keeps restrained upper-arm participation, an elbow-carried raised open hand, the approved embedded Head-skinned face, planted lower body, and exact neutral bookends. Its editable temporary source is `/tmp/yuyang-wave-hello-review.blend`. Neither wave candidate is wired to the semantic tool pending selection.
+
+- The scripted Washington Square tour now separates its NYU overview from the Lipton Hall residence note. The Washington caption ends with a blue Next action; selecting it starts the authored Lipton Hall camera transition, and the residence caption does not stream until that landmark view reports settled. The Lipton caption also retains a blue Next action for continuing the tour. Scripted and agent-requested pills render inside the latest message card only while minimized; fullscreen mode places them in the normal control area beneath the card, while Reply remains inline.
+
+- Fullscreen blue Next controls now use the same minimum width, padding, and typography as their minimized in-caption counterparts, so switching call modes does not resize the action.
+
+- Docked message bubbles no longer disappear from outside clicks or maximizing the call. Their visibility survives expansion and later re-minimization; the explicit top-left × dismisses directly, while every minimized action pill closes the current bubble before advancing. This supersedes the earlier outside-click and expansion-dismiss behavior recorded below.
+
+- The docked bubble's top-left × now exactly matches the fullscreen close control's 1.25-rem dimensions, red fill, dark-red glyph, type weight, hover color, and keyboard focus ring.
+
+- Every minimized action pill—Yes/No, Okay, neighborhood destinations, guided or agent Next, and Cancel—now fades and hides the current message over 180 ms before running. Reply is intentionally excluded because it edits the current bubble. Queued continuations explicitly reveal their new bubble after the fade; streamed continuations use the existing automatic reveal.
+
+- An unapproved `wave_hello` candidate exists at `public/animations/wave-hello-review-v1.glb`, authored in `assets/blender/yuyang-avatar-wave-hello-review.blend` directly from the approved 52-bone `Idle_Loop` runtime checkpoint. Weight inspection showed that the inner underarm is dominated by `RightArm` influence and the low-poly shirt lacks enough fold topology for a natural near-horizontal arm raise. A localized reweighting test traded the long torso sheet for a pointed pinch and was rejected/restored. V6 therefore retains the original connected mesh and compatible skeleton, turns the palm outward, keeps the elbow below the shoulder, and lets the bent forearm carry the wave. The four-second one-shot retains the idle lower body, embeds the approved face, exports one finite `wave_hello` animation, and returns to the exact complete starting pose at frame 120 (`0.0` maximum pose-matrix delta). It still requires user approval before runtime integration or promotion.
 
 - Agent captions now have a shared 170-character per-turn ceiling, matching the approved Manhattan introduction reference. The model is instructed to split longer answers naturally and call the blue continuation tool, while the client independently enforces the ceiling, queues overflow, and reveals exactly one additional caption per blue Next action. Blue Next and final white Cancel presentation pills render beneath the message card; Cancel minimizes the guide. Expanding a multi-message call re-establishes the latest-caption default scroll anchor after docked mode, so it no longer opens at the full-history position; older turns remain available by scrolling upward. A single-message call stays at its natural unshifted top position.
 

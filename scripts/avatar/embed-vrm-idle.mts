@@ -15,6 +15,8 @@ const libraryPath = path.resolve(
 const outputPath = path.resolve(
   process.argv[4] ?? "public/models/yuyang-avatar-vrm1-idle-embedded-review.glb",
 );
+const sourceClipName = process.argv[5] ?? "Idle_Loop";
+const outputClipName = process.argv[6] ?? "Idle_Loop";
 
 globalThis.ProgressEvent ??= class ProgressEvent extends Event {
   readonly lengthComputable = false;
@@ -35,21 +37,41 @@ const [avatarGltf, libraryGltf] = await Promise.all([
   new GLTFLoader().parseAsync(toArrayBuffer(libraryBytes), ""),
 ]);
 const vrm = avatarGltf.userData.vrm as VRM | undefined;
-if (!vrm) throw new Error("The avatar did not load as VRM 1.0");
 
-const idleClip = libraryGltf.animations.find((clip) => clip.name === "Idle_Loop");
+const targetBoneNameByHumanBone: Partial<Record<VRMHumanBoneName, string>> = {
+  hips: "Hips", spine: "Spine02", chest: "Spine01", upperChest: "Spine", neck: "neck", head: "Head",
+  leftShoulder: "LeftShoulder", leftUpperArm: "LeftArm", leftLowerArm: "LeftForeArm", leftHand: "LeftHand",
+  rightShoulder: "RightShoulder", rightUpperArm: "RightArm", rightLowerArm: "RightForeArm", rightHand: "RightHand",
+  leftUpperLeg: "LeftUpLeg", leftLowerLeg: "LeftLeg", leftFoot: "LeftFoot", leftToes: "LeftToeBase",
+  rightUpperLeg: "RightUpLeg", rightLowerLeg: "RightLeg", rightFoot: "RightFoot", rightToes: "RightToeBase",
+  leftThumbMetacarpal: "LeftThumb1", leftThumbProximal: "LeftThumb2", leftThumbDistal: "LeftThumb3",
+  leftIndexProximal: "LeftIndex1", leftIndexIntermediate: "LeftIndex2", leftIndexDistal: "LeftIndex3",
+  leftMiddleProximal: "LeftMiddle1", leftMiddleIntermediate: "LeftMiddle2", leftMiddleDistal: "LeftMiddle3",
+  leftRingProximal: "LeftRing1", leftRingIntermediate: "LeftRing2", leftRingDistal: "LeftRing3",
+  leftLittleProximal: "LeftPinky1", leftLittleIntermediate: "LeftPinky2", leftLittleDistal: "LeftPinky3",
+  rightThumbMetacarpal: "RightThumb1", rightThumbProximal: "RightThumb2", rightThumbDistal: "RightThumb3",
+  rightIndexProximal: "RightIndex1", rightIndexIntermediate: "RightIndex2", rightIndexDistal: "RightIndex3",
+  rightMiddleProximal: "RightMiddle1", rightMiddleIntermediate: "RightMiddle2", rightMiddleDistal: "RightMiddle3",
+  rightRingProximal: "RightRing1", rightRingIntermediate: "RightRing2", rightRingDistal: "RightRing3",
+  rightLittleProximal: "RightPinky1", rightLittleIntermediate: "RightPinky2", rightLittleDistal: "RightPinky3",
+};
+
+const idleClip = libraryGltf.animations.find((clip) => clip.name === sourceClipName);
 const restClip = libraryGltf.animations.find((clip) => clip.name === "A_TPose");
-if (!idleClip || !restClip) throw new Error("Animation library is missing Idle_Loop or A_TPose");
+if (!idleClip || !restClip) throw new Error(`Animation library is missing ${sourceClipName} or A_TPose`);
 const sampleTimes = Array.from(idleClip.tracks[0]?.times ?? []);
-if (sampleTimes.length === 0) throw new Error("Idle_Loop has no samples");
+if (sampleTimes.length === 0) throw new Error(`${sourceClipName} has no samples`);
+const targetIdleClip = avatarGltf.animations.find((clip) => clip.name === "Idle_Loop");
+const targetIdleTracks = targetIdleClip ? quaternionTracks(targetIdleClip) : new Map<string, THREE.KeyframeTrack>();
 
 const humanBoneNames = Array.from(
   new Set(Object.values(sourceBoneToHumanBone)),
 ) as VRMHumanBoneName[];
 const rawBones = new Map<VRMHumanBoneName, THREE.Object3D>();
 for (const humanBoneName of humanBoneNames) {
-  const bone = vrm.humanoid.getRawBoneNode(humanBoneName);
-  if (!bone) throw new Error(`VRM is missing raw bone ${humanBoneName}`);
+  const bone = vrm?.humanoid.getRawBoneNode(humanBoneName)
+    ?? avatarGltf.scene.getObjectByName(targetBoneNameByHumanBone[humanBoneName] ?? "");
+  if (!bone) throw new Error(`Avatar is missing target bone ${humanBoneName}`);
   rawBones.set(humanBoneName, bone);
 }
 
@@ -60,8 +82,28 @@ for (const humanBoneName of humanBoneNames) {
 const hipsPositions = new Float32Array(sampleTimes.length * 3);
 const restTracks = quaternionTracks(restClip);
 const idleTracks = quaternionTracks(idleClip);
+const ual2SourceBoneToHumanBone: Record<string, VRMHumanBoneName> = {
+  pelvis: "hips", spine_01: "spine", spine_02: "chest", spine_03: "upperChest", neck_01: "neck", Head: "head",
+  clavicle_l: "leftShoulder", upperarm_l: "leftUpperArm", lowerarm_l: "leftLowerArm", hand_l: "leftHand",
+  clavicle_r: "rightShoulder", upperarm_r: "rightUpperArm", lowerarm_r: "rightLowerArm", hand_r: "rightHand",
+  thigh_l: "leftUpperLeg", calf_l: "leftLowerLeg", foot_l: "leftFoot", ball_l: "leftToes",
+  thigh_r: "rightUpperLeg", calf_r: "rightLowerLeg", foot_r: "rightFoot", ball_r: "rightToes",
+  thumb_01_l: "leftThumbMetacarpal", thumb_02_l: "leftThumbProximal", thumb_03_l: "leftThumbDistal",
+  index_01_l: "leftIndexProximal", index_02_l: "leftIndexIntermediate", index_03_l: "leftIndexDistal",
+  middle_01_l: "leftMiddleProximal", middle_02_l: "leftMiddleIntermediate", middle_03_l: "leftMiddleDistal",
+  ring_01_l: "leftRingProximal", ring_02_l: "leftRingIntermediate", ring_03_l: "leftRingDistal",
+  pinky_01_l: "leftLittleProximal", pinky_02_l: "leftLittleIntermediate", pinky_03_l: "leftLittleDistal",
+  thumb_01_r: "rightThumbMetacarpal", thumb_02_r: "rightThumbProximal", thumb_03_r: "rightThumbDistal",
+  index_01_r: "rightIndexProximal", index_02_r: "rightIndexIntermediate", index_03_r: "rightIndexDistal",
+  middle_01_r: "rightMiddleProximal", middle_02_r: "rightMiddleIntermediate", middle_03_r: "rightMiddleDistal",
+  ring_01_r: "rightRingProximal", ring_02_r: "rightRingIntermediate", ring_03_r: "rightRingDistal",
+  pinky_01_r: "rightLittleProximal", pinky_02_r: "rightLittleIntermediate", pinky_03_r: "rightLittleDistal",
+};
+const activeSourceBoneToHumanBone = restTracks.has("DEF-hips")
+  ? sourceBoneToHumanBone
+  : ual2SourceBoneToHumanBone;
 const sourceNameByHumanBone = new Map<VRMHumanBoneName, string>();
-for (const [sourceName, humanBoneName] of Object.entries(sourceBoneToHumanBone)) {
+for (const [sourceName, humanBoneName] of Object.entries(activeSourceBoneToHumanBone)) {
   sourceNameByHumanBone.set(humanBoneName, sourceName);
 }
 const sourceRest = new THREE.Quaternion();
@@ -70,6 +112,11 @@ const sourcePose = new THREE.Quaternion();
 const sourceDelta = new THREE.Quaternion();
 const conversion = new THREE.Quaternion();
 const mappedDelta = new THREE.Quaternion();
+const plantedGestureBones = new Set<VRMHumanBoneName>([
+  "hips",
+  "leftUpperLeg", "leftLowerLeg", "leftFoot", "leftToes",
+  "rightUpperLeg", "rightLowerLeg", "rightFoot", "rightToes",
+]);
 for (const [humanBoneName, targetBone] of rawBones) {
   const sourceName = sourceNameByHumanBone.get(humanBoneName)!;
   const restTrack = restTracks.get(sourceName);
@@ -77,11 +124,18 @@ for (const [humanBoneName, targetBone] of rawBones) {
   if (!restTrack || !motionTrack) throw new Error(`Missing source track ${sourceName}`);
   sourceRest.fromArray(restTrack.values, 0);
   sourceReference.fromArray(motionTrack.values, 0);
-  const targetRest = targetBone.quaternion.clone();
+  const targetIdleTrack = targetIdleTracks.get(targetBone.name);
+  const targetRest = targetIdleTrack
+    ? new THREE.Quaternion().fromArray(targetIdleTrack.values, 0)
+    : targetBone.quaternion.clone();
   conversion.copy(targetRest).invert().multiply(sourceRest);
   const output = rotations.get(humanBoneName)!;
   for (let frame = 0; frame < sampleTimes.length; frame += 1) {
-    if (humanBoneName.startsWith("rightLittle")) {
+    if (sourceClipName !== "Idle_Loop" && plantedGestureBones.has(humanBoneName)) {
+      targetRest.toArray(output, frame * 4);
+      continue;
+    }
+    if (sourceClipName === "Idle_Loop" && humanBoneName.startsWith("rightLittle")) {
       targetRest.toArray(output, frame * 4);
       continue;
     }
@@ -109,7 +163,7 @@ embedAnimation(
   hipsPositions,
 );
 await writeFile(outputPath, packGlb(avatarDocument.json, avatarDocument.bin));
-console.log(`Wrote embedded idle review GLB: ${outputPath}`);
+console.log(`Wrote embedded ${sourceClipName} review GLB: ${outputPath}`);
 
 interface GlbDocument {
   json: Record<string, any>;
@@ -198,9 +252,10 @@ function embedAnimation(
   const nodeIndexByName = new Map<string, number>(
     json.nodes.map((node: { name?: string }, index: number) => [node.name ?? "", index]),
   );
-  const humanBoneMap = json.extensions.VRMC_vrm.humanoid.humanBones;
+  const humanBoneMap = json.extensions?.VRMC_vrm?.humanoid?.humanBones;
   for (const [humanBoneName, values] of rotations) {
-    const node = humanBoneMap[humanBoneName]?.node;
+    const targetNodeName = targetBoneNameByHumanBone[humanBoneName];
+    const node = humanBoneMap?.[humanBoneName]?.node ?? nodeIndexByName.get(targetNodeName ?? "");
     if (node === undefined || nodeIndexByName.get(json.nodes[node].name) !== node) {
       throw new Error(`Cannot resolve output node for ${humanBoneName}`);
     }
@@ -209,11 +264,12 @@ function embedAnimation(
     samplers.push({ input: timeAccessor, output, interpolation: "LINEAR" });
     channels.push({ sampler, target: { node, path: "rotation" } });
   }
-  const hipsNode = humanBoneMap.hips.node;
+  const hipsNode = humanBoneMap?.hips?.node ?? nodeIndexByName.get(targetBoneNameByHumanBone.hips!);
+  if (hipsNode === undefined) throw new Error("Cannot resolve output node for hips");
   const hipsOutput = addAccessor(hipsPositions, "VEC3", times.length);
   samplers.push({ input: timeAccessor, output: hipsOutput, interpolation: "LINEAR" });
   channels.push({ sampler: samplers.length - 1, target: { node: hipsNode, path: "translation" } });
-  json.animations = [{ name: "Idle_Loop", samplers, channels }];
+  json.animations = [{ name: outputClipName, samplers, channels }];
   json.buffers[0].byteLength = byteOffset;
   documentBin = Buffer.concat([originalBin, ...appended]);
 }

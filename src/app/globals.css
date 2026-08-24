@@ -248,7 +248,7 @@ body {
 }
 
 .avatar-call {
-  --avatar-glass-width: min(76rem, calc(100vw - clamp(2rem, 6vw, 5rem)));
+  --avatar-glass-width: min(82.08rem, calc(100vw - clamp(2rem, 6vw, 5rem)));
   --avatar-glass-height: min(48rem, calc(100vh - clamp(2rem, 6vw, 5rem)));
   --agent-caption-boundary-inset: 5rem;
   --call-ink: #f4f0e6;
@@ -270,14 +270,14 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(76rem, calc(100% - clamp(2rem, 6vw, 5rem)));
+  width: min(82.08rem, calc(100% - clamp(2rem, 6vw, 5rem)));
   height: min(48rem, calc(100% - clamp(2rem, 6vw, 5rem)));
   min-height: 24rem;
   overflow: hidden;
   background: transparent;
   border: 0;
   border-radius: 2rem;
-  box-shadow: 0 1.5rem 5rem rgb(13 22 23 / 28%);
+  box-shadow: none;
   transform: translate(-50%, -50%);
   transition:
     top 460ms cubic-bezier(0.64, 0, 0.3, 1),
@@ -364,12 +364,12 @@ body {
     visibility 0s linear 180ms;
 }
 
-.avatar-call--expanded .agent-chat {
+.avatar-call--expanded-settled .agent-chat {
   opacity: 1;
   visibility: visible;
   transition:
-    opacity 220ms ease 440ms,
-    visibility 0s linear 440ms;
+    opacity 220ms ease,
+    visibility 0s linear;
 }
 
 .agent-chat__messages {
@@ -525,10 +525,14 @@ body {
 }
 
 .agent-chat__reply--blue {
+  min-width: 5.25rem;
+  padding: 0.58rem 1rem;
   background:
     linear-gradient(145deg, rgb(255 255 255 / 16%), transparent 46%),
     rgb(63 132 242 / 88%);
   border-color: rgb(207 227 255 / 38%);
+  font-size: 0.82rem;
+  font-weight: 650;
 }
 
 .agent-chat__reply--blue:hover {
@@ -837,7 +841,7 @@ body {
   width: var(--avatar-render-width, calc(100% - clamp(2rem, 8vw, 8rem)));
   height: var(--avatar-render-height, 130%);
   opacity: 0;
-  transform: translate(-50%, -60%);
+  transform: translate(-50%, -62%);
   scale: 1;
   transition:
     opacity 260ms ease,
@@ -906,7 +910,7 @@ body {
 
 .avatar-call--docked .agent-chat--docked-visible .agent-chat__message--latest {
   align-self: flex-end;
-  padding-right: 2.35rem;
+  padding-left: 2.35rem;
 }
 
 .avatar-call--docked .agent-chat--docked-visible .agent-chat__message--latest .agent-chat__choices {
@@ -924,21 +928,27 @@ body {
   position: absolute;
   z-index: 3;
   top: 0.55rem;
-  right: 0.65rem;
-  width: 1.1rem;
-  height: 1.1rem;
+  left: 0.65rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
   padding: 0;
-  color: rgb(255 255 255 / 68%);
-  background: rgb(255 255 255 / 8%);
+  color: rgb(91 22 22 / 82%);
+  background: #ff605c;
   border: 0;
   border-radius: 50%;
-  font: 500 0.85rem/1 Arial, sans-serif;
+  font: 600 0.9rem/1 Arial, sans-serif;
   cursor: pointer;
 }
 
 .agent-chat__dock-dismiss:hover {
-  color: #fff;
-  background: rgb(255 255 255 / 16%);
+  background: #ff756f;
+}
+
+.agent-chat__dock-dismiss:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .avatar-call--docked .avatar-call__modal--dragging {
@@ -951,7 +961,7 @@ body {
 }
 
 .avatar-call--docked .avatar-call__avatar-view {
-  transform: translate(-60%, -49%);
+  transform: translate(-58.5%, -50%);
   scale: 0.34;
 }
 
@@ -975,6 +985,13 @@ body {
     height: min(44rem, 100%);
     min-height: 0;
     border-radius: 1.4rem;
+  }
+
+  .avatar-call--expanded .avatar-call__modal {
+    right: auto;
+    left: 50%;
+    width: calc(100% - 5rem);
+    transform: translate(-50%, -50%);
   }
 
   .agent-chat {

@@ -6,6 +6,76 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-24_09-19-39-preserve-avatar-working-snapshot.md` records the gitignored, checksum-verified preservation of the complete editable avatar working set before the repository commit.
+
+- `2026-08-24_09-30-00-reduce-modal-restore-avatar-offset.md` records a 10% modal-width reduction and restoration of the previous avatar camera offset.
+
+- `2026-08-24_09-25-00-widen-centered-avatar-modal.md` records increasing the centered modal's desktop maximum width by 20%.
+
+- `2026-08-24_09-20-00-balance-avatar-right-bottom-framing.md` records tightening the avatar's right-side camera framing to match its bottom breathing room.
+
+- `2026-08-24_09-15-00-narrow-centered-avatar-modal.md` records restoring the bounded width of the literally centered expanded modal.
+
+- `2026-08-24_09-10-00-center-literal-avatar-modal.md` records centering the modal box itself with equal side gutters while preserving avatar camera framing.
+
+- `2026-08-24_09-05-00-center-avatar-with-edge-gutter.md` records centering the character inside the expanded display while retaining the referenced rounded outer gutter.
+
+- `2026-08-24_09-00-00-remove-avatar-modal-right-strip.md` records making the expanded avatar shell full-width and centered without a right-edge strip.
+
+- `2026-08-24_08-55-30-match-avatar-modal-edge-gap.md` records matching the expanded avatar modal's right inset to its bottom visual gap at desktop and narrow widths.
+
+- `2026-08-22_12-57-28-explicit-fullscreen-caption-gate.md` records holding captions hidden with state until expansion completes, then beginning the fullscreen fade.
+
+- `2026-08-22_12-55-50-caption-after-shell-transition.md` records gating minimized and fullscreen caption fades until their 460 ms shell transitions complete.
+
+- `2026-08-22_12-53-39-scroll-triggered-washington-dialogue.md` records binding the Washington narration to one-time settled camera arrival during scroll navigation.
+
+- `2026-08-22_10-49-40-restore-first-anime-render-pass.md` records rejecting the outline/chin experiments and restoring the initial four-step toon renderer.
+
+- `2026-08-22_10-43-10-restore-chin-outline.md` records disabling face-canvas depth writes so the actual head mesh produces the requested chin border.
+
+- `2026-08-22_10-42-05-exclude-face-canvas-from-outline.md` records removing the transparent facial plane from outline selection so only avatar geometry receives the border.
+
+- `2026-08-22_10-41-03-avatar-screen-space-outline.md` records adding a restrained black Three.js outline around the animated avatar without modifying its mesh.
+
+- `2026-08-22_10-39-22-remove-avatar-polygon-banding.md` records replacing toon lighting with unlit texture materials to hide low-poly facets without changing the mesh.
+
+- `2026-08-22_10-37-20-avatar-toon-render-and-higher-framing.md` records the higher fullscreen avatar position and texture-preserving Three.js toon-material pass.
+
+- `2026-08-22_10-32-24-startup-wave-before-text.md` records the one-shot first-load wave, exact idle-pose normalization, and greeting delay until wave completion.
+
+- `2026-08-22_10-32-47-minimized-buttons-close-caption.md` records making every minimized action pill fade the current message before running, with Reply excluded.
+
+- `2026-08-22_10-31-54-match-fullscreen-close-control.md` records making the docked caption × visually identical to the fullscreen close control.
+
+- `2026-08-22_10-28-14-retain-open-hand-as-wave.md` records repurposing the clean open-hand recovery as wave v2 and removing the misleading thumbs-up review path.
+
+- `2026-08-22_10-21-10-thumbs-up-single-arm-fresh-glb.md` records the definitive single raised-arm mapping and opening the corrected GLB in a fresh Blender instance.
+
+- `2026-08-22_10-17-24-thumbs-up-relaxed-arm-right.md` records replacing the deforming high upper-arm pose with a relaxed upper arm and screen-right forearm-carried gesture.
+
+- `2026-08-22_10-15-34-next-fades-previous-caption.md` records fading the current minimized tour caption before Next advances navigation or continuation.
+
+- `2026-08-22_10-15-12-thumbs-up-arm-left.md` records the keyed leftward raised-arm silhouette correction while preserving neutral bookends and planted legs.
+
+- `2026-08-22_10-14-40-red-caption-dismiss.md` records changing the docked caption's top-left × to a red dismiss control.
+
+- `2026-08-22_10-11-47-thumbs-up-fingers-planted-legs.md` records corrected palm/digit direction mapping and fully fixed lower-body tracks for the thumbs-up review.
+
+- `2026-08-22_10-11-41-persistent-docked-caption.md` records exclusive top-left × dismissal and caption persistence across outside clicks, navigation, and fullscreen mode changes.
+
+- `2026-08-22_10-10-54-next-button-size-sync.md` records matching the fullscreen blue Next pill dimensions to the minimized in-caption control.
+
+- `2026-08-22_10-01-02-wave-underarm-topology-workaround.md` records the rejected armpit reweighting test and the V6 lower-elbow wave that preserves the original connected mesh and skeleton.
+
+- `2026-08-22_09-59-53-thumbs-up-review-glb.md` records discovery of UAL2's `Yes` source, the gesture retarget pipeline update, and the unapproved thumbs-up review GLB.
+
+- `2026-08-22_09-57-02-lipton-tour-camera-sequence.md` records moving the Lipton residence caption behind the settled Lipton Hall camera transition, retaining blue Next actions on both tour steps, and making pill placement consistently internal when minimized and external when fullscreen.
+
+- `2026-08-22_09-55-31-wave-sleeve-deformation-correction.md` records the corrected horizontal-upper-arm wave pose that reduces the first candidate's sleeve/armpit collapse.
+
+- `2026-08-22_09-52-25-idle-based-wave-review.md` records the first idle-based `wave_hello` review derivative, its open-palm silhouette, GLB export, and neutral-bookend validation.
+
 - `2026-08-22_09-39-56-independent-talking-mouth-and-blink.md` records the independent blink/mouth compositor, faster immediate talking cadence, mouth-only assets, and corrected transparent blink artwork.
 
 - `2026-08-22_06-12-52-idle-blink-and-talking-face.md` records the approved-face closed-eye texture, two idle blinks, talking-atlas runtime states on the reused idle body loop, and verification.
@@ -196,4 +266,13 @@ Use these records only when historical context is needed; do not load the entire
 - `2026-08-21_18-30-20-cross-hand-weight-and-arm-direction-fix.md` records the exact cross-hand weight contamination, its localized repair, and the joint-direction arm candidate with uncrossed limb chains.
 - `2026-08-21_18-36-00-original-hands-animated-torso-arm-solve.md` records restoration of the original hand/finger tracks and the corrected shoulder solve against the animated torso.
 - `2026-08-21_18-48-07-avatar-retargeting-contract-and-source-cleanup.md` records the frozen mapping checkpoint, complete fresh-session animation-library/retargeting contract, and cleanup of obsolete active Blender review sources into the recovery archive.
+- `2026-08-22_10-40-07-expanded-modal-right-margin.md` records the expanded FaceTime modal's right-only extension to the existing vertical boundary inset.
+- `2026-08-22_12-55-06-narrow-avatar-right-edge.md` records removal of the narrow-screen right inset that exposed the underlying map as a black edge strip.
+- `2026-08-22_12-58-13-fullscreen-avatar-two-pixel-margin.md` records restoring the expanded avatar shell's two-pixel horizontal margins at every breakpoint.
+- `2026-08-22_13-55-10-preserve-avatar-modal-size.md` records restoring the bounded desktop modal width while retaining the corrected two-pixel right alignment.
+- `2026-08-22_13-56-34-centered-avatar-seamless-backdrop.md` records restoring centered desktop placement while extending the blurred call backdrop across the viewport to hide the external black boundary.
+- `2026-08-22_13-58-21-remove-expanded-avatar-boundary.md` records replacing that rejected blur with an unfiltered matching base surface and removing the expanded modal edge shadow.
+- `2026-08-22_14-00-20-restore-balanced-avatar-border.md` records restoring the centered modal's visible, equal map border after rejecting both outer fill and right-side glass extension approaches.
+- `2026-08-22_13-55-38-parameterized-voxel-avatar-v1.md` records the portrait-derived JSON preset, deterministic voxel generator, rigged review assets, structural export check, and pending visual approval.
+- `2026-08-22_14-04-50-voxel-avatar-v4-review.md` records rejection of the flat-head/robot-arm direction, adoption of the illustrated facial reference, the dense volumetric head, and the current watch-free wider-shouldered V4 candidate.
 - Other timestamped Markdown files are earlier append-only session handoffs.

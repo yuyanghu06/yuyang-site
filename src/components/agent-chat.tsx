@@ -18,10 +18,12 @@ const getYuyangAge = (today = new Date()) => {
 };
 const INTRO_GREETING = `Hello! I’m Yuyang, a ${getYuyangAge()} year old college kid living in New York City. Do you want a tour of my world?`;
 const MANHATTAN_TOUR_GREETING = "Welcome to Manhattan! I'm currently a Junior at NYU, and I spend most of my time split between either Union Square or Washington Square. Where would you like to go first?";
-const WASHINGTON_SQUARE_TOUR_GREETING = "Washington square is where NYU has it's campus. This is where I take my classes, go to club meetings, and study. I also lived at Lipton hall, on the west side of the park my Freshman year!";
+const WASHINGTON_SQUARE_TOUR_GREETING = "Washington square is where NYU has it's campus. This is where I take my classes, go to club meetings, and study.";
+const LIPTON_HALL_TOUR_GREETING = "I also lived at Lipton hall, on the west side of the park my Freshman year!";
 const STREAM_BLIP_INTERVAL_MS = 58;
+const DOCKED_CAPTION_FADE_MS = 180;
 const MAX_CAPTION_CHARACTERS = 170;
-type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "washington_arrival" | "washington_next" | "free";
+type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "free";
 
 const splitCaptionText = (content: string) => {
   const segments: string[] = [];
@@ -90,11 +92,12 @@ interface AgentChatProps {
   expanded: boolean;
   dockedCaptionVisible: boolean;
   onDismissDockedCaption: () => void;
+  onRevealDockedCaption: () => void;
   onStreamingChange: (streaming: boolean) => void;
   onMinimize: () => void;
 }
 
-export default function AgentChat({ currentView, expanded, dockedCaptionVisible, onDismissDockedCaption, onStreamingChange, onMinimize }: AgentChatProps) {
+export default function AgentChat({ currentView, expanded, dockedCaptionVisible, onDismissDockedCaption, onRevealDockedCaption, onStreamingChange, onMinimize }: AgentChatProps) {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [introPhase, setIntroPhase] = useState<IntroPhase>("greeting");
   const [draft, setDraft] = useState("");
@@ -108,24 +111,15 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const lastStreamBlipAtRef = useRef(0);
   const messageListRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const chatRef = useRef<HTMLDivElement>(null);
   const introPhaseRef = useRef(introPhase);
   const streamedTextRef = useRef("");
   const queuedCaptionSegmentsRef = useRef<string[]>([]);
   const terminalPresentationRef = useRef<"next" | "reply" | null>(null);
+  const washingtonTourShownRef = useRef(false);
 
   useEffect(() => {
     introPhaseRef.current = introPhase;
   }, [introPhase]);
-
-  useEffect(() => {
-    if (expanded || !dockedCaptionVisible) return;
-    const dismissOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !chatRef.current?.contains(event.target)) onDismissDockedCaption();
-    };
-    document.addEventListener("pointerdown", dismissOutside, true);
-    return () => document.removeEventListener("pointerdown", dismissOutside, true);
-  }, [dockedCaptionVisible, expanded, onDismissDockedCaption]);
 
   const playStreamBlip = useCallback(() => {
     const audio = streamBlipRef.current;
@@ -169,13 +163,23 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   useEffect(() => {
     const handleViewSettled = (event: Event) => {
       const { view } = (event as CustomEvent<MapViewSettledDetail>).detail;
-      if (view === "washington" && introPhaseRef.current === "washington_arrival") {
+      const canStartWashingtonDialogue = introPhaseRef.current === "washington_arrival"
+        || introPhaseRef.current === "manhattan_choice"
+        || introPhaseRef.current === "free";
+      if (view === "washington" && canStartWashingtonDialogue && !washingtonTourShownRef.current) {
+        washingtonTourShownRef.current = true;
         const [firstSegment = "", ...remainingSegments] = splitCaptionText(WASHINGTON_SQUARE_TOUR_GREETING);
         queuedCaptionSegmentsRef.current = remainingSegments;
         streamScript(firstSegment, () => {
-          const nextPhase = remainingSegments.length > 0 ? "washington_next" : "free";
-          introPhaseRef.current = nextPhase;
-          setIntroPhase(nextPhase);
+          introPhaseRef.current = "washington_next";
+          setIntroPhase("washington_next");
+        });
+        return;
+      }
+      if (view === "lipton-hall" && introPhaseRef.current === "lipton_arrival") {
+        streamScript(LIPTON_HALL_TOUR_GREETING, () => {
+          introPhaseRef.current = "lipton_next";
+          setIntroPhase("lipton_next");
         });
         return;
       }
@@ -195,7 +199,6 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     const nextPhase = destination === "washington" ? "washington_arrival" : "free";
     introPhaseRef.current = nextPhase;
     setIntroPhase(nextPhase);
-    onDismissDockedCaption();
     onMinimize();
     dispatchAgentCommand({ type: "navigate_map", destination });
   };
@@ -210,7 +213,6 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   }, []);
 
   useEffect(() => {
-    dispatchAgentCommand({ type: "trigger_avatar_emote", emote: "wave_hello" });
     scriptTimerRef.current = window.setTimeout(() => {
       streamScript(INTRO_GREETING, () => setIntroPhase("choice"));
     }, 0);
@@ -239,6 +241,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     if (nextSegment) {
       setMessages((current) => [...current, { role: "assistant", content: nextSegment } satisfies AgentMessage].slice(-20));
       setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : terminalPresentationRef.current);
+      if (!expanded) onRevealDockedCaption();
       return;
     }
     setComposerOpen(true);
@@ -246,16 +249,25 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     window.setTimeout(() => formRef.current?.requestSubmit(), 0);
   };
 
+  const runAfterDockedCaptionFade = (action: () => void) => {
+    if (expanded) {
+      action();
+      return;
+    }
+    onDismissDockedCaption();
+    window.setTimeout(action, DOCKED_CAPTION_FADE_MS);
+  };
+
   const continueWashingtonTour = () => {
-    const nextSegment = queuedCaptionSegmentsRef.current.shift();
-    if (!nextSegment) return;
-    introPhaseRef.current = "washington_arrival";
-    setIntroPhase("washington_arrival");
-    streamScript(nextSegment, () => {
-      const nextPhase = queuedCaptionSegmentsRef.current.length > 0 ? "washington_next" : "free";
-      introPhaseRef.current = nextPhase;
-      setIntroPhase(nextPhase);
-    });
+    introPhaseRef.current = "lipton_arrival";
+    setIntroPhase("lipton_arrival");
+    dispatchAgentCommand({ type: "navigate_map", destination: "lipton-hall" });
+  };
+
+  const continueFromLipton = () => {
+    introPhaseRef.current = "free";
+    setIntroPhase("free");
+    requestNextMessage();
   };
 
   const acceptTour = () => {
@@ -360,7 +372,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   };
 
   return (
-    <div ref={chatRef} className={`agent-chat${dockedCaptionVisible ? " agent-chat--docked-visible" : ""}`} onClick={(event) => event.stopPropagation()}>
+    <div className={`agent-chat${dockedCaptionVisible ? " agent-chat--docked-visible" : ""}`} onClick={(event) => event.stopPropagation()}>
       <div
         className="agent-chat__messages"
         role="log"
@@ -389,7 +401,28 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </span>
               ) : "…")}
             </span>
-            {index === assistantMessages.length - 1 && introPhase === "manhattan_choice" && !composerOpen && (
+            {index === assistantMessages.length - 1 && !expanded && introPhase === "choice" && !composerOpen && (
+              <div className="agent-chat__caption-actions">
+                <div className="agent-chat__choices" aria-label="Choose whether to start the tour">
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(acceptTour)}>Yes</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(declineTour)}>No</button>
+                </div>
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
+              </div>
+            )}
+            {index === assistantMessages.length - 1 && !expanded && introPhase === "declined" && !composerOpen && (
+              <div className="agent-chat__caption-actions">
+                <div className="agent-chat__choices">
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(finishDecline)}>Okay</button>
+                </div>
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
+              </div>
+            )}
+            {index === assistantMessages.length - 1 && !expanded && introPhase === "manhattan_choice" && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div
                   className="agent-chat__choices agent-chat__choices--white"
@@ -397,22 +430,22 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <button type="button" onClick={() => chooseManhattanNeighborhood("union")}>Union Square</button>
-                  <button type="button" onClick={() => chooseManhattanNeighborhood("washington")}>Washington Square</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood("union"))}>Union Square</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood("washington"))}>Washington Square</button>
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                   <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && introPhase === "washington_next" && !composerOpen && (
+            {index === assistantMessages.length - 1 && !expanded && (introPhase === "washington_next" || introPhase === "lipton_next") && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div
                   className="agent-chat__choices"
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <button type="button" onClick={continueWashingtonTour}>Next</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(introPhase === "washington_next" ? continueWashingtonTour : continueFromLipton)}>Next</button>
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                   <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
@@ -422,7 +455,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
             {index === assistantMessages.length - 1 && !expanded && presentationAction && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div className={`agent-chat__choices${presentationAction === "reply" ? " agent-chat__choices--white" : ""}`}>
-                  <button type="button" onClick={presentationAction === "next" ? requestNextMessage : onMinimize}>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(presentationAction === "next" ? requestNextMessage : onMinimize)}>
                     {presentationAction === "next" ? "Next" : "Cancel"}
                   </button>
                 </div>
@@ -431,7 +464,12 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && !pending && (composerOpen || (introPhase !== "greeting" && introPhase !== "manhattan_choice" && introPhase !== "washington_next" && presentationAction === null)) && (
+            {index === assistantMessages.length - 1 && expanded && (introPhase === "manhattan_choice" || introPhase === "washington_next" || introPhase === "lipton_next") && !composerOpen && (
+              <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+              </button>
+            )}
+            {index === assistantMessages.length - 1 && !pending && (expanded || (introPhase !== "choice" && introPhase !== "declined")) && (composerOpen || (introPhase !== "greeting" && introPhase !== "manhattan_choice" && introPhase !== "washington_next" && introPhase !== "lipton_next" && presentationAction === null)) && (
               composerOpen ? (
                 <form className="agent-chat__form agent-chat__form--inline" onSubmit={submit} ref={formRef}>
                   <div className="agent-chat__input-row">
@@ -462,16 +500,25 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           </div>
         ))}
         {error && <p className="agent-chat__error">{error}</p>}
-        {introPhase === "choice" && (
+        {expanded && introPhase === "choice" && (
           <div className="agent-chat__choices" aria-label="Choose whether to start the tour">
             <button type="button" onClick={acceptTour}>Yes</button>
             <button type="button" onClick={declineTour}>No</button>
           </div>
         )}
-        {introPhase === "declined" && (
+        {expanded && introPhase === "declined" && (
           <div className="agent-chat__choices">
             <button type="button" onClick={finishDecline}>Okay</button>
           </div>
+        )}
+        {expanded && introPhase === "manhattan_choice" && (
+          <div className="agent-chat__choices agent-chat__choices--white" aria-label="Choose a Manhattan neighborhood">
+            <button type="button" onClick={() => chooseManhattanNeighborhood("union")}>Union Square</button>
+            <button type="button" onClick={() => chooseManhattanNeighborhood("washington")}>Washington Square</button>
+          </div>
+        )}
+        {expanded && (introPhase === "washington_next" || introPhase === "lipton_next") && (
+          <button type="button" className="agent-chat__reply agent-chat__reply--blue" onClick={introPhase === "washington_next" ? continueWashingtonTour : continueFromLipton}>Next</button>
         )}
         {expanded && presentationAction === "next" && (
           <button type="button" className="agent-chat__reply agent-chat__reply--blue" onClick={requestNextMessage}>Next</button>
