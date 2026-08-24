@@ -372,6 +372,12 @@ body {
     visibility 0s linear;
 }
 
+.avatar-call--expanded .avatar-call__avatar-view {
+  left: clamp(1rem, 4vw, 4rem);
+  width: calc(100% - clamp(1rem, 4vw, 4rem) - 0.375rem);
+  transform: translateY(-62%);
+}
+
 .agent-chat__messages {
   display: flex;
   flex: 1;

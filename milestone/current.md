@@ -1,6 +1,6 @@
 # Current Project Milestone
 
-Last updated: 2026-08-24 10:05 PDT
+Last updated: 2026-08-24 15:31 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
@@ -56,6 +56,8 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 - The prototype now boots into the persistent Manhattan overview rather than directly into Washington Square. Its temporary determinate loading treatment remains transitional pending the planned avatar/AI conversational startup experience.
 
 ## Current codebase
+
+- The expanded avatar canvas now extends only its right clipping edge to a fixed `0.375rem` inset, visually matching the near-edge bottom crop and preventing the raised hand from being cut off. Its previous left edge and `translateY(-62%)` vertical framing remain exact; no avatar mesh, Three.js camera constant, scale, or animation code changed. Docked presentation is unaffected.
 
 - A first unapproved voxel facial-animation atlas now exists at `public/style-references/avatar/yuyang-avatar-face-voxel-talking-atlas-v1.png`, with its editable SVG and labeled eight-state contact sheet beside it. It preserves the existing four-by-two neutral/blink/talking state contract while replacing the illustrated curves with crisp flat blocks based on the user's voxel reference. The live Blender connection was unavailable during authoring, so the candidate has not been fitted to the curved face canvas, saved into the authoritative `.blend`, exported to GLB, or wired into runtime; the approved face remains unchanged pending visual acceptance.
 
