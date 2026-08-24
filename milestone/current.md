@@ -1,6 +1,6 @@
 # Current Project Milestone
 
-Last updated: 2026-08-24 09:19 PDT
+Last updated: 2026-08-24 10:05 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
@@ -56,6 +56,8 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 - The prototype now boots into the persistent Manhattan overview rather than directly into Washington Square. Its temporary determinate loading treatment remains transitional pending the planned avatar/AI conversational startup experience.
 
 ## Current codebase
+
+- A first unapproved voxel facial-animation atlas now exists at `public/style-references/avatar/yuyang-avatar-face-voxel-talking-atlas-v1.png`, with its editable SVG and labeled eight-state contact sheet beside it. It preserves the existing four-by-two neutral/blink/talking state contract while replacing the illustrated curves with crisp flat blocks based on the user's voxel reference. The live Blender connection was unavailable during authoring, so the candidate has not been fitted to the curved face canvas, saved into the authoritative `.blend`, exported to GLB, or wired into runtime; the approved face remains unchanged pending visual acceptance.
 
 - The complete editable avatar working set was preserved before the current repository commit under ignored `data/raw/avatar-working-snapshot-2026-08-24_09-19-39/`. It contains the authoritative 54-bone avatar source and Blender backup, the wave derivative and backup, and all four voxel review rigs. `SHA256SUMS` verifies every preserved Blender file; the committed active sources under `assets/blender/` remain unchanged.
 

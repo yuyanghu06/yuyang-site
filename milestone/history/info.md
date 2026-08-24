@@ -6,6 +6,8 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-24_10-05-00-voxel-face-atlas-v1.md` records the first unapproved eight-state block-texture facial atlas and the pending Blender canvas-fit review.
+
 - `2026-08-24_09-19-39-preserve-avatar-working-snapshot.md` records the gitignored, checksum-verified preservation of the complete editable avatar working set before the repository commit.
 
 - `2026-08-24_09-30-00-reduce-modal-restore-avatar-offset.md` records a 10% modal-width reduction and restoration of the previous avatar camera offset.
