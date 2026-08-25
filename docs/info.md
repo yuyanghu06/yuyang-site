@@ -4,7 +4,7 @@ Long-lived design and implementation notes live here. Keep these documents consi
 
 ## Files
 
-- `avatar-animation-system.md` defines the guided-tour animation behavior, authoritative animation library and checkpoint, reusable skeleton-retargeting contract, manual-fit-then-Head-lock face attachment policy, rejected approaches, and mandatory validation gates.
+- `avatar-animation-system.md` defines the guided-tour animation behavior, authoritative animation library and checkpoint, reusable skeleton-retargeting contract, persistent-scene shared emote player, nod/smile and disappointed head-shake commands, manual-fit-then-Head-lock face attachment policy, rejected approaches, and mandatory validation gates.
 - `info.md` documents this folder.
 
 There are no direct subfolders.

@@ -1,10 +1,13 @@
 # App Router entry
 
+Docked-caption styles in `globals.css` place dialogue to the right of a left-docked avatar, to the left of a right-docked avatar, and align it with the avatar's bottom edge at either lower corner.
+
 This directory owns the root App Router layout, page, metadata/icon, global CSS, and API routes. The root page mounts the browser-only map shell.
 
 ## Direct subfolders
 
 - `api/` contains public backend-for-frontend route handlers, including the server-only agent boundary.
+- `avatar-emote-preview/` contains an isolated test page for the candidate restrained nod/open-smile and head-shake/disappointed-face animations plus a flatter texture-dominant 2D rendering treatment; it does not alter the production home route.
 
 ## Direct files
 

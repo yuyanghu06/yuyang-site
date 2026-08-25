@@ -50,6 +50,31 @@ const createToonMaterial = (source: THREE.MeshStandardMaterial, gradientMap: THR
   return material;
 };
 
+const createFlatIllustratedMaterial = (source: THREE.MeshStandardMaterial) => {
+  const material = new THREE.MeshStandardMaterial({
+    name: `${source.name || "Avatar"}_FlatIllustratedPreview`,
+    color: source.color,
+    map: source.map,
+    roughness: 1,
+    metalness: 0,
+    emissive: new THREE.Color(0xffffff),
+    emissiveMap: source.map,
+    emissiveIntensity: 1.15,
+    alphaMap: source.alphaMap,
+    alphaTest: source.alphaTest,
+    opacity: source.opacity,
+    transparent: source.transparent,
+    side: source.side,
+    depthTest: source.depthTest,
+    depthWrite: source.depthWrite,
+    vertexColors: source.vertexColors,
+  });
+  material.clippingPlanes = source.clippingPlanes;
+  material.clipIntersection = source.clipIntersection;
+  material.clipShadows = source.clipShadows;
+  return material;
+};
+
 export type AvatarAnimationSource = {
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer | null;
@@ -64,9 +89,10 @@ type AvatarFullscreenProps = {
   loadErrorMessage: string;
   onReady?: () => void;
   talking?: boolean;
+  renderStyle?: "toon" | "flat-illustrated-preview";
 };
 
-export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessage, onReady, talking = false }: AvatarFullscreenProps) {
+export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessage, onReady, talking = false, renderStyle = "toon" }: AvatarFullscreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const talkingRef = useRef(talking);
 
@@ -89,7 +115,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = renderStyle === "flat-illustrated-preview" ? 1.25 : 1.05;
     host.appendChild(renderer.domElement);
     const renderWidth = Math.max(host.clientWidth, 1);
     const renderHeight = Math.max(host.clientHeight, 1);
@@ -98,14 +124,15 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     host.style.setProperty("--avatar-render-width", `${renderWidth}px`);
     host.style.setProperty("--avatar-render-height", `${renderHeight}px`);
 
-    scene.add(new THREE.HemisphereLight(0xfffbf2, 0x46504e, 2.15));
-    const key = new THREE.DirectionalLight(0xfff1dd, 3.1);
+    const flatPreview = renderStyle === "flat-illustrated-preview";
+    scene.add(new THREE.HemisphereLight(0xfffbf2, 0x46504e, flatPreview ? 0.45 : 2.15));
+    const key = new THREE.DirectionalLight(0xfff1dd, flatPreview ? 0.3 : 3.1);
     key.position.set(-2.2, 3.5, 4.2);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xdce8e2, 1.35);
+    const fill = new THREE.DirectionalLight(0xdce8e2, flatPreview ? 0.18 : 1.35);
     fill.position.set(2.8, 2.2, 1.6);
     scene.add(fill);
-    const cameraLight = new THREE.PointLight(0xffd28f, 3.2, 8, 1.35);
+    const cameraLight = new THREE.PointLight(0xffd28f, flatPreview ? 0 : 3.2, 8, 1.35);
     cameraLight.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1.2));
     scene.add(cameraLight);
 
@@ -167,10 +194,12 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
               if (!(sourceMaterial instanceof THREE.MeshStandardMaterial)) return sourceMaterial;
               const existing = toonMaterials.get(sourceMaterial);
               if (existing) return existing;
-              const toonMaterial = createToonMaterial(sourceMaterial, toonGradient);
-              toonMaterials.set(sourceMaterial, toonMaterial);
+              const replacementMaterial = flatPreview
+                ? createFlatIllustratedMaterial(sourceMaterial)
+                : createToonMaterial(sourceMaterial, toonGradient);
+              toonMaterials.set(sourceMaterial, replacementMaterial);
               sourceMaterial.dispose();
-              return toonMaterial;
+              return replacementMaterial;
             });
             object.material = Array.isArray(object.material) ? convertedMaterials : convertedMaterials[0];
           }
@@ -239,7 +268,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
       toonGradient.dispose();
       renderer.domElement.remove();
     };
-  }, [loadAvatar, loadErrorMessage, onReady]);
+  }, [loadAvatar, loadErrorMessage, onReady, renderStyle]);
 
   return <div ref={hostRef} className="avatar-call__avatar-view" aria-label={ariaLabel} />;
 }

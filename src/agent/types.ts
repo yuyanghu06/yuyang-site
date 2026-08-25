@@ -3,7 +3,7 @@ import { CAMERA_VIEW_IDS, type CameraViewId } from "./camera-views";
 export const MAP_DESTINATIONS = CAMERA_VIEW_IDS;
 export type MapDestination = CameraViewId;
 
-export const AVATAR_EMOTES = ["wave_hello", "smile_tap", "thumbs_up", "point_right", "sad", "thumbs_down"] as const;
+export const AVATAR_EMOTES = ["wave_hello", "nod_smile", "head_shake_disappointed", "smile_tap", "thumbs_up", "point_right", "sad", "thumbs_down"] as const;
 export type AvatarEmote = (typeof AVATAR_EMOTES)[number];
 
 export type AgentCommand =
@@ -24,12 +24,31 @@ export type AgentStreamEvent =
   | { type: "error"; message: string };
 
 export const AGENT_COMMAND_EVENT = "yuyang:agent-command";
+export const AVATAR_EMOTE_REQUEST_EVENT = "yuyang:avatar-emote-request";
 export const MAP_VIEW_SETTLED_EVENT = "yuyang:map-view-settled";
 
 export type MapViewSettledDetail = { view: MapDestination };
+export type AvatarEmoteRequestDetail = {
+  emote: AvatarEmote;
+  accept: () => void;
+  complete: () => void;
+};
 
 export function dispatchAgentCommand(command: AgentCommand) {
   window.dispatchEvent(new CustomEvent<AgentCommand>(AGENT_COMMAND_EVENT, { detail: command }));
+}
+
+export function requestAvatarEmote(emote: AvatarEmote) {
+  return new Promise<void>((resolve) => {
+    let accepted = false;
+    const detail: AvatarEmoteRequestDetail = {
+      emote,
+      accept: () => { accepted = true; },
+      complete: resolve,
+    };
+    window.dispatchEvent(new CustomEvent<AvatarEmoteRequestDetail>(AVATAR_EMOTE_REQUEST_EVENT, { detail }));
+    if (!accepted) resolve();
+  });
 }
 
 export function dispatchMapViewSettled(view: MapDestination) {

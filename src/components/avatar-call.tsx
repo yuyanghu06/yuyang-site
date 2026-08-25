@@ -6,6 +6,7 @@ import AgentChat from "./agent-chat";
 import type { MapDestination } from "@/agent/types";
 
 type DockPosition = { left: number; top: number };
+type DockPlacement = { horizontal: "left" | "right"; vertical: "top" | "bottom" };
 
 const getDockMargin = () => window.matchMedia("(max-width: 600px)").matches ? 12 : 20;
 const MINIMIZE_TRANSITION_MS = 460;
@@ -18,6 +19,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   const [agentStreaming, setAgentStreaming] = useState(false);
   const [dockedCaptionVisible, setDockedCaptionVisible] = useState(false);
   const [dockPosition, setDockPosition] = useState<DockPosition | null>(null);
+  const [dockPlacement, setDockPlacement] = useState<DockPlacement>({ horizontal: "right", vertical: "top" });
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({ pointerId: -1, offsetX: 0, offsetY: 0, startX: 0, startY: 0, moved: false });
   const suppressNextClickRef = useRef(false);
@@ -25,6 +27,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   const dockedCaptionDismissedRef = useRef(false);
   const dockedCaptionRevealTimerRef = useRef<number | null>(null);
   const expandedCaptionRevealTimerRef = useRef<number | null>(null);
+  const dockedStreamRevealFrameRef = useRef<number | null>(null);
   const dockSettledRef = useRef(false);
 
   useEffect(() => {
@@ -68,7 +71,14 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   const handleAgentStreamingChange = useCallback((streaming: boolean) => {
     setAgentStreaming(streaming);
     if (streaming) dockedCaptionDismissedRef.current = false;
-    if (streaming && !expandedRef.current && dockSettledRef.current) setDockedCaptionVisible(true);
+    if (dockedStreamRevealFrameRef.current !== null) cancelAnimationFrame(dockedStreamRevealFrameRef.current);
+    dockedStreamRevealFrameRef.current = null;
+    if (streaming && !expandedRef.current && dockSettledRef.current) {
+      dockedStreamRevealFrameRef.current = requestAnimationFrame(() => {
+        dockedStreamRevealFrameRef.current = null;
+        setDockedCaptionVisible(true);
+      });
+    }
   }, []);
 
   const dismissDockedCaption = useCallback(() => {
@@ -90,16 +100,18 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      dismissDockedCaption();
       close();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [close]);
+  }, [close, dismissDockedCaption]);
 
   useEffect(() => () => {
     if (dockedCaptionRevealTimerRef.current !== null) window.clearTimeout(dockedCaptionRevealTimerRef.current);
     if (expandedCaptionRevealTimerRef.current !== null) window.clearTimeout(expandedCaptionRevealTimerRef.current);
+    if (dockedStreamRevealFrameRef.current !== null) cancelAnimationFrame(dockedStreamRevealFrameRef.current);
   }, []);
 
   const handleDockPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -127,6 +139,10 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     const top = Math.min(Math.max(event.clientY - drag.offsetY, margin), window.innerHeight - bounds.height - margin);
     if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) drag.moved = true;
     setDockPosition({ left, top });
+    setDockPlacement({
+      horizontal: left + bounds.width / 2 < window.innerWidth / 2 ? "left" : "right",
+      vertical: top + bounds.height / 2 < window.innerHeight / 2 ? "top" : "bottom",
+    });
     event.preventDefault();
   };
 
@@ -137,13 +153,16 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     if (drag.moved) {
       const bounds = event.currentTarget.getBoundingClientRect();
       const margin = getDockMargin();
-      const left = bounds.left + bounds.width / 2 < window.innerWidth / 2
+      const horizontal = bounds.left + bounds.width / 2 < window.innerWidth / 2 ? "left" : "right";
+      const vertical = bounds.top + bounds.height / 2 < window.innerHeight / 2 ? "top" : "bottom";
+      const left = horizontal === "left"
         ? margin
         : window.innerWidth - bounds.width - margin;
-      const top = bounds.top + bounds.height / 2 < window.innerHeight / 2
+      const top = vertical === "top"
         ? margin
         : window.innerHeight - bounds.height - margin;
       setDockPosition({ left, top });
+      setDockPlacement({ horizontal, vertical });
     }
     drag.pointerId = -1;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -158,7 +177,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
 
   return (
     <section
-      className={`avatar-call ${expanded ? `avatar-call--expanded${expandedSettled ? " avatar-call--expanded-settled" : ""}` : "avatar-call--docked"}`}
+      className={`avatar-call ${expanded ? `avatar-call--expanded${expandedSettled ? " avatar-call--expanded-settled" : ""}` : `avatar-call--docked avatar-call--dock-${dockPlacement.horizontal} avatar-call--dock-${dockPlacement.vertical}`}`}
       aria-label={expanded ? "Yuyang video guide" : "Open Yuyang's guide window"}
       role={expanded ? "dialog" : "button"}
       aria-modal={expanded ? "true" : undefined}

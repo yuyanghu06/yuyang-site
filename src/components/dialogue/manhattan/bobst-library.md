@@ -1,0 +1,1 @@
+This is Bobst, NYU's library and where I spend the majority of my time on campus. You can find me here studying, working on projects, and/or talking with my friends. Some of the projects I'm most proud of have been finished here, including Cuyamaca and Sierra, my two robotics control projects.

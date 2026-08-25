@@ -1,14 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import {
   dispatchAgentCommand,
   MAP_VIEW_SETTLED_EVENT,
+  requestAvatarEmote,
   type AgentMessage,
   type AgentStreamEvent,
   type MapDestination,
   type MapViewSettledDetail,
 } from "@/agent/types";
+import {
+  bobstLibraryDialogue,
+  courantInstituteDialogue,
+  introDialogue,
+  liptonHallDialogue,
+  manhattanDialogue,
+  sternSchoolOfBusinessDialogue,
+  washingtonSquareDialogue,
+} from "./dialogue";
 
 const YUYANG_BIRTH_DATE = { year: 2006, month: 10, day: 29 } as const;
 const getYuyangAge = (today = new Date()) => {
@@ -16,14 +27,11 @@ const getYuyangAge = (today = new Date()) => {
     || (today.getMonth() + 1 === YUYANG_BIRTH_DATE.month && today.getDate() >= YUYANG_BIRTH_DATE.day);
   return today.getFullYear() - YUYANG_BIRTH_DATE.year - (birthdayHasPassed ? 0 : 1);
 };
-const INTRO_GREETING = `Hello! I’m Yuyang, a ${getYuyangAge()} year old college kid living in New York City. Do you want a tour of my world?`;
-const MANHATTAN_TOUR_GREETING = "Welcome to Manhattan! I'm currently a Junior at NYU, and I spend most of my time split between either Union Square or Washington Square. Where would you like to go first?";
-const WASHINGTON_SQUARE_TOUR_GREETING = "Washington square is where NYU has it's campus. This is where I take my classes, go to club meetings, and study.";
-const LIPTON_HALL_TOUR_GREETING = "I also lived at Lipton hall, on the west side of the park my Freshman year!";
+const INTRO_GREETING = introDialogue.replace("{{age}}", String(getYuyangAge()));
 const STREAM_BLIP_INTERVAL_MS = 58;
 const DOCKED_CAPTION_FADE_MS = 180;
 const MAX_CAPTION_CHARACTERS = 170;
-type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "free";
+type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "camera_dialogue_streaming" | "free";
 
 const splitCaptionText = (content: string) => {
   const segments: string[] = [];
@@ -105,6 +113,9 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const [error, setError] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [presentationAction, setPresentationAction] = useState<"next" | "reply" | null>(null);
+  const [guidedTourActive, setGuidedTourActive] = useState(false);
+  const [fixedCameraDialogueActive, setFixedCameraDialogueActive] = useState(false);
+  const [scriptSegmentIndex, setScriptSegmentIndex] = useState(0);
   const requestRef = useRef<AbortController | null>(null);
   const scriptTimerRef = useRef<number | null>(null);
   const streamBlipRef = useRef<HTMLAudioElement | null>(null);
@@ -114,8 +125,11 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const introPhaseRef = useRef(introPhase);
   const streamedTextRef = useRef("");
   const queuedCaptionSegmentsRef = useRef<string[]>([]);
+  const shownScriptSegmentsRef = useRef<string[]>([]);
+  const backwardTourDestinationRef = useRef<MapDestination | null>(null);
   const terminalPresentationRef = useRef<"next" | "reply" | null>(null);
   const washingtonTourShownRef = useRef(false);
+  const guidedTourActiveRef = useRef(false);
 
   useEffect(() => {
     introPhaseRef.current = introPhase;
@@ -130,30 +144,44 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     void audio.play().catch(() => undefined);
   }, []);
 
-  const streamScript = useCallback((content: string, onComplete: () => void) => {
+  const streamScript = useCallback((content: string, onComplete: () => void, preserveQueuedSegments = false) => {
+    const [visibleContent = "", ...remainingSegments] = splitCaptionText(content);
+    if (preserveQueuedSegments) {
+      shownScriptSegmentsRef.current.push(visibleContent);
+      setScriptSegmentIndex((current) => current + 1);
+    }
+    else {
+      queuedCaptionSegmentsRef.current = remainingSegments;
+      shownScriptSegmentsRef.current = [visibleContent];
+      terminalPresentationRef.current = null;
+      setPresentationAction(null);
+      setScriptSegmentIndex(0);
+    }
     if (scriptTimerRef.current !== null) window.clearTimeout(scriptTimerRef.current);
-    onStreamingChange(true);
-    setMessages((current) => {
-      const latest = current.at(-1);
-      if (latest?.role === "assistant" && (latest.content === content || content.startsWith(latest.content))) {
-        return current.map((message, index) => index === current.length - 1 ? { ...message, content: "" } : message);
-      }
-      return [...current, { role: "assistant", content: "" } satisfies AgentMessage].slice(-20);
+    flushSync(() => {
+      setMessages((current) => {
+        const latest = current.at(-1);
+        if (latest?.role === "assistant" && (latest.content === visibleContent || visibleContent.startsWith(latest.content))) {
+          return current.map((message, index) => index === current.length - 1 ? { ...message, content: "" } : message);
+        }
+        return [...current, { role: "assistant", content: "" } satisfies AgentMessage].slice(-20);
+      });
     });
+    onStreamingChange(true);
     let length = 0;
     const revealNextChunk = () => {
-      length = Math.min(content.length, length + (content[length] === " " ? 2 : 1));
+      length = Math.min(visibleContent.length, length + (visibleContent[length] === " " ? 2 : 1));
       setMessages((current) => current.map((message, index) =>
-        index === current.length - 1 ? { ...message, content: content.slice(0, length) } : message,
+        index === current.length - 1 ? { ...message, content: visibleContent.slice(0, length) } : message,
       ));
-      if (/\S/.test(content[length - 1] ?? "")) playStreamBlip();
-      if (length >= content.length) {
+      if (/\S/.test(visibleContent[length - 1] ?? "")) playStreamBlip();
+      if (length >= visibleContent.length) {
         scriptTimerRef.current = null;
         onStreamingChange(false);
         onComplete();
         return;
       }
-      const character = content[length - 1];
+      const character = visibleContent[length - 1];
       const delay = character === "." || character === "?" ? 150 : character === "," ? 85 : 24;
       scriptTimerRef.current = window.setTimeout(revealNextChunk, delay);
     };
@@ -163,30 +191,91 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   useEffect(() => {
     const handleViewSettled = (event: Event) => {
       const { view } = (event as CustomEvent<MapViewSettledDetail>).detail;
+      if (view === backwardTourDestinationRef.current) {
+        backwardTourDestinationRef.current = null;
+        const previousStop = view === "manhattan"
+          ? { content: manhattanDialogue, phase: "manhattan_choice" as const }
+          : view === "washington"
+            ? { content: washingtonSquareDialogue, phase: "washington_next" as const }
+            : view === "lipton-hall"
+              ? { content: liptonHallDialogue, phase: "lipton_next" as const }
+              : view === "bobst-library"
+                ? { content: bobstLibraryDialogue, phase: "bobst_next" as const }
+                : view === "stern-school-of-business"
+                  ? { content: sternSchoolOfBusinessDialogue, phase: "stern_next" as const }
+                  : null;
+        if (previousStop) {
+          introPhaseRef.current = "camera_dialogue_streaming";
+          setIntroPhase("camera_dialogue_streaming");
+          setFixedCameraDialogueActive(true);
+          const lastSegment = splitCaptionText(previousStop.content).at(-1) ?? previousStop.content;
+          streamScript(lastSegment, () => {
+            introPhaseRef.current = previousStop.phase;
+            setIntroPhase(previousStop.phase);
+          });
+          return;
+        }
+      }
       const canStartWashingtonDialogue = introPhaseRef.current === "washington_arrival"
         || introPhaseRef.current === "manhattan_choice"
         || introPhaseRef.current === "free";
       if (view === "washington" && canStartWashingtonDialogue && !washingtonTourShownRef.current) {
+        setFixedCameraDialogueActive(true);
         washingtonTourShownRef.current = true;
-        const [firstSegment = "", ...remainingSegments] = splitCaptionText(WASHINGTON_SQUARE_TOUR_GREETING);
-        queuedCaptionSegmentsRef.current = remainingSegments;
-        streamScript(firstSegment, () => {
+        streamScript(washingtonSquareDialogue, () => {
           introPhaseRef.current = "washington_next";
           setIntroPhase("washington_next");
         });
         return;
       }
       if (view === "lipton-hall" && introPhaseRef.current === "lipton_arrival") {
-        streamScript(LIPTON_HALL_TOUR_GREETING, () => {
+        setFixedCameraDialogueActive(true);
+        streamScript(liptonHallDialogue, () => {
           introPhaseRef.current = "lipton_next";
           setIntroPhase("lipton_next");
+        });
+        return;
+      }
+      if (view === "bobst-library") {
+        introPhaseRef.current = "camera_dialogue_streaming";
+        setIntroPhase("camera_dialogue_streaming");
+        setFixedCameraDialogueActive(true);
+        streamScript(bobstLibraryDialogue, () => {
+          const nextPhase = guidedTourActiveRef.current ? "bobst_next" : "free";
+          introPhaseRef.current = nextPhase;
+          setIntroPhase(nextPhase);
+          if (!guidedTourActiveRef.current && queuedCaptionSegmentsRef.current.length > 0) setPresentationAction("next");
+        });
+        return;
+      }
+      if (view === "stern-school-of-business") {
+        introPhaseRef.current = "camera_dialogue_streaming";
+        setIntroPhase("camera_dialogue_streaming");
+        setFixedCameraDialogueActive(true);
+        streamScript(sternSchoolOfBusinessDialogue, () => {
+          const nextPhase = guidedTourActiveRef.current ? "stern_next" : "free";
+          introPhaseRef.current = nextPhase;
+          setIntroPhase(nextPhase);
+          if (!guidedTourActiveRef.current && queuedCaptionSegmentsRef.current.length > 0) setPresentationAction("next");
+        });
+        return;
+      }
+      if (view === "courant-institute") {
+        introPhaseRef.current = "camera_dialogue_streaming";
+        setIntroPhase("camera_dialogue_streaming");
+        setFixedCameraDialogueActive(true);
+        streamScript(courantInstituteDialogue, () => {
+          const nextPhase = guidedTourActiveRef.current ? "courant_next" : "free";
+          introPhaseRef.current = nextPhase;
+          setIntroPhase(nextPhase);
+          if (!guidedTourActiveRef.current && queuedCaptionSegmentsRef.current.length > 0) setPresentationAction("next");
         });
         return;
       }
       if (view !== "manhattan" || introPhaseRef.current !== "touring") return;
       introPhaseRef.current = "manhattan_arrival";
       setIntroPhase("manhattan_arrival");
-      streamScript(MANHATTAN_TOUR_GREETING, () => {
+      streamScript(manhattanDialogue, () => {
         introPhaseRef.current = "manhattan_choice";
         setIntroPhase("manhattan_choice");
       });
@@ -196,6 +285,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   }, [streamScript]);
 
   const chooseManhattanNeighborhood = (destination: "union" | "washington") => {
+    if (destination === "union") {
+      guidedTourActiveRef.current = false;
+      setGuidedTourActive(false);
+    }
     const nextPhase = destination === "washington" ? "washington_arrival" : "free";
     introPhaseRef.current = nextPhase;
     setIntroPhase(nextPhase);
@@ -239,9 +332,9 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const requestNextMessage = () => {
     const nextSegment = queuedCaptionSegmentsRef.current.shift();
     if (nextSegment) {
-      setMessages((current) => [...current, { role: "assistant", content: nextSegment } satisfies AgentMessage].slice(-20));
-      setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : terminalPresentationRef.current);
-      if (!expanded) onRevealDockedCaption();
+      streamScript(nextSegment, () => {
+        setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : terminalPresentationRef.current);
+      }, true);
       return;
     }
     setComposerOpen(true);
@@ -258,6 +351,44 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     window.setTimeout(action, DOCKED_CAPTION_FADE_MS);
   };
 
+  const returnToPreviousTourStop = () => {
+    if (shownScriptSegmentsRef.current.length > 1) {
+      const currentSegment = shownScriptSegmentsRef.current.pop();
+      if (currentSegment) queuedCaptionSegmentsRef.current.unshift(currentSegment);
+      setMessages((current) => {
+        const lastAssistantIndex = current.findLastIndex((message) => message.role === "assistant");
+        return lastAssistantIndex < 0 ? current : current.filter((_, index) => index !== lastAssistantIndex);
+      });
+      if (!expanded) onRevealDockedCaption();
+      setScriptSegmentIndex((current) => Math.max(0, current - 1));
+      return;
+    }
+    const destination = introPhaseRef.current === "washington_next" ? "manhattan"
+      : introPhaseRef.current === "lipton_next" ? "washington"
+        : introPhaseRef.current === "bobst_next" ? "lipton-hall"
+          : introPhaseRef.current === "stern_next" ? "bobst-library"
+            : introPhaseRef.current === "courant_next" ? "stern-school-of-business"
+              : null;
+    if (!destination) return;
+    backwardTourDestinationRef.current = destination;
+    introPhaseRef.current = "free";
+    setIntroPhase("free");
+    dispatchAgentCommand({ type: "navigate_map", destination });
+  };
+
+  const returnToPreviousFreeSegment = () => {
+    if (shownScriptSegmentsRef.current.length <= 1) return;
+    const currentSegment = shownScriptSegmentsRef.current.pop();
+    if (currentSegment) queuedCaptionSegmentsRef.current.unshift(currentSegment);
+    setMessages((current) => {
+      const lastAssistantIndex = current.findLastIndex((message) => message.role === "assistant");
+      return lastAssistantIndex < 0 ? current : current.filter((_, index) => index !== lastAssistantIndex);
+    });
+    setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+    setScriptSegmentIndex((current) => Math.max(0, current - 1));
+    if (!expanded) onRevealDockedCaption();
+  };
+
   const continueWashingtonTour = () => {
     introPhaseRef.current = "lipton_arrival";
     setIntroPhase("lipton_arrival");
@@ -265,12 +396,49 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   };
 
   const continueFromLipton = () => {
+    introPhaseRef.current = "bobst_arrival";
+    setIntroPhase("bobst_arrival");
+    dispatchAgentCommand({ type: "navigate_map", destination: "bobst-library" });
+  };
+
+  const continueFromBobst = () => {
+    const nextSegment = queuedCaptionSegmentsRef.current.shift();
+    if (nextSegment) {
+      streamScript(nextSegment, () => undefined, true);
+      return;
+    }
+    introPhaseRef.current = "free";
+    setIntroPhase("free");
+    dispatchAgentCommand({ type: "navigate_map", destination: "stern-school-of-business" });
+  };
+
+  const continueFromStern = () => {
+    const nextSegment = queuedCaptionSegmentsRef.current.shift();
+    if (nextSegment) {
+      streamScript(nextSegment, () => undefined, true);
+      return;
+    }
+    introPhaseRef.current = "free";
+    setIntroPhase("free");
+    dispatchAgentCommand({ type: "navigate_map", destination: "courant-institute" });
+  };
+
+  const continueFromCourant = () => {
+    const nextSegment = queuedCaptionSegmentsRef.current.shift();
+    if (nextSegment) {
+      streamScript(nextSegment, () => undefined, true);
+      return;
+    }
+    guidedTourActiveRef.current = false;
+    setGuidedTourActive(false);
     introPhaseRef.current = "free";
     setIntroPhase("free");
     requestNextMessage();
   };
 
   const acceptTour = () => {
+    guidedTourActiveRef.current = true;
+    setGuidedTourActive(true);
     setComposerOpen(false);
     setIntroPhase("touring");
     streamScript("Gotcha, let me show you around.", () => {
@@ -284,6 +452,8 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   };
 
   const declineTour = () => {
+    guidedTourActiveRef.current = false;
+    setGuidedTourActive(false);
     setComposerOpen(false);
     setIntroPhase("declining");
     streamScript("Gotcha, feel free to take a look around.", () => setIntroPhase("declined"));
@@ -298,6 +468,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     event.preventDefault();
     const content = draft.trim();
     if (!content || pending) return;
+    setFixedCameraDialogueActive(false);
     const userMessage: AgentMessage = { role: "user", content };
     const nextMessages = [...messages, userMessage].slice(-20);
     setMessages([...nextMessages, { role: "assistant", content: "" } satisfies AgentMessage].slice(-20));
@@ -344,6 +515,11 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           } else if (streamEvent.type === "command") {
             if (streamEvent.command.type === "display_blue") terminalPresentationRef.current = "next";
             else if (streamEvent.command.type === "display_white") terminalPresentationRef.current = "reply";
+            else if (streamEvent.command.type === "trigger_avatar_emote") {
+              onStreamingChange(false);
+              await requestAvatarEmote(streamEvent.command.emote);
+              onStreamingChange(true);
+            }
             else dispatchAgentCommand(streamEvent.command);
           } else if (streamEvent.type === "done") {
             const [visibleSegment = "", ...queuedSegments] = splitCaptionText(streamedTextRef.current);
@@ -370,6 +546,11 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       }
     }
   };
+
+  const showFreeDialogueBack = !guidedTourActive
+    && fixedCameraDialogueActive
+    && introPhase === "free"
+    && scriptSegmentIndex > 0;
 
   return (
     <div className={`agent-chat${dockedCaptionVisible ? " agent-chat--docked-visible" : ""}`} onClick={(event) => event.stopPropagation()}>
@@ -438,21 +619,37 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && !expanded && (introPhase === "washington_next" || introPhase === "lipton_next") && !composerOpen && (
+            {index === assistantMessages.length - 1 && !expanded && (introPhase === "washington_next" || introPhase === "lipton_next" || introPhase === "bobst_next" || introPhase === "stern_next" || introPhase === "courant_next") && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div
                   className="agent-chat__choices"
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(introPhase === "washington_next" ? continueWashingtonTour : continueFromLipton)}>Next</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(introPhase === "washington_next" ? continueWashingtonTour : introPhase === "lipton_next" ? continueFromLipton : introPhase === "bobst_next" ? continueFromBobst : introPhase === "stern_next" ? continueFromStern : continueFromCourant)}>Next</button>
+                  {guidedTourActive && (
+                    <button type="button" onClick={() => runAfterDockedCaptionFade(returnToPreviousTourStop)}>Back</button>
+                  )}
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                   <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && !expanded && presentationAction && !composerOpen && (
+            {index === assistantMessages.length - 1 && !expanded && showFreeDialogueBack && !composerOpen && (
+              <div className="agent-chat__caption-actions">
+                <div className="agent-chat__choices">
+                  {presentationAction === "next" && (
+                    <button type="button" onClick={() => runAfterDockedCaptionFade(requestNextMessage)}>Next</button>
+                  )}
+                  <button type="button" className="agent-chat__choice--secondary" onClick={() => runAfterDockedCaptionFade(returnToPreviousFreeSegment)}>Back</button>
+                </div>
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
+              </div>
+            )}
+            {index === assistantMessages.length - 1 && !expanded && presentationAction && !showFreeDialogueBack && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div className={`agent-chat__choices${presentationAction === "reply" ? " agent-chat__choices--white" : ""}`}>
                   <button type="button" onClick={() => runAfterDockedCaptionFade(presentationAction === "next" ? requestNextMessage : onMinimize)}>
@@ -464,12 +661,12 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && expanded && (introPhase === "manhattan_choice" || introPhase === "washington_next" || introPhase === "lipton_next") && !composerOpen && (
+            {index === assistantMessages.length - 1 && expanded && (introPhase === "manhattan_choice" || introPhase === "washington_next" || introPhase === "lipton_next" || introPhase === "bobst_next" || introPhase === "stern_next" || introPhase === "courant_next") && !composerOpen && (
               <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                 <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
               </button>
             )}
-            {index === assistantMessages.length - 1 && !pending && (expanded || (introPhase !== "choice" && introPhase !== "declined")) && (composerOpen || (introPhase !== "greeting" && introPhase !== "manhattan_choice" && introPhase !== "washington_next" && introPhase !== "lipton_next" && presentationAction === null)) && (
+            {index === assistantMessages.length - 1 && !pending && !showFreeDialogueBack && (expanded || (introPhase !== "choice" && introPhase !== "declined")) && (composerOpen || (introPhase !== "greeting" && introPhase !== "manhattan_choice" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
               composerOpen ? (
                 <form className="agent-chat__form agent-chat__form--inline" onSubmit={submit} ref={formRef}>
                   <div className="agent-chat__input-row">
@@ -517,10 +714,23 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
             <button type="button" onClick={() => chooseManhattanNeighborhood("washington")}>Washington Square</button>
           </div>
         )}
-        {expanded && (introPhase === "washington_next" || introPhase === "lipton_next") && (
-          <button type="button" className="agent-chat__reply agent-chat__reply--blue" onClick={introPhase === "washington_next" ? continueWashingtonTour : continueFromLipton}>Next</button>
+        {expanded && (introPhase === "washington_next" || introPhase === "lipton_next" || introPhase === "bobst_next" || introPhase === "stern_next" || introPhase === "courant_next") && (
+          <div className="agent-chat__choices">
+            <button type="button" onClick={introPhase === "washington_next" ? continueWashingtonTour : introPhase === "lipton_next" ? continueFromLipton : introPhase === "bobst_next" ? continueFromBobst : introPhase === "stern_next" ? continueFromStern : continueFromCourant}>Next</button>
+            {guidedTourActive && (
+              <button type="button" onClick={returnToPreviousTourStop}>Back</button>
+            )}
+          </div>
         )}
-        {expanded && presentationAction === "next" && (
+        {expanded && showFreeDialogueBack && (
+          <div className="agent-chat__choices">
+            {presentationAction === "next" && (
+              <button type="button" onClick={requestNextMessage}>Next</button>
+            )}
+            <button type="button" className="agent-chat__choice--secondary" onClick={returnToPreviousFreeSegment}>Back</button>
+          </div>
+        )}
+        {expanded && presentationAction === "next" && !showFreeDialogueBack && (
           <button type="button" className="agent-chat__reply agent-chat__reply--blue" onClick={requestNextMessage}>Next</button>
         )}
         {expanded && presentationAction === "reply" && (

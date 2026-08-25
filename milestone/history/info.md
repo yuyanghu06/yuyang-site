@@ -6,6 +6,52 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-24_19-46-08-animation-memory-and-caption-fade.md` records animation-only emote assets, immutable caching, Escape dismissal, and the docked-caption flicker fixes.
+
+- `2026-08-24_18-48-23-direct-dialogue-next.md` records restoring streamed overflow Next controls for direct landmark dialogue while keeping Back tour-only.
+
+- `2026-08-24_18-46-24-markdown-dialogue-and-tour-back.md` records per-view Markdown dialogue, cleaned Courant narration, and caption-aware/camera-aware guided-tour Back behavior.
+
+- `2026-08-24_18-02-08-docked-dialogue-edge-placement.md` records inward-facing minimized dialogue placement and lower-corner bottom alignment.
+
+- `2026-08-24_17-48-17-background-audio-todo.md` records the planned background music and camera-state ambient sound system for Earth, Manhattan, and zoomed-in views.
+
+- `2026-08-24_17-35-49-stern-next-to-courant.md` records routing the terminal Stern guided-tour Next action to Courant Institute.
+
+- `2026-08-24_17-31-37-bobst-next-to-stern-dialogue.md` records replacing Bobst-to-Courant with Bobst-to-Stern and adding the cleaned Stern/RAG narration.
+
+- `2026-08-24_17-21-08-bobst-next-to-courant.md` records routing the terminal Bobst guided-tour Next action to Courant Institute.
+
+- `2026-08-24_17-19-49-stream-queued-caption-segments.md` records routing every Next-revealed overflow caption through the shared typewriter renderer.
+
+- `2026-08-24_17-18-49-enforce-scripted-caption-cap.md` records the renderer-level 170-character cap for scripted dialogue and Bobst's segment-by-segment Next behavior.
+
+- `2026-08-24_17-09-46-bobst-tour-dialogue.md` records the Lipton-to-Bobst guided-tour transition and the Bobst narration triggered by every settled Bobst selection.
+
+- `2026-08-24_17-06-39-sequence-emotes-before-text.md` records the completion-aware emote request protocol that plays one-shots before releasing buffered streamed text.
+
+- `2026-08-24_17-03-32-shared-emote-player-and-glbs.md` records the shared persistent-scene emote player, startup/tool-call unification, two exported head-motion GLBs, validation results, and removal of unused wave v1.
+
+- `2026-08-24_16-52-53-lighten-preview-mouths.md` records replacing the dark preview smile and segmented frown with lighter custom mouth artwork confined to the safe face-canvas band.
+
+- `2026-08-24_16-51-32-brighten-flat-avatar-preview.md` records the preview-only emission and exposure increase after the first flat illustrated treatment rendered too dark.
+
+- `2026-08-24_16-50-25-flat-illustrated-avatar-preview.md` records the preview-only texture-dominant 2D material, reduced lighting, removed normal/specular response, and production isolation.
+
+- `2026-08-24_16-47-32-soften-preview-nod.md` records reducing the preview nod amplitude from eleven to six degrees without changing its timing or production behavior.
+
+- `2026-08-24_16-45-11-avatar-emote-preview-page.md` records the isolated nod/open-smile and head-shake/disappointed-face test route, its non-production scope, and verification status.
+
+- `2026-08-24_16-40-14-fix-left-arm-speed-up-wave.md` records locking the viewer-left avatar arm to idle during the first-load wave and retiming the remaining wave motion to 1.3× speed.
+
+- `2026-08-24_16-37-31-deploy-fourth-avatar-texture-pass.md` records the fourth live Blender texture deployment, texture-only GLB replacement, parity verification, backup path, and cache update.
+
+- `2026-08-24_16-34-16-deploy-third-avatar-texture-pass.md` records redeployment of the user's latest live Blender paint revision, texture-only GLB replacement, parity verification, backup path, and third cache key.
+
+- `2026-08-24_16-32-42-deploy-second-avatar-texture-pass.md` records the texture-only deployment of the user's second live Blender paint revision, GLB structural parity verification, backup path, and cache-key update.
+
+- `2026-08-24_16-16-27-deploy-avatar-texture-pass.md` records deployment of the user's Blender-painted body texture into the live idle GLB, structural parity validation, and the runtime cache-key update.
+
 - `2026-08-24_15-31-57-extend-avatar-right-clip.md` records the CSS-only rightward extension of the expanded avatar canvas without camera or avatar framing changes.
 
 - `2026-08-24_10-05-00-voxel-face-atlas-v1.md` records the first unapproved eight-state block-texture facial atlas and the pending Blender canvas-fit review.

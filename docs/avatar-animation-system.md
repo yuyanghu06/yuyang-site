@@ -64,13 +64,17 @@ This is a game-dialogue presentation, not a digital-human simulation. It does no
 6. `point_right` — points to the avatar's right, which appears toward screen-left when front-facing; silent one-shot.
 7. `sad` — readable but restrained sad reaction; silent one-shot.
 8. `thumbs_down` — clear negative reaction; silent one-shot.
+9. `nod_smile` — restrained affirmative nod with a coordinated open smile; silent one-shot.
+10. `head_shake_disappointed` — restrained negative head shake with disappointed eyes and a frown; silent one-shot.
 
 The duplicated thumbs-up request maps to the same `thumbs_up` clip. No additional emotions are required yet.
 
 ## Runtime contract
 
 - The LLM may call only a constrained semantic tool, for example `trigger_avatar_emote({ emote })`.
-- Allowed `emote` values are `wave_hello`, `smile_tap`, `thumbs_up`, `point_right`, `sad`, and `thumbs_down`.
+- Allowed `emote` values are `wave_hello`, `nod_smile`, `head_shake_disappointed`, `smile_tap`, `thumbs_up`, `point_right`, `sad`, and `thumbs_down`.
+- All startup and tool-triggered one-shots use the same persistent-scene emote player. Emote GLBs are animation sources only: their scenes are disposed after clip extraction, and their clips play on the one continuously mounted idle avatar whose embedded face mesh remains authoritative.
+- Emotes and streamed text execute sequentially. The model requests the emote before response text; the client pauses the talking state and text reveal, awaits the complete one-shot and idle return, then releases the buffered text stream. Missing/unregistered emotes resolve immediately rather than blocking the response.
 - An emote interrupts/cross-fades from neutral, plays once, then automatically reverses or cross-fades back to `neutral_idle`.
 - The model does not select animation filenames, timing, loop counts, or transition parameters.
 - `generic_talking` is controlled by the application from text-stream lifecycle, not by the emotion tool.
