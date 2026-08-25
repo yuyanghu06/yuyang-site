@@ -1,6 +1,6 @@
 # Current Project Milestone
 
-Last updated: 2026-08-24 19:46 PDT
+Last updated: 2026-08-24 21:07 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
@@ -56,6 +56,10 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 - The prototype now boots into the persistent Manhattan overview rather than directly into Washington Square. Its temporary determinate loading treatment remains transitional pending the planned avatar/AI conversational startup experience.
 
 ## Current codebase
+
+- Dialogue Markdown now supports inline HTTP/HTTPS hyperlinks using `[label](https://example.com/)` syntax. Caption splitting protects complete link tokens, typewriter playback streams only the readable label rather than exposing Markdown syntax, rendered links open safely in a new tab, and the first Courant narration mention of Tech@NYU links to `https://techatnyu.org/` as the authoring example.
+
+- Dialogue authoring now mirrors the geographic view hierarchy: `manhattan/` contains only the Manhattan overview; the Washington Square overview plus Lipton, Bobst, Stern, and Courant scripts live under `washington-square/`; and `union-square/` contains the base and two landmark files. The 235 Park Avenue South file now contains polished Shift/MicroAGI NYC office narration covering U.S. growth, acquisition, launch coordination and reach, media coverage, and leadership on the Indeed Flex partnership initiative, but remains unwired pending the Union tour implementation. The base Union Square and 25 Union Square West files remain empty placeholders.
 
 - Minimized dialogue placement now follows the avatar's snapped corner. Left-docked avatars place the dialogue on their right; right-docked avatars retain dialogue on their left. Either lower corner bottom-aligns the dialogue card with the avatar tile instead of leaving it top-aligned above the bottom edge. Placement updates during dragging and is retained after snapping, with matching desktop and narrow-screen gaps.
 

@@ -674,6 +674,25 @@ body {
   display: block;
 }
 
+.agent-chat__caption a {
+  color: #9ec5ff;
+  font-weight: 650;
+  text-decoration-color: rgb(158 197 255 / 68%);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.14em;
+}
+
+.agent-chat__caption a:hover {
+  color: #c8ddff;
+  text-decoration-color: currentcolor;
+}
+
+.agent-chat__caption a:focus-visible {
+  border-radius: 0.12em;
+  outline: 2px solid rgb(211 226 255 / 88%);
+  outline-offset: 2px;
+}
+
 .agent-chat__speaker-row {
   position: relative;
   z-index: 1;
@@ -982,7 +1001,7 @@ body {
 }
 
 .avatar-call--docked .avatar-call__avatar-view {
-  transform: translate(-58.5%, -50%);
+  transform: translate(-59%, -50%);
   scale: 0.34;
 }
 

@@ -6,6 +6,16 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-24_21-07-21-shift-dialogue-wording.md` records the final authorship wording for the Shift/MicroAGI launch and Indeed Flex work.
+
+- `2026-08-24_21-05-20-shift-235-park-dialogue.md` records the authored Shift/MicroAGI narration for the 235 Park Avenue South camera file.
+
+- `2026-08-24_21-03-28-dialogue-hyperlinks.md` records safe Markdown hyperlink support in streamed dialogue and the linked Tech@NYU authoring example.
+
+- `2026-08-24_21-00-37-dialogue-view-folders.md` records the dedicated Washington Square dialogue folder and the base Union Square placeholder.
+
+- `2026-08-24_20-54-13-union-dialogue-placeholders.md` records the two unwired Union Square landmark dialogue Markdown placeholders and the production-loader test command.
+
 - `2026-08-24_19-46-08-animation-memory-and-caption-fade.md` records animation-only emote assets, immutable caching, Escape dismissal, and the docked-caption flicker fixes.
 
 - `2026-08-24_18-48-23-direct-dialogue-next.md` records restoring streamed overflow Next controls for direct landmark dialogue while keeping Back tour-only.

@@ -1,10 +1,10 @@
 import introDialogue from "./global/intro.md";
-import bobstLibraryDialogue from "./manhattan/bobst-library.md";
-import courantInstituteDialogue from "./manhattan/courant-institute.md";
-import liptonHallDialogue from "./manhattan/lipton-hall.md";
 import manhattanDialogue from "./manhattan/manhattan.md";
-import sternSchoolOfBusinessDialogue from "./manhattan/stern-school-of-business.md";
-import washingtonSquareDialogue from "./manhattan/washington-square.md";
+import bobstLibraryDialogue from "./washington-square/bobst-library.md";
+import courantInstituteDialogue from "./washington-square/courant-institute.md";
+import liptonHallDialogue from "./washington-square/lipton-hall.md";
+import sternSchoolOfBusinessDialogue from "./washington-square/stern-school-of-business.md";
+import washingtonSquareDialogue from "./washington-square/washington-square.md";
 
 export {
   bobstLibraryDialogue,

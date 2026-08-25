@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import {
   dispatchAgentCommand,
@@ -31,11 +31,18 @@ const INTRO_GREETING = introDialogue.replace("{{age}}", String(getYuyangAge()));
 const STREAM_BLIP_INTERVAL_MS = 58;
 const DOCKED_CAPTION_FADE_MS = 180;
 const MAX_CAPTION_CHARACTERS = 170;
+const DIALOGUE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
 type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "camera_dialogue_streaming" | "free";
 
 const splitCaptionText = (content: string) => {
+  const links: string[] = [];
+  const protectedContent = content.replace(DIALOGUE_LINK_PATTERN, (link) => {
+    const placeholder = `\uE000${links.length}\uE001`;
+    links.push(link);
+    return placeholder;
+  });
   const segments: string[] = [];
-  let remaining = content.trim();
+  let remaining = protectedContent.trim();
   while (remaining.length > MAX_CAPTION_CHARACTERS) {
     const window = remaining.slice(0, MAX_CAPTION_CHARACTERS + 1);
     const sentenceEnd = [...window.matchAll(/[.!?](?=\s|$)/g)].at(-1)?.index;
@@ -50,7 +57,24 @@ const splitCaptionText = (content: string) => {
     remaining = remaining.slice(splitAt).trim();
   }
   if (remaining) segments.push(remaining);
-  return segments;
+  return segments.map((segment) => segment.replace(/\uE000(\d+)\uE001/g, (_, index: string) => links[Number(index)]));
+};
+
+const renderDialogueContent = (content: string) => {
+  const rendered: ReactNode[] = [];
+  let cursor = 0;
+  for (const match of content.matchAll(DIALOGUE_LINK_PATTERN)) {
+    const matchIndex = match.index ?? 0;
+    if (matchIndex > cursor) rendered.push(content.slice(cursor, matchIndex));
+    rendered.push(
+      <a key={`${matchIndex}-${match[2]}`} href={match[2]} target="_blank" rel="noopener noreferrer">
+        {match[1]}
+      </a>,
+    );
+    cursor = matchIndex + match[0].length;
+  }
+  if (cursor < content.length) rendered.push(content.slice(cursor));
+  return rendered;
 };
 
 let sharedDialogueAudio: HTMLAudioElement | null = null;
@@ -146,6 +170,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
 
   const streamScript = useCallback((content: string, onComplete: () => void, preserveQueuedSegments = false) => {
     const [visibleContent = "", ...remainingSegments] = splitCaptionText(content);
+    const streamingContent = visibleContent.replace(DIALOGUE_LINK_PATTERN, "$1");
     if (preserveQueuedSegments) {
       shownScriptSegmentsRef.current.push(visibleContent);
       setScriptSegmentIndex((current) => current + 1);
@@ -170,12 +195,15 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     onStreamingChange(true);
     let length = 0;
     const revealNextChunk = () => {
-      length = Math.min(visibleContent.length, length + (visibleContent[length] === " " ? 2 : 1));
+      length = Math.min(streamingContent.length, length + (streamingContent[length] === " " ? 2 : 1));
       setMessages((current) => current.map((message, index) =>
-        index === current.length - 1 ? { ...message, content: visibleContent.slice(0, length) } : message,
+        index === current.length - 1 ? { ...message, content: streamingContent.slice(0, length) } : message,
       ));
-      if (/\S/.test(visibleContent[length - 1] ?? "")) playStreamBlip();
-      if (length >= visibleContent.length) {
+      if (/\S/.test(streamingContent[length - 1] ?? "")) playStreamBlip();
+      if (length >= streamingContent.length) {
+        setMessages((current) => current.map((message, index) =>
+          index === current.length - 1 ? { ...message, content: visibleContent } : message,
+        ));
         scriptTimerRef.current = null;
         onStreamingChange(false);
         onComplete();
@@ -576,7 +604,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
               </span>
             </div>
             <span className="agent-chat__caption">
-              {message.content || (pending && index === assistantMessages.length - 1 ? (
+              {message.content ? renderDialogueContent(message.content) : (pending && index === assistantMessages.length - 1 ? (
                 <span className="agent-chat__thinking" aria-label="Thinking">
                   <span>.</span><span>.</span><span>.</span>
                 </span>
