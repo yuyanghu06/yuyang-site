@@ -18,6 +18,9 @@ import {
   liptonHallDialogue,
   manhattanDialogue,
   sternSchoolOfBusinessDialogue,
+  twentyFiveUnionSquareWestDialogue,
+  twoThirtyFiveParkAvenueSouthDialogue,
+  unionSquareDialogue,
   washingtonSquareDialogue,
 } from "./dialogue";
 
@@ -152,6 +155,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const shownScriptSegmentsRef = useRef<string[]>([]);
   const backwardTourDestinationRef = useRef<MapDestination | null>(null);
   const terminalPresentationRef = useRef<"next" | "reply" | null>(null);
+  const unionTourShownRef = useRef(false);
   const washingtonTourShownRef = useRef(false);
   const guidedTourActiveRef = useRef(false);
 
@@ -247,6 +251,15 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       const canStartWashingtonDialogue = introPhaseRef.current === "washington_arrival"
         || introPhaseRef.current === "manhattan_choice"
         || introPhaseRef.current === "free";
+      if (view === "union" && introPhaseRef.current === "free" && !unionTourShownRef.current) {
+        setFixedCameraDialogueActive(true);
+        unionTourShownRef.current = true;
+        streamScript(unionSquareDialogue, () => {
+          introPhaseRef.current = "free";
+          setIntroPhase("free");
+        });
+        return;
+      }
       if (view === "washington" && canStartWashingtonDialogue && !washingtonTourShownRef.current) {
         setFixedCameraDialogueActive(true);
         washingtonTourShownRef.current = true;
@@ -297,6 +310,20 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           introPhaseRef.current = nextPhase;
           setIntroPhase(nextPhase);
           if (!guidedTourActiveRef.current && queuedCaptionSegmentsRef.current.length > 0) setPresentationAction("next");
+        });
+        return;
+      }
+      if (view === "25-union-square-west" || view === "235-park-avenue-south") {
+        introPhaseRef.current = "camera_dialogue_streaming";
+        setIntroPhase("camera_dialogue_streaming");
+        setFixedCameraDialogueActive(true);
+        const dialogue = view === "25-union-square-west"
+          ? twentyFiveUnionSquareWestDialogue
+          : twoThirtyFiveParkAvenueSouthDialogue;
+        streamScript(dialogue, () => {
+          introPhaseRef.current = "free";
+          setIntroPhase("free");
+          if (queuedCaptionSegmentsRef.current.length > 0) setPresentationAction("next");
         });
         return;
       }

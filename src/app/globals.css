@@ -957,10 +957,10 @@ body {
   display: flex;
 }
 
-.avatar-call--docked .agent-chat--docked-visible .agent-chat__message:not(.agent-chat__message--latest),
-.avatar-call--docked .agent-chat--docked-visible .agent-chat__choices,
-.avatar-call--docked .agent-chat--docked-visible .agent-chat__reply,
-.avatar-call--docked .agent-chat--docked-visible .agent-chat__scroll-room {
+.avatar-call--docked .agent-chat__message:not(.agent-chat__message--latest),
+.avatar-call--docked .agent-chat__choices,
+.avatar-call--docked .agent-chat__reply,
+.avatar-call--docked .agent-chat__scroll-room {
   display: none;
 }
 

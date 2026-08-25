@@ -6,6 +6,12 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-24_21-17-37-wire-union-landmark-dialogue.md` records the dialogue hookups for 25 Union Square West and 235 Park Avenue South.
+
+- `2026-08-24_21-09-02-docked-tour-history-flicker.md` records the docked-caption selector fix that prevents prior conversation history from flashing during tour transitions.
+
+- `2026-08-24_21-08-10-wire-union-square-dialogue.md` records the settled-camera hookup for the manually authored base Union Square narration.
+
 - `2026-08-24_21-07-21-shift-dialogue-wording.md` records the final authorship wording for the Shift/MicroAGI launch and Indeed Flex work.
 
 - `2026-08-24_21-05-20-shift-235-park-dialogue.md` records the authored Shift/MicroAGI narration for the 235 Park Avenue South camera file.

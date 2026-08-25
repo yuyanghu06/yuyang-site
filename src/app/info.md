@@ -1,6 +1,6 @@
 # App Router entry
 
-Docked-caption styles in `globals.css` place dialogue to the right of a left-docked avatar, to the left of a right-docked avatar, and align it with the avatar's bottom edge at either lower corner.
+Docked-caption styles in `globals.css` place dialogue to the right of a left-docked avatar, to the left of a right-docked avatar, and align it with the avatar's bottom edge at either lower corner. Past transcript messages remain hidden for the entire docked lifecycle, including caption fade transitions.
 
 This directory owns the root App Router layout, page, metadata/icon, global CSS, and API routes. The root page mounts the browser-only map shell.
 

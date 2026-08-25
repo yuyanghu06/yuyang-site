@@ -1,6 +1,6 @@
 # Current Project Milestone
 
-Last updated: 2026-08-24 21:07 PDT
+Last updated: 2026-08-24 21:17 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
@@ -57,9 +57,11 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 
 ## Current codebase
 
+- The manually authored base Union Square introduction is imported through the shared dialogue index and streams after the `union` camera reports that it has settled. It runs when Union Square is chosen from the Manhattan prompt or reached during free exploration, and a session ref prevents it from replaying on later returns.
+
 - Dialogue Markdown now supports inline HTTP/HTTPS hyperlinks using `[label](https://example.com/)` syntax. Caption splitting protects complete link tokens, typewriter playback streams only the readable label rather than exposing Markdown syntax, rendered links open safely in a new tab, and the first Courant narration mention of Tech@NYU links to `https://techatnyu.org/` as the authoring example.
 
-- Dialogue authoring now mirrors the geographic view hierarchy: `manhattan/` contains only the Manhattan overview; the Washington Square overview plus Lipton, Bobst, Stern, and Courant scripts live under `washington-square/`; and `union-square/` contains the base and two landmark files. The 235 Park Avenue South file now contains polished Shift/MicroAGI NYC office narration covering U.S. growth, acquisition, launch coordination and reach, media coverage, and leadership on the Indeed Flex partnership initiative, but remains unwired pending the Union tour implementation. The base Union Square and 25 Union Square West files remain empty placeholders.
+- Dialogue authoring now mirrors the geographic view hierarchy: `manhattan/` contains only the Manhattan overview; the Washington Square overview plus Lipton, Bobst, Stern, and Courant scripts live under `washington-square/`; and `union-square/` contains authored scripts for the overview, 25 Union Square West, and 235 Park Avenue South. Both Union Square landmark scripts are wired to their clickable camera views and use the shared capped streaming plus free-mode Next/Back behavior. The 235 Park Avenue South narration covers U.S. growth, acquisition, launch coordination and reach, media coverage, and leadership on the Indeed Flex partnership initiative.
 
 - Minimized dialogue placement now follows the avatar's snapped corner. Left-docked avatars place the dialogue on their right; right-docked avatars retain dialogue on their left. Either lower corner bottom-aligns the dialogue card with the avatar tile instead of leaving it top-aligned above the bottom edge. Placement updates during dragging and is retained after snapping, with matching desktop and narrow-screen gaps.
 
@@ -67,7 +69,7 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 
 - Avatar one-shots share `avatar-emote-player.ts`. The production `idle.glb` remains the only mounted avatar scene and owns the mesh, skin, materials, textures, face, and idle clip. The wave, nod, and head-shake runtime GLBs are now animation-only: wave is 12 KiB with 19 moving-arm rotation channels; nod and shake are 41 KiB each with only `Head` and `neck` rotation channels. They contain no duplicate mesh, skin, material, texture, or camera, reducing the emote set from roughly 15 MiB to about 94 KiB. The player reconstructs all locked channels from the already-loaded idle clip, preserves exact idle bookends, and remains completion-aware. Versioned animation URLs receive one-year immutable HTTP caching. The unused wave v1 remains removed.
 
-- Docked dialogue now fades in place when Next advances or finishes: its position is retained while invisible, the new blank caption commits before visibility returns, and the docked reveal waits one animation frame so prior long text cannot flash. Camera-dialogue streaming immediately clears stale Yes/No or other prior-phase controls. Escape marks the caption dismissed before minimizing, so it does not reappear beside the docked avatar.
+- Docked dialogue now fades in place when Next advances or finishes: its position is retained while invisible, the new blank caption commits before visibility returns, and the docked reveal waits one animation frame so prior long text cannot flash. Past transcript messages remain hidden throughout the entire docked lifecycle instead of depending on the visible-state class, preventing conversation history from flashing during the fade. Camera-dialogue streaming immediately clears stale Yes/No or other prior-phase controls. Escape marks the caption dismissed before minimizing, so it does not reappear beside the docked avatar.
 
 - An isolated review page remains at `/avatar-emote-preview`. It applies its own ten-second automatic demonstration plus a preview-only flat illustrated material treatment: no normal maps, roughness `1`, metalness `0`, texture emission intensity `1.15`, preview exposure `1.25`, greatly reduced geometry-following lights, no camera point light, and a broad low-contrast screen gradient. Production retains the existing toon rendering, while the reviewed nod/smile and disappointed head-shake motion/expression pairs are now also available through the shared production emote player.
 

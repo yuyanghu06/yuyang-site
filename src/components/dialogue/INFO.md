@@ -7,9 +7,9 @@ This folder owns Markdown-authored dialogue injected into the client-side dialog
 - `global/` contains dialogue that belongs to the overall experience rather than one geographic view.
 - `manhattan/` contains only the Manhattan overview dialogue.
 - `washington-square/` contains the Washington Square overview and landmark camera dialogue.
-- `union-square/` contains the Union Square overview and landmark dialogue placeholders.
+- `union-square/` contains the Union Square overview and landmark camera dialogue.
 
 ## Files
 
-- `index.ts` imports and exports the Markdown dialogue strings consumed by `agent-chat.tsx`.
+- `index.ts` imports and exports every overview and landmark Markdown dialogue string consumed by `agent-chat.tsx`, including both clickable Union Square buildings.
 - `markdown.d.ts` declares Markdown imports as string modules for TypeScript.
