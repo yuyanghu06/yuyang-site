@@ -3,12 +3,14 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const FULLSCREEN_CAMERA_CENTER = new THREE.Vector3(-0.38, 1.45, 0);
+const FULLSCREEN_CAMERA_CENTER = new THREE.Vector3(0, 1.45, 0);
 const FULLSCREEN_VIEW_HEIGHT = 0.86;
 const VERTICAL_RENDER_OVERSCAN = 1.3;
-const MAX_PIXEL_RATIO = 1.5;
+const MAX_PIXEL_RATIO = 2;
 const FRAME_INTERVAL_MS = 1000 / 30;
-const FULLSCREEN_AVATAR_SCALE = 2.25;
+// Keep the character readable inside the responsive shell; the previous 2.25
+// scale made the rendered avatar occupy only a small fraction of tall views.
+const FULLSCREEN_AVATAR_SCALE = 1.1;
 const AVATAR_FRAME_CENTER_HEIGHT_RATIO = 0.83;
 const AVATAR_HORIZONTAL_CAMERA_OFFSET_RATIO = 0.56 / FULLSCREEN_AVATAR_SCALE;
 const ILLUSTRATED_FACE_MESH_NAME = "Yuyang_EmbeddedFace";
@@ -117,12 +119,15 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = renderStyle === "flat-illustrated-preview" ? 1.25 : 1.05;
     host.appendChild(renderer.domElement);
-    const renderWidth = Math.max(host.clientWidth, 1);
-    const renderHeight = Math.max(host.clientHeight, 1);
-    const renderAspect = renderWidth / renderHeight;
-    renderer.setSize(renderWidth, renderHeight, false);
-    host.style.setProperty("--avatar-render-width", `${renderWidth}px`);
-    host.style.setProperty("--avatar-render-height", `${renderHeight}px`);
+    const resizeRenderer = () => {
+      const renderWidth = Math.max(host.clientWidth, 1);
+      const renderHeight = Math.max(host.clientHeight, 1);
+      renderer.setSize(renderWidth, renderHeight, false);
+      host.style.setProperty("--avatar-render-width", `${renderWidth}px`);
+      host.style.setProperty("--avatar-render-height", `${renderHeight}px`);
+      return renderWidth / renderHeight;
+    };
+    let renderAspect = resizeRenderer();
 
     const flatPreview = renderStyle === "flat-illustrated-preview";
     scene.add(new THREE.HemisphereLight(0xfffbf2, 0x46504e, flatPreview ? 0.45 : 2.15));
@@ -169,8 +174,9 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
         const avatarSize = avatarBounds.getSize(new THREE.Vector3());
         const avatarCenter = avatarBounds.getCenter(new THREE.Vector3());
         const avatarHeight = Math.max(avatarSize.y, 0.001);
+        const portraitLayout = renderAspect < 0.9;
         const framedCenter = new THREE.Vector3(
-          avatarCenter.x - avatarHeight * AVATAR_HORIZONTAL_CAMERA_OFFSET_RATIO,
+          avatarCenter.x - (portraitLayout ? avatarHeight * 0.16 : avatarHeight * AVATAR_HORIZONTAL_CAMERA_OFFSET_RATIO),
           avatarBounds.min.y + avatarHeight * AVATAR_FRAME_CENTER_HEIGHT_RATIO,
           avatarCenter.z,
         );
@@ -225,6 +231,19 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
         host.dataset.error = "true";
       });
 
+    const resizeObserver = new ResizeObserver(() => {
+      renderAspect = resizeRenderer();
+      if (!mixer) return;
+      // Preserve the loaded avatar framing while adapting only the horizontal
+      // orthographic span to the new host aspect ratio.
+      const viewHeight = camera.top - camera.bottom;
+      const width = viewHeight * renderAspect;
+      camera.left = -width / 2;
+      camera.right = width / 2;
+      camera.updateProjectionMatrix();
+    });
+    resizeObserver.observe(host);
+
     const render = (time: number) => {
       animationFrame = requestAnimationFrame(render);
       const elapsed = time - lastFrameTime;
@@ -253,6 +272,7 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
 
     return () => {
       disposed = true;
+      resizeObserver.disconnect();
       cancelAnimationFrame(animationFrame);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       mixer?.stopAllAction();

@@ -1,10 +1,20 @@
 # Current Project Milestone
 
+## Latest responsive avatar pass (2026-08-26)
+
+The avatar shell now uses dynamic viewport height units for expanded layouts, a one-rem mobile-safe modal inset, and a resize listener that re-clamps a manually docked tile to the current viewport. The Three.js avatar renderer uses a resize observer and a pixel-ratio ceiling of 2 so responsive changes redraw at the current canvas resolution. Avatar framing is now a prominent 110% scale, and the narrow-screen composition uses a larger centered canvas. Targeted lint passes; mobile and 1920×1080 Chrome viewport screenshots were visually checked.
+
+The follow-up framing adjustment reduced the avatar camera scale from `1.4` to `1.1` after visual review showed excessive empty space around the character on desktop, while retaining portrait centering.
+
+Chrome review at 1050×830 and 390×844 confirmed the larger desktop avatar and the final portrait-only left compensation, which keeps the mobile body inside the modal.
+
 Last updated: 2026-08-24 21:17 PDT
 
 This is the authoritative rolling project state. Historical session handoffs are stored as timestamped, append-only files in `milestone/history/`.
 
 ## Milestone status
+
+The uncommitted procedural ambient-audio experiment and globe-transition whoosh were reverted. A user-provided community-crowd recording is now trimmed to 80 seconds and loops quietly only after an individual building zoom settles, never in neighborhood or Manhattan overview views. A separate 2.168-second user-provided zoom effect now triggers only for globe ↔ Manhattan travel, playing at 18.75% volume with fast 40 ms fades; it does not play for park or building zooms. The base Manhattan traffic recording fades in at `0.108`, stays continuous through park zooms, and rises gradually to `0.1296` in neighborhood views. The existing dialogue blip remains unchanged.
 
 The approved Washington Square visual language now extends from a new globe entry view into the base Manhattan overview. The single persistent renderer starts at globe scale, flies into Manhattan, and retains Washington Square and Union Square as zoomable neighborhood views.
 
@@ -64,6 +74,9 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 - Dialogue authoring now mirrors the geographic view hierarchy: `manhattan/` contains only the Manhattan overview; the Washington Square overview plus Lipton, Bobst, Stern, and Courant scripts live under `washington-square/`; and `union-square/` contains authored scripts for the overview, 25 Union Square West, and 235 Park Avenue South. Both Union Square landmark scripts are wired to their clickable camera views and use the shared capped streaming plus free-mode Next/Back behavior. The 235 Park Avenue South narration covers U.S. growth, acquisition, launch coordination and reach, media coverage, and leadership on the Indeed Flex partnership initiative.
 
 - Minimized dialogue placement now follows the avatar's snapped corner. Left-docked avatars place the dialogue on their right; right-docked avatars retain dialogue on their left. Either lower corner bottom-aligns the dialogue card with the avatar tile instead of leaving it top-aligned above the bottom edge. Placement updates during dragging and is retained after snapping, with matching desktop and narrow-screen gaps.
+- The minimized avatar's default right-corner anchor now uses the docked modal's actual right edge rather than a hard-coded left calculation based on an assumed tile width, keeping its inset stable across desktop monitor sizes while preserving the 12 px narrow-screen inset.
+- The minimized avatar render is now centered inside the actual docked modal with a neutral 50% horizontal transform; the prior 59% offset was removed.
+- Expanded avatar calls now use a narrow-screen vertical composition below 760 px: dialogue sits above the avatar, while the avatar is centered, reduced, and protected from the desktop horizontal overscan crop.
 
 - Camera dialogue is now authored as one Markdown file per scripted view under `src/components/dialogue/`, grouped into `global/`, `manhattan/`, and `union-square/`. A small build-time loader injects the scripts as strings in both Turbopack and webpack before the shared renderer applies its 170-character natural-boundary cap. The Washington guided tour continues Lipton Hall → Bobst Library → Stern School → Courant Institute, with cleaned Courant double-major and Tech@NYU narration. During the guided tour, blue Next appears first and gray Back second. Back returns to the previous caption on the current camera when possible; from the first caption, it returns to the preceding camera and restores that stop's final caption. Back is absent from direct landmark dialogue, but blue Next remains available there until every capped segment has streamed.
 

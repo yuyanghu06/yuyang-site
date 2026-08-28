@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -43,6 +44,77 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const mount = mountRef.current;
     if (!mount) return;
     let activeStudy: MapView = "globe";
+    const crowdAudio = new Audio("/audio/community-crowd-talking-1m20.m4a");
+    crowdAudio.loop = true;
+    crowdAudio.volume = 0.12;
+    const updateCrowdAudio = () => {
+      if ((activeStudy === "washington" || activeStudy === "union") && cameraLocked && !cameraTransitioning && !globeTransitionStartedAt) {
+        void crowdAudio.play().catch(() => undefined);
+      } else {
+        crowdAudio.pause();
+        crowdAudio.currentTime = 0;
+      }
+    };
+    const ambienceAudio = new Audio("/audio/far-away-city-traffic-ambience.wav");
+    ambienceAudio.loop = true;
+    const AMBIENCE_BASE_VOLUME = 0.108;
+    const AMBIENCE_CLOSE_VOLUME = 0.1296;
+    const AMBIENCE_FADE_IN_SECONDS = 1.2;
+    let ambienceFadeStartedAt = 0;
+    let ambienceFadeFromVolume = 0;
+    let ambienceTargetVolume = 0;
+    ambienceAudio.volume = 0;
+    const updateAmbienceAudio = () => {
+      const isCityView = activeStudy === "manhattan" || activeStudy === "washington" || activeStudy === "union";
+      if (isCityView && !globeTransitionStartedAt) {
+        if (ambienceAudio.paused) {
+          ambienceFadeFromVolume = 0;
+          ambienceTargetVolume = activeStudy === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
+          ambienceFadeStartedAt = performance.now();
+          void ambienceAudio.play().catch(() => undefined);
+        }
+        const targetVolume = activeStudy === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
+        if (targetVolume !== ambienceTargetVolume) {
+          ambienceFadeFromVolume = ambienceAudio.volume;
+          ambienceTargetVolume = targetVolume;
+          ambienceFadeStartedAt = performance.now();
+        }
+        if (ambienceFadeStartedAt) {
+          const progress = Math.min(1, (performance.now() - ambienceFadeStartedAt) / (AMBIENCE_FADE_IN_SECONDS * 1000));
+          ambienceAudio.volume = THREE.MathUtils.lerp(ambienceFadeFromVolume, ambienceTargetVolume, progress);
+          if (progress >= 1) ambienceFadeStartedAt = 0;
+        }
+      } else {
+        ambienceAudio.pause(); ambienceAudio.currentTime = 0; ambienceAudio.volume = 0;
+        ambienceFadeStartedAt = 0; ambienceFadeFromVolume = 0; ambienceTargetVolume = 0;
+      }
+    };
+    const zoomAudio = new Audio("/audio/gamestudio-world-cloud-zoom.mp3");
+    zoomAudio.preload = "auto";
+    const ZOOM_AUDIO_VOLUME = 0.025;
+    const ZOOM_AUDIO_FADE_SECONDS = 0.3;
+    let zoomFadeFrame = 0;
+    const playZoomAudio = (reverse: boolean) => {
+      if (zoomFadeFrame) cancelAnimationFrame(zoomFadeFrame);
+      zoomAudio.pause();
+      zoomAudio.playbackRate = 1;
+      zoomAudio.currentTime = 0;
+      zoomAudio.volume = 0;
+      void zoomAudio.play().catch(() => undefined);
+      const updateZoomFade = () => {
+        const duration = zoomAudio.duration || 2.168;
+        const fadeIn = reverse ? duration - zoomAudio.currentTime : zoomAudio.currentTime;
+        const fadeOut = reverse ? zoomAudio.currentTime : duration - zoomAudio.currentTime;
+        zoomAudio.volume = ZOOM_AUDIO_VOLUME * Math.min(1, fadeIn / ZOOM_AUDIO_FADE_SECONDS, fadeOut / ZOOM_AUDIO_FADE_SECONDS);
+        if (!zoomAudio.paused && !zoomAudio.ended) {
+          zoomFadeFrame = requestAnimationFrame(updateZoomFade);
+        } else {
+          zoomFadeFrame = 0;
+          zoomAudio.volume = 0;
+        }
+      };
+      zoomFadeFrame = requestAnimationFrame(updateZoomFade);
+    };
     const isUnion = false;
     const studyName = isUnion ? "Union Square" : "Washington Square";
     const loadLogPrefix = `[${studyName.replaceAll(" ", "")} load]`;
@@ -186,7 +258,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let globeTransitionLanded = false;
     let globeTransitionDirection: "in" | "out" | null = null;
     let reverseTransitionStartZoom = 0.3;
-    const GLOBE_TRANSITION_DURATION_MS = 1820;
+    const GLOBE_TRANSITION_DURATION_MS = 2168;
 
     const camera = new THREE.OrthographicCamera(-500, 500, 390, -390, 10, 3500);
     const overviewCameraTarget = MANHATTAN_CENTER.clone();
@@ -237,6 +309,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     switchStudyRef.current = (next, updateUrl = true) => {
       const previousStudy = activeStudy;
       activeStudy = next;
+      updateCrowdAudio();
+      updateAmbienceAudio();
       setCurrentView(next);
       if (next === "globe") {
         if (globeTransitionDirection !== "out") {
@@ -265,7 +339,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       desiredCameraHeight = isManhattan ? MANHATTAN_CAMERA_HEIGHT : 560;
       desiredCameraRadius = isManhattan ? MANHATTAN_CAMERA_RADIUS : 630;
       desiredCameraZoom = isManhattan ? 0.3 : 1;
-      scene.fog = isManhattan ? null : new THREE.Fog(0xe8e4d9, 920, 1700);
+      scene.fog = isManhattan ? null : new THREE.Fog(0x354345, 920, 1700);
       cameraLocked = false;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
@@ -495,8 +569,9 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
 
     const resize = () => {
       if (!mount.clientWidth || !mount.clientHeight) return;
-      const height = 546;
-      const width = height * (mount.clientWidth / mount.clientHeight);
+      const referenceHeight = 546, referenceAspect = 1935 / 935, viewportAspect = mount.clientWidth / mount.clientHeight;
+      const width = Math.min(referenceHeight * referenceAspect, referenceHeight * viewportAspect);
+      const height = width / viewportAspect;
       camera.left = -width / 2;
       camera.right = width / 2;
       camera.top = height / 2;
@@ -572,6 +647,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     });
     const enterManhattanFromGlobe = () => {
       if (activeStudy !== "globe" || globeTransitionStartedAt) return;
+      playZoomAudio(false);
       globeTransitionStartedAt = performance.now();
       globeTransitionDirection = "in";
       globeTransitionLanded = false;
@@ -581,6 +657,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     };
     const enterGlobeFromManhattan = () => {
       if (activeStudy !== "manhattan" || globeTransitionStartedAt) return;
+      playZoomAudio(true);
       globeTransitionStartedAt = performance.now();
       globeTransitionDirection = "out";
       globeTransitionLanded = false;
@@ -641,6 +718,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       cameraLocked = true;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
+      updateCrowdAudio();
       setCurrentView(cameraView.id);
     };
     const clearLandmarkSelection = () => {
@@ -660,6 +738,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       cameraLocked = false;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
+      updateCrowdAudio();
       renderer.domElement.style.cursor = "default";
       setCurrentView(activeStudy);
     };
@@ -835,6 +914,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           && Math.abs(camera.zoom - desiredCameraZoom) < 0.0005
         ) cameraTransitioning = false;
       }
+      updateCrowdAudio();
+      updateAmbienceAudio();
       reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
       if (!cameraTransitioning && !globeTransitionStartedAt && pendingAgentDestination === "globe" && activeStudy === "manhattan") {
         pendingAgentDestination = null;
@@ -904,6 +985,13 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       inputController.dispose();
       disposeScenes(renderer, [scene, globeScene, skyOverlayScene]);
       timer.dispose();
+      crowdAudio.pause();
+      crowdAudio.src = "";
+      zoomAudio.pause();
+      if (zoomFadeFrame) cancelAnimationFrame(zoomFadeFrame);
+      zoomAudio.src = "";
+      ambienceAudio.pause();
+      ambienceAudio.src = "";
       cloudVeil.remove();
       switchStudyRef.current = () => undefined;
     };

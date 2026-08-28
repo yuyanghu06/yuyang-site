@@ -26,6 +26,8 @@ body {
 .washington-study {
   position: fixed;
   inset: 0;
+  display: grid;
+  place-items: center;
   overflow: hidden;
   background: var(--ground);
 }
@@ -40,6 +42,7 @@ body {
 .washington-study__viewport {
   position: absolute;
   inset: 0;
+  overflow: hidden;
 }
 
 .globe-cloud-transition {
@@ -249,7 +252,7 @@ body {
 
 .avatar-call {
   --avatar-glass-width: min(82.08rem, calc(100vw - clamp(2rem, 6vw, 5rem)));
-  --avatar-glass-height: min(48rem, calc(100vh - clamp(2rem, 6vw, 5rem)));
+  --avatar-glass-height: min(48rem, calc(100dvh - clamp(2rem, 6vw, 5rem)));
   --agent-caption-boundary-inset: 5rem;
   --call-ink: #f4f0e6;
   --call-shell: rgb(53 67 69 / 72%);
@@ -271,7 +274,7 @@ body {
   top: 50%;
   left: 50%;
   width: min(82.08rem, calc(100% - clamp(2rem, 6vw, 5rem)));
-  height: min(48rem, calc(100% - clamp(2rem, 6vw, 5rem)));
+  height: min(48rem, calc(100dvh - clamp(2rem, 6vw, 5rem)));
   min-height: 24rem;
   overflow: hidden;
   background: transparent;
@@ -898,7 +901,8 @@ body {
 
 .avatar-call--docked .avatar-call__modal {
   top: 1.25rem;
-  left: calc(100% - 10.25rem);
+  right: 1.25rem;
+  left: auto;
   width: 9rem;
   height: 9rem;
   min-height: 0;
@@ -1001,7 +1005,7 @@ body {
 }
 
 .avatar-call--docked .avatar-call__avatar-view {
-  transform: translate(-59%, -50%);
+  transform: translate(-50%, -50%);
   scale: 0.34;
 }
 
@@ -1022,7 +1026,7 @@ body {
 
   .avatar-call__modal {
     width: 100%;
-    height: min(44rem, 100%);
+    height: min(44rem, 100dvh);
     min-height: 0;
     border-radius: 1.4rem;
   }
@@ -1030,7 +1034,7 @@ body {
   .avatar-call--expanded .avatar-call__modal {
     right: auto;
     left: 50%;
-    width: calc(100% - 5rem);
+    width: min(100%, calc(100% - 1.5rem));
     transform: translate(-50%, -50%);
   }
 
@@ -1045,7 +1049,8 @@ body {
 
   .avatar-call--docked .avatar-call__modal {
     top: 0.75rem;
-    left: calc(100% - 7.75rem);
+    right: 0.75rem;
+    left: auto;
     width: 7rem;
     height: 7rem;
   }
@@ -1058,6 +1063,27 @@ body {
   .avatar-call--dock-left .agent-chat {
     right: auto;
     left: calc(100% + 0.5rem);
+  }
+}
+
+@media (max-width: 760px) {
+  .avatar-call--expanded .agent-chat {
+    top: 1rem;
+    right: 0.75rem;
+    bottom: auto;
+    left: 0.75rem;
+    width: auto;
+    height: auto;
+    max-height: 42%;
+  }
+
+  .avatar-call--expanded .avatar-call__avatar-view {
+    top: 48%;
+    left: 50%;
+    width: 92%;
+    height: 70%;
+    transform: translate(-50%, -18%);
+    scale: 1;
   }
 }
 

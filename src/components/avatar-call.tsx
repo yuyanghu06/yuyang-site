@@ -34,6 +34,32 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     expandedRef.current = expanded;
   }, [expanded]);
 
+  useEffect(() => {
+    const clampDockToViewport = () => {
+      setDockPosition((position) => {
+        if (!position || expandedRef.current) return position;
+        const modal = document.querySelector<HTMLElement>(".avatar-call--docked .avatar-call__modal");
+        if (!modal) return position;
+        const margin = getDockMargin();
+        const width = modal.getBoundingClientRect().width;
+        const height = modal.getBoundingClientRect().height;
+        const left = Math.min(Math.max(position.left, margin), Math.max(margin, window.innerWidth - width - margin));
+        const top = Math.min(Math.max(position.top, margin), Math.max(margin, window.innerHeight - height - margin));
+        setDockPlacement({
+          horizontal: left + width / 2 < window.innerWidth / 2 ? "left" : "right",
+          vertical: top + height / 2 < window.innerHeight / 2 ? "top" : "bottom",
+        });
+        return left === position.left && top === position.top ? position : { left, top };
+      });
+    };
+    window.addEventListener("resize", clampDockToViewport);
+    window.visualViewport?.addEventListener("resize", clampDockToViewport);
+    return () => {
+      window.removeEventListener("resize", clampDockToViewport);
+      window.visualViewport?.removeEventListener("resize", clampDockToViewport);
+    };
+  }, []);
+
   const agentReady = avatarReady && introWaveComplete && experienceStarted;
 
   const open = useCallback(() => {

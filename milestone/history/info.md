@@ -6,6 +6,14 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-26_audio-rollback.md` records removal of the uncommitted ambient-audio experiment and globe-transition whoosh.
+
+- `2026-08-26_community-crowd-soundtrack.md` records the trimmed user-provided crowd recording wired into zoomed-in neighborhood views.
+
+- `2026-08-25_12-00-00-minimized-avatar-anchor.md` also records centering the minimized avatar canvas within its docked modal.
+
+- `2026-08-25_12-00-00-minimized-avatar-anchor.md` records replacing the minimized avatar's width-dependent left anchor with a responsive right-edge modal anchor.
+
 - `2026-08-24_21-17-37-wire-union-landmark-dialogue.md` records the dialogue hookups for 25 Union Square West and 235 Park Avenue South.
 
 - `2026-08-24_21-09-02-docked-tour-history-flicker.md` records the docked-caption selector fix that prevents prior conversation history from flashing during tour transitions.
