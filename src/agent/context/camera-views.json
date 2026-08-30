@@ -1,0 +1,74 @@
+[
+  { "id": "globe", "label": "Globe", "kind": "geographic" },
+  { "id": "manhattan", "label": "Manhattan", "kind": "geographic" },
+  { "id": "washington", "label": "Washington Square", "kind": "geographic" },
+  { "id": "union", "label": "Union Square", "kind": "geographic" },
+  {
+    "id": "bobst-library",
+    "label": "Bobst Library",
+    "kind": "landmark",
+    "neighborhood": "washington",
+    "rootNameIncludes": "Bobst",
+    "azimuth": 2.721592653589793,
+    "height": 210,
+    "radius": 365,
+    "zoom": 2.41
+  },
+  {
+    "id": "lipton-hall",
+    "label": "Lipton Hall",
+    "kind": "landmark",
+    "neighborhood": "washington",
+    "rootNameIncludes": "Lipton",
+    "azimuth": 0,
+    "height": 273,
+    "radius": 285,
+    "zoom": 2.41
+  },
+  {
+    "id": "courant-institute",
+    "label": "Courant Institute",
+    "kind": "landmark",
+    "neighborhood": "washington",
+    "rootNameIncludes": "Courant",
+    "targetOffset": [-10, 0, -24],
+    "azimuth": 0,
+    "height": 210,
+    "radius": 365,
+    "zoom": 2.41
+  },
+  {
+    "id": "stern-school-of-business",
+    "label": "Stern School of Business",
+    "kind": "landmark",
+    "neighborhood": "washington",
+    "rootNameIncludes": "Stern",
+    "azimuth": 1.9907963267948965,
+    "height": 252,
+    "radius": 365,
+    "zoom": 2.41
+  },
+  {
+    "id": "25-union-square-west",
+    "label": "25 Union Square West",
+    "kind": "landmark",
+    "neighborhood": "union",
+    "rootNameIncludes": "25 Union Square West",
+    "azimuth": 1.9107963267948966,
+    "height": 160,
+    "radius": 270,
+    "zoom": 2.41,
+    "elevationAngleOffset": 0.2617993877991494
+  },
+  {
+    "id": "235-park-avenue-south",
+    "label": "235 Park Avenue South",
+    "kind": "landmark",
+    "neighborhood": "union",
+    "rootNameIncludes": "235 Park Avenue South",
+    "azimuth": -1.3089969389957472,
+    "height": 235,
+    "radius": 330,
+    "zoom": 2.41
+  }
+]

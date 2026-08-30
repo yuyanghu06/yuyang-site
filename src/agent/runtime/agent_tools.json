@@ -1,0 +1,109 @@
+[
+  {
+    "type": "function",
+    "name": "navigate_map",
+    "description": "Move the persistent map camera to one authored view.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string",
+          "enum": [
+            "globe",
+            "manhattan",
+            "washington",
+            "union",
+            "bobst-library",
+            "lipton-hall",
+            "courant-institute",
+            "stern-school-of-business",
+            "25-union-square-west",
+            "235-park-avenue-south"
+          ]
+        }
+      },
+      "required": ["destination"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "type": "function",
+    "name": "trigger_avatar_emote",
+    "description": "Ask the avatar to play one approved semantic one-shot emote.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "emote": {
+          "type": "string",
+          "enum": ["wave_hello", "nod_smile", "head_shake_disappointed"]
+        }
+      },
+      "required": ["emote"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "type": "function",
+    "name": "search_personal_memory",
+    "description": "Privately search Yuyang's canonical memory. Use for every personal question not fully answered by authoritative base facts. Rewrite follow-ups as standalone queries and extract named entities.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Standalone query with pronouns and omitted references resolved."
+        },
+        "queryType": {
+          "type": "string",
+          "enum": ["identity", "person", "organization", "project", "work", "event", "place", "interest", "goal", "general"],
+          "description": "Primary memory domain."
+        },
+        "entities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "People, organizations, projects, places, dates, and aliases extracted from the question and conversation."
+        }
+      },
+      "required": ["query", "queryType", "entities"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "type": "function",
+    "name": "hyperlink",
+    "description": "Look up an approved public URL before linking to one of Yuyang's profiles or affiliated organizations. Never invent or manually reconstruct these URLs.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "enum": ["github", "linkedin", "instagram", "techatnyu", "bac", "shift"],
+          "description": "Stable key for the approved link."
+        }
+      },
+      "required": ["key"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "type": "function",
+    "name": "web_search",
+    "description": "Search the live public web with Tavily when current, changing, niche, or externally verifiable information is needed. Do not use it for Yuyang's private personal facts.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "A concise, standalone web search query with enough context to retrieve relevant results."
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    }
+  }
+]

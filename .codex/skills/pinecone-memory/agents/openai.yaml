@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pinecone Memory"
+  short_description: "Author and ingest canonical personal memory"
+  default_prompt: "Update the canonical personal-memory Google Doc, rebuild the Pinecone corpus, replace the configured namespace, and verify retrieval."

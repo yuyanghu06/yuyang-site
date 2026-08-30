@@ -1,4 +1,4 @@
-import { CAMERA_VIEW_IDS, type CameraViewId } from "./camera-views";
+import { CAMERA_VIEW_IDS, type CameraViewId } from "../context/camera-views";
 
 export const MAP_DESTINATIONS = CAMERA_VIEW_IDS;
 export type MapDestination = CameraViewId;
@@ -11,10 +11,11 @@ export type AgentCommand =
   | { type: "trigger_avatar_emote"; emote: AvatarEmote };
 
 export type AgentMessage = { role: "user" | "assistant"; content: string };
+export type AgentStatus = "thinking" | "remembering" | "researching";
 export type RagCitation = { id: string; source: string; score: number };
 export type AgentReply = { message: AgentMessage; commands: AgentCommand[]; citations: RagCitation[] };
 export type AgentStreamEvent =
-  | { type: "sources"; citations: RagCitation[] }
+  | { type: "status"; status: AgentStatus }
   | { type: "speech_start" }
   | { type: "text_delta"; delta: string }
   | { type: "command"; command: AgentCommand }

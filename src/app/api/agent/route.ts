@@ -1,5 +1,5 @@
-import { streamAgent } from "@/agent/run-agent";
-import { MAP_DESTINATIONS, type AgentMessage, type AgentStreamEvent, type MapDestination } from "@/agent/types";
+import { streamAgent } from "@/agent/runtime/run-agent";
+import { MAP_DESTINATIONS, type AgentMessage, type AgentStreamEvent, type MapDestination } from "@/agent/contracts/types";
 
 export const runtime = "nodejs";
 

@@ -10,6 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "memory:build": "node scripts/memory/build-memory-corpus.mjs",
+    "memory:ingest": "node --env-file=.env scripts/memory/ingest-memory.mjs",
     "data:washington-city-tiles": "node scripts/map-data/build-washington-city-tiles.mjs",
     "data:washington-planimetrics": "node scripts/map-data/build-washington-planimetrics.mjs",
     "data:washington-roads": "node scripts/map-data/build-washington-road-glb.mjs",
