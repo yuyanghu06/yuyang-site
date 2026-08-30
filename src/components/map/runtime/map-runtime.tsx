@@ -31,8 +31,8 @@ import { disposeScenes } from "./dispose-runtime";
 import { createHitTesting } from "../interaction/hit-testing";
 import { createInputController } from "../interaction/input-controller";
 import { createViewportLifecycle } from "./viewport-lifecycle";
-import { AGENT_COMMAND_EVENT, createMapViewSettledReporter, type AgentCommand } from "@/agent/types";
-import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId, type GeographicMapView } from "@/agent/camera-views";
+import { AGENT_COMMAND_EVENT, createMapViewSettledReporter, type AgentCommand } from "@/agent/contracts/types";
+import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId, type GeographicMapView } from "@/agent/context/camera-views";
 import { createMapAudioController } from "../../site-audio";
 
 export default function GlobalMap({ experienceStarted }: { experienceStarted: boolean }) {

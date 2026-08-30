@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { primeAgentDialogueAudio } from "../agent-chat";
 import WorldLoader from "../world-loader";
+import "@/styles/map-shell.css";
 
 const BYPASS_WORLD_LOADER = process.env.NODE_ENV !== "production";
 
@@ -18,16 +19,16 @@ export default function MapShell() {
 
   useEffect(() => {
     if (BYPASS_WORLD_LOADER) return;
-    const timer = window.setTimeout(() => setBuildComplete(true), 2_000);
+    const timer = window.setTimeout(() => setBuildComplete(true), 5_000);
     return () => window.clearTimeout(timer);
   }, []);
 
   const continueToWorld = async () => {
-    try {
-      await primeAgentDialogueAudio();
-    } catch {
+    const audioPriming = primeAgentDialogueAudio().catch(() => {
       // Continue even if this browser or device declines the audio unlock.
-    }
+    });
+    const loaderFade = new Promise<void>((resolve) => window.setTimeout(resolve, 380));
+    await Promise.all([audioPriming, loaderFade]);
     setExperienceStarted(true);
   };
 

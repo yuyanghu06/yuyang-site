@@ -4,7 +4,7 @@ import {
   NAVIGATION_ARROW_Y,
   WASHINGTON_ARROW_POSITION,
 } from "../shared/core";
-import type { LandmarkCameraViewId } from "@/agent/camera-views";
+import type { LandmarkCameraViewId } from "@/agent/context/camera-views";
 
 export function createManhattanDestinationMarker(
   destination: "washington" | "union",

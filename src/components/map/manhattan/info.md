@@ -13,5 +13,5 @@ The renderer remains shared with the globe; do not create a second canvas or rem
 ## Direct files
 
 - `info.md` is this folder guide.
-- `navigation.ts` builds destination markers, landmark glow geometry, and the world-space neighborhood navigation arrow; interactive landmarks carry their shared registry camera-view ID.
+- `navigation.ts` imports landmark IDs from the agent context registry, builds destination markers and landmark glow geometry, and owns the world-space neighborhood navigation arrow; interactive landmarks carry their shared registry camera-view ID.
 - `waterfront.ts` builds the Hudson and East River surfaces and piers.
