@@ -6,6 +6,140 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_15-40-33-add-researching-status.md` records the animated Tavily-specific pending state and mixed-tool status transitions.
+
+- `2026-08-30_15-38-34-enforce-dialogue-only-responses.md` records prohibiting list and heading formatting in visitor-facing model answers.
+
+- `2026-08-30_15-38-14-require-tavily-for-live-data.md` records making Tavily mandatory for every question that depends on live or up-to-date information.
+
+- `2026-08-30_15-35-06-add-tavily-web-search.md` records adding bounded private Tavily search as a model-selected Responses API function tool and validating it against the configured credential.
+
+- `2026-08-30_15-33-51-branch-mid-dialogue-replies.md` records making inline replies abandon their originating scripted queue so only the new model answer controls subsequent continuation.
+
+- `2026-08-30_15-32-17-clamp-audio-fades.md` records clamping exponential fade progress and frame volumes to prevent floating-point overshoot outside the browser's valid audio range.
+
+- `2026-08-30_15-32-06-restore-follow-up-composer.md` records restoring the inline textbox when replying to an agent answer that originated from the intro choice state.
+
+- `2026-08-30_15-30-44-inline-dialogue-controls.md` records moving all dialogue controls into the message bubble, removing duplicate Reply triggers, and keeping keyboard-based minimized replies docked.
+
+- `2026-08-30_15-28-15-settled-social-control-reveal.md` records delaying the social-control fade-in until the avatar window has fully minimized.
+
+- `2026-08-30_15-26-41-minimized-stream-caption.md` records keeping an already-active assistant stream visibly updating after the avatar window minimizes.
+
+- `2026-08-30_15-24-56-natural-agent-answer-composition.md` records replacing the model-facing character rule with relevance, coherence, and anti-fact-dump guidance while retaining renderer segmentation.
+
+- `2026-08-30_15-21-20-agent-status-wave-and-dialogue-type.md` records the full-character Thinking/Remembering wave and matched visitor/assistant message sizing.
+
+- `2026-08-30_15-20-19-restore-dialogue-segmentation.md` records restoring the 120-character automatic segment queue and manual overflow Next controls.
+
+- `2026-08-30_15-18-06-remove-dialogue-auto-segmentation.md` records removal of renderer-generated character segments and overflow Next controls while preserving authored tour navigation.
+
+- `2026-08-30_15-15-28-raise-dialogue-target-to-120.md` records the unified 120-character renderer target and the matching authored-dialogue and site-agent prompt pass.
+
+- `2026-08-30_15-14-04-finalize-world-loader-presentation.md` records the final enlarged loader, unified spacing, centered log, dark `Dive in!` CTA, and fade handoff.
+
+- `2026-08-30_15-08-57-five-second-world-loader-log.md` records the compact five-second loader, centered rolling build log, reduced whitespace, blue CTA, and screen exit fade.
+
+- `2026-08-30_15-09-32-match-audio-and-social-circles.md` records matching desktop audio controls to the social-button dimensions and preventing flex-driven oval distortion.
+
+- `2026-08-30_15-07-10-dialogue-rhythm-voice-and-llm-logs.md` records the unified 85-character renderer, conversational authored-dialogue rewrite, session-grounded voice examples, and scoped Vercel LLM-turn logging.
+
+- `2026-08-30_15-05-53-seamless-world-loader-reversal.md` records changing the entry globe's continent drift from a resetting loop to endpoint reversal.
+
+- `2026-08-30_14-52-52-centralize-feature-styles.md` records moving all CSS into `src/styles/`, splitting the former global monolith by feature, and deduplicating the shared liquid-glass surface.
+
+- `2026-08-30_14-47-24-restore-desktop-audio-control-size.md` records restoration of the large docked audio buttons and icons on desktop only.
+
+- `2026-08-30_14-26-16-free-dialogue-done-and-paragraph-splits.md` records final Done actions for direct camera dialogue and paragraph-first soft caption splitting.
+
+- `2026-08-30_14-21-48-agent-tool-e2e-audit.md` records the independent and fresh-production test matrix for all four tools plus the round-limit and exact-argument hardening fixes.
+
+- `2026-08-30_14-16-34-agent-structure-links-rag-policy.md` records the responsibility-based agent layout, Markdown/JSON configuration sources, unified tool schema, approved hyperlink lookup, expanded Shift growth context, and canonical Google-Doc-to-Pinecone authoring rules.
+
+- `2026-08-30_14-02-11-live-agent-status-and-voice.md` records the live Thinking/Remembering states, explicit first-person Yuyang Hu identity, casual response style, and removal of visitor-facing retrieval artifacts.
+
+- `2026-08-30_13-58-00-soft-caption-boundaries.md` records replacing the hard 170-character cutoff with natural soft boundaries for streamed and finalized captions.
+
+- `2026-08-30_13-50-50-rename-final-action-done.md` records the final-response Done wording and the expanded Reply placement inside the message bubble.
+
+- `2026-08-30_13-50-35-pinecone-dynamic-rag.md` records the Pinecone-only hybrid retrieval flow, private dynamic agent tool, canonical memory reset, multi-turn behavior, and Technical Skills refresh.
+
+- `2026-08-30_13-40-23-fix-reply-action-overlap.md` records suppressing stale scripted-caption controls during agent replies so only one action row is visible.
+
+- `2026-08-30_13-40-55-chat-speaking-and-bubbles.md` records reasoning-safe mouth animation, visible right-aligned visitor replies, and continuous SVG chat-bubble silhouettes.
+
+- `2026-08-30_13-48-00-revert-chat-tails.md` records removal of the experimental message tails and restoration of the original rounded bubble artwork.
+
+- `2026-08-30_13-52-00-fix-minimized-reply-composer.md` records the minimized free-dialogue Reply visibility fix.
+
+- `2026-08-30_13-56-00-fix-all-minimized-reply-phases.md` records making composer-open state authoritative across every minimized dialogue phase.
+
+- `2026-08-30_13-59-00-preserve-minimized-yes-no.md` records keeping Yes/No visible while the minimized inline composer is open.
+
+- `2026-08-30_14-03-00-inline-choice-composer-row.md` records placing the minimized choice composer beside its dynamic buttons.
+
+- `2026-08-30_14-10-00-audio-and-social-controls.md` records independent minimized audio mute controls and fixed social-profile links.
+
+- `2026-08-30_14-13-00-round-audio-controls.md` records converting minimized audio controls into inline circular icon buttons.
+
+- `2026-08-30_14-16-00-minimal-svg-controls.md` records the unified monochrome SVG treatment for audio and social buttons.
+
+- `2026-08-30_14-20-00-center-liquid-glass-controls.md` records centering audio controls and applying the conversation liquid-glass treatment to audio and social buttons.
+
+- `2026-08-30_14-24-00-audio-control-mode-placement.md` records exact dock centering, expanded top-right audio placement, and expanded social-link hiding.
+
+- `2026-08-30_14-28-00-dark-glass-and-settled-audio.md` records matching the message-bubble glass surface and gating docked audio fade-in to settled minimization.
+
+- `2026-08-30_14-31-00-bright-social-logos.md` records the higher-contrast white social SVG treatment.
+
+- `2026-08-30_14-34-00-smaller-white-control-icons.md` records the 30% icon reduction and direct white social paths.
+
+- `2026-08-30_14-37-00-settled-fullscreen-audio-fade.md` records gating fullscreen audio controls to completed expansion.
+
+- `2026-08-30_14-41-00-fixed-responsive-docked-avatar.md` records viewport-independent minimized avatar framing and narrow-caption social-link hiding.
+
+- `2026-08-30_14-44-00-center-mobile-expanded-avatar.md` records the mobile-only expanded avatar centering offset.
+
+- `2026-08-30_14-48-00-separate-mobile-avatar-framing.md` records restoration of desktop framing and fully independent mobile avatar coordinates.
+
+- `2026-08-30_14-52-00-mobile-dialogue-and-close.md` records the explicit mobile chat height and restored close-button stacking.
+
+- `2026-08-30_14-54-00-lower-mobile-dialogue.md` records moving narrow expanded dialogue below the top controls.
+
+- `2026-08-30_14-47-48-mobile-dialogue-height.md` records the rejected forced-height mobile dialogue experiment.
+
+- `2026-08-30_14-55-00-revert-forced-dialogue-height.md` records removal of the forced-height regression and restoration of intrinsic card sizing.
+
+- `2026-08-30_15-02-00-fix-docked-mobile-caption-cascade.md` records the docked mobile height override and exact viewport-edge inset repair.
+
+- `2026-08-30_15-07-00-shrink-docked-mobile-choices.md` records the 50% minimized mobile choice-pill sizing.
+
+- `2026-08-30_15-10-00-adjust-docked-mobile-choices.md` records the final 75% minimized mobile choice-pill sizing.
+
+- `2026-08-30_15-14-00-fix-dialogue-shadow-plates.md` records rounded clipping and removal of rectangular assistant-card shadow plates.
+
+- `2026-08-30_15-19-00-dynamic-chat-avatar-gap.md` records content-aware short-landscape spacing between dialogue controls and the avatar.
+
+- `2026-08-30_15-23-00-fix-avatar-gap-effect-cleanup.md` records the void-returning React effect cleanup type repair.
+
+- `2026-08-30_14-57-00-align-expanded-audio-controls.md` records matching and aligning fullscreen audio circles with the close control.
+
+- `2026-08-30_15-00-00-tighten-mobile-dialogue-spacing.md` records reducing the vertical gap below mobile top controls.
+
+- `2026-08-30_15-05-00-responsive-avatar-renderer-sync.md` records live framebuffer and orthographic projection synchronization without a resize observer.
+
+- `2026-08-30_15-09-00-mobile-framing-margins-and-landscape.md` records mobile avatar centering, larger modal margins, and landscape dialogue height repair.
+
+- `2026-08-30_15-12-00-mobile-zoom-and-caption-wrap.md` records the mobile dock zoom reduction and forced landscape caption wrapping.
+
+- `2026-08-30_15-16-00-mobile-camera-center-and-caption-clip.md` records renderer-owned mobile centering, unclipped mobile captions, and docked social persistence.
+
+- `2026-08-30_15-18-00-mobile-social-bottom-right.md` records the mobile-only bottom-right social position.
+
+- `2026-08-30_15-21-00-tighten-caption-choice-spacing.md` records removing expanded flex space above direct choice buttons.
+
+- `2026-08-30_15-23-00-deduplicate-expanded-reply.md` records preventing phase and terminal Reply branches from rendering together.
+
 - `2026-08-30_13-33-34-shift-site-agent-and-dialogue.md` records the compact Shift base context added to the live portfolio agent and the rewritten 235 Park Avenue South narration.
 
 - `2026-08-30_13-32-18-background-chiptune-playlist.md` records the four-track, low-volume, experience-gated background playlist and shared exponential crossfades.
@@ -392,3 +526,4 @@ Use these records only when historical context is needed; do not load the entire
 - `2026-08-22_13-55-38-parameterized-voxel-avatar-v1.md` records the portrait-derived JSON preset, deterministic voxel generator, rigged review assets, structural export check, and pending visual approval.
 - `2026-08-22_14-04-50-voxel-avatar-v4-review.md` records rejection of the flat-head/robot-arm direction, adoption of the illustrated facial reference, the dense volumetric head, and the current watch-free wider-shouldered V4 candidate.
 - Other timestamped Markdown files are earlier append-only session handoffs.
+- `2026-08-30_15-41-32-shift-memory-and-pinecone-skill.md` records the canonical Shift/microagi funding update, 166-record Pinecone replacement, live retrieval checks, and reusable repo skill.

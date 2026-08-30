@@ -1,5 +1,169 @@
 # Current Project Milestone
 
+## Shift memory refresh and reusable Pinecone skill (2026-08-30)
+
+The canonical Google Doc's existing `organization:shift` record now includes a dedicated company overview and funding subsection. It records Shift/microagi as a German robotics startup focused on collecting and structuring real-world human and industrial demonstration data for training and fine-tuning industrial robot policies, Yuyang's summer 2026 Founders Associate role, and the $55 million seed round described by the company and contemporary reporting as Germany's largest seed round as of August 2026.
+
+Google Doc revision `AIroW378mZgk1mequyw_9SFHQTV0I4tAiBbe6vX3nhxU8GJ0jJM1fnxFC6jI6Aagkt9CqxNyZixuAu8aZD3rrBex0zizXXiBnJr7y4A6zw` produced 166 chunks. The confirmed `memories` / `__default__` Pinecone namespace was replacement-ingested and verified at exactly 166 records. Exact entity, semantic paraphrase, multi-turn follow-up, authoritative base-fact bypass, and unsupported-question uncertainty checks all passed without exposing retrieval details.
+
+The repository now includes `.codex/skills/pinecone-memory/`, a validated custom Codex skill for the complete canonical-Doc authoring, temporary export, deterministic build, confirmed destructive replacement, retrieval verification, cleanup, documentation, and handoff workflow. Generated chunks now retain `sourceRevisionId` directly, and ingestion forwards that per-chunk value into Pinecone metadata.
+
+## Tavily Researching status (2026-08-30)
+
+When the model calls the private Tavily web-search tool, the pending dialogue card now switches from `Thinking…` to the animated `Researching…` label for the duration of the search, then returns to `Thinking…` while the grounded answer is composed. Mixed private-memory and web-search rounds update the same card to match each server tool as it runs.
+
+## Dialogue-only agent responses (2026-08-30)
+
+The base prompt now forbids bullets, numbered lists, headings, dash-led items, and checklist formatting in every visitor-facing answer. Multi-fact and web-search answers must still read as natural conversational paragraphs.
+
+## Model-initiated Tavily web search (2026-08-30)
+
+The portfolio agent now exposes a private server-side `web_search` function backed by Tavily. The Responses API keeps tool choice on `auto`, but the prompt requires a Tavily call before answering anything that needs live or up-to-date data. The model may also search whenever it judges that an answer needs niche, uncertain, or externally verifiable public information, as well as when a visitor explicitly asks it to look something up.
+
+Search arguments are independently validated, queries are limited to 500 characters, requests time out after 12 seconds, and returned answers and result snippets are bounded before they re-enter model context. The prompt keeps personal facts routed through Pinecone memory, allows combining both tools when necessary, treats web results as untrusted evidence, and asks the model to link the useful source pages naturally without exposing Tavily or internal tool mechanics. The configured Tavily credential passed a live search smoke test; targeted ESLint, full TypeScript validation, and whitespace validation pass.
+
+## Safe audio fade interpolation (2026-08-30)
+
+The shared audio fade primitive now clamps animation progress and every interpolated volume frame. Floating-point overshoot at the end of exponential fade-outs can therefore no longer assign a tiny negative value to `HTMLMediaElement.volume` and interrupt audio transitions with a browser exception.
+
+## Inline dialogue controls and docked replies (2026-08-30)
+
+Phase choices, Next/Back/Done actions, and the single Reply trigger now render inside the latest assistant message bubble in both expanded and docked layouts. This removes the detached control spacing and prevents generic expanded Reply rendering from duplicating phase-specific Reply controls.
+
+The chat boundary now stops keyboard events as well as pointer clicks before they reach the minimized avatar shell. Pressing Enter or Space while using the docked inline composer therefore no longer expands the avatar window. Mid-dialogue submission still discards unseen queued output and sends only the displayed assistant segments as context.
+
+The intro-choice composer exception is limited to the active Yes/No state. If a visitor replies from that state and receives an agent answer, pressing Reply on the answer now replaces the action row with the visible inline textbox instead of hiding both controls.
+
+Submitting any inline reply now exits the originating scripted tour or landmark branch, clears its navigation history and unseen caption queue, and starts a freeform model response. Therefore an old scripted Next action cannot resume after the visitor branches; any new Next action belongs only to segmentation of the generated answer.
+
+## Settled social-control reveal (2026-08-30)
+
+The GitHub, LinkedIn, and Instagram controls now remain invisible and non-interactive throughout the avatar's 460 ms minimize transition. They fade in over 220 ms only after the docked tile reaches its settled geometry, matching the existing audio-control reveal timing.
+
+## Minimized live-stream caption continuity (2026-08-30)
+
+Minimizing the avatar after assistant text has already begun streaming now keeps the live response visible and updating beside the settled docked tile. Docked visibility is derived from the active-stream and settled-dock states, rather than depending on the stream-start callback firing again after minimization. Manual caption dismissal remains authoritative.
+
+## Animated agent status and matched dialogue type (2026-08-30)
+
+The pending `Thinking…` and `Remembering…` labels now animate with a subtle staggered wave across every character instead of rendering as an unanimated text node. The animation honors `prefers-reduced-motion`, and each complete label remains available to assistive technology as one status announcement.
+
+Visitor bubbles now inherit the same responsive font size as assistant captions. Their distinct alignment, color, background, and compact padding remain unchanged.
+
+## Five-second rolling world-loader log (2026-08-30)
+
+The production world loader now remains active for five seconds, and the complete centered composition is scaled up by 30%. Both the centered three-line log and ready-state CTA use a 2.5-rem title offset for consistent spacing across both loader states. The log progressively reports locations, stories, memories, experiences, communities, landmarks, and conversations before finishing the world. The formerly invisible white-on-white heading was removed. Activating the dark `Dive in!` CTA begins audio priming immediately, fades the complete white loader away over 360 ms, and only then removes it.
+
+## Natural agent answers and 120-character renderer segmentation (2026-08-30)
+
+The dialogue renderer uses one 120-character soft target across every viewport. It prefers a nearby paragraph or punctuation boundary, queues overflow, and reveals one segment per manual blue Next action. Caption length remains entirely a renderer concern.
+
+The base prompt no longer tells the model to write to a character limit. It instead requires one coherent point, a few relevant supporting details, natural transitions, and no unrelated fact inventory. Broad introductions should connect two or three themes rather than reciting every known fact. Ten genuine user messages remain as cadence evidence, without copying their typos or abbreviations.
+
+Every OpenAI Responses round now emits one structured Vercel log entry containing the latest visitor message, that round's model output, and minimal request/round/model identifiers. It intentionally excludes the system prompt, retrieved memory, prior conversation, and full context window.
+
+## Seamless world-loader reversal (2026-08-30)
+
+The production entry globe's continent drift now alternates direction at both animation endpoints. It travels forward, reverses at the end, and reverses again at the start instead of visibly snapping back to its initial frame. The independently rotating satellite orbit remains unchanged.
+
+## Centralized feature styles and shared liquid glass (2026-08-30)
+
+All CSS now lives under `src/styles/`. The former 1,343-line App Router global sheet is split into a 50-line global base plus dedicated social-link, map-shell, world-loader, avatar-call, and agent-chat stylesheets imported by their owning route or component. The avatar shell and chat are separate files rather than one relocated monolith.
+
+The dark liquid-glass surface is now a single global primitive shared by assistant message bubbles, audio buttons, and social buttons. Agent-chat no longer duplicates its background, border, shadow, or backdrop-filter declarations. All six stylesheets parse successfully; targeted ESLint and full TypeScript validation pass.
+
+## Mobile dialogue regression cleanup (2026-08-30)
+
+The temporary JavaScript height synchronization and nine-rem multiline minimum were removed after they stretched both expanded and docked cards. Dialogue cards again use intrinsic content height in every mode. The actual minimized crop came from the generic mobile chat rule's `height: 45%` leaking into docked mode; the docked override now resets height to `auto`. Its width formula reserves an exact 1.25-rem viewport-edge inset, and the same rules cover short-landscape layouts up to 900 px wide.
+
+Docked mobile and short-landscape choice pills render at 75% of their original dimensions, including font size, padding, minimum width, and inter-button gap. Expanded and desktop controls are unchanged.
+
+Assistant dialogue cards clip the shared liquid-glass paint to their rounded boundary and override the generic broad outer surface shadow with the original inset highlight. This removes the square shadow plate that appeared behind rounded dialogue divisions after the stylesheet extraction.
+
+Short-landscape avatar spacing is content-aware rather than a fixed viewport percentage. The dialogue renderer measures the bottom edge of the current visible card and direct action controls after text, phase, pending, composer, or presentation changes; it publishes that coordinate with a 12 px gap. CSS clamps the avatar anchor between 32% and 48% to retain safe framing while following variable dialogue height.
+
+The dynamic-spacing layout effect cleanup uses an explicit void-returning block, satisfying React's `EffectCallback` contract instead of leaking the string returned by `removeProperty()`.
+
+## Desktop docked audio-control sizing (2026-08-30)
+
+The docked effects and music controls now match the desktop social controls exactly: 2.65-rem circles with 0.875-rem icons. A fixed square flex basis and one-to-one aspect ratio prevent the buttons from compressing into vertical ovals. Mobile docked sizing and the separate 1.25-rem expanded controls remain unchanged.
+
+## Agent layout, JSON registries, links, and RAG authoring policy (2026-08-30)
+
+`src/agent/` is now divided by responsibility: `context/` owns the Markdown base prompt plus JSON camera/link registries, `contracts/` owns shared stream and browser-event types, `memory/` owns Pinecone retrieval, and `runtime/` owns orchestration and tool validation. Camera configuration is data-only in `camera-views.json`; the TypeScript companion exposes typed accessors. All model-callable tools now live in one `agent_tools.json` collection with no internal/external schema split.
+
+The new server-executed `hyperlink` tool resolves only six approved keys from `context/links.json`: GitHub, LinkedIn, Instagram, Tech@NYU, BAC, and Shift. Arbitrary URLs are rejected, explicit profile/link requests force this lookup on the first model round, and the model renders the returned URL naturally without exposing the registry. The Shift base context now also covers growth marketing and the negative-CAC data-collection funnel.
+
+An independent all-tool audit verified navigation, emotes, RAG, multi-turn retrieval, base-fact bypass, uncertainty, link lookup, stream privacy, and invalid API requests. It found and prompted fixes for two edge cases: the bounded loop now permits all six approved links to be resolved before the final answer, and runtime parsers independently reject extra argument properties instead of relying only on strict model schemas.
+
+`AGENTS.md` now defines the canonical memory workflow. The Google Doc is the sole authoring source, Pinecone is a replaceable derived index, direct vector edits are forbidden, and temporary exports/corpora must stay outside the repository. The policy records heading structure, metadata fields, contextual chunking, stable IDs, embedding dimensions, destructive replacement confirmations, cleanup, and retrieval verification requirements.
+
+## Live agent status and hardened visitor voice (2026-08-30)
+
+Pending site-agent replies now display `Thinking…` immediately, switch to `Remembering…` only while the private Pinecone memory search executes, and return to `Thinking…` while the grounded response is composed. These are transient stream states and never become transcript messages.
+
+The base prompt now identifies the speaker explicitly as Yuyang Hu and requires first-person answers about his own experience. Visitor-facing answers must remain casual and finish naturally without career-coach follow-up menus. Retrieval evidence no longer contains numbered/source labels, citation metadata is no longer streamed to the browser, and the prompt forbids exposing citations, IDs, scores, metadata, or other retrieval artifacts.
+
+## Soft-boundary caption splitting (2026-08-30)
+
+The dialogue renderer segments complete messages around the 120-character soft target. Streaming previews expose the first segment while retaining the complete answer for the manual Next queue.
+
+Authored camera dialogue opened outside the guided tour queues manual Next for overflow. Guided-tour controls continue to navigate authored locations after each stop's segments finish.
+
+## Final-response Done action (2026-08-30)
+
+Completed agent responses now use `Done` instead of `Cancel` for the white minimize action. Docked `Reply…` remains beside `Done`; expanded `Reply…` stays inside the final message bubble while `Done` sits below it. The composer-only action remains correctly labeled `Cancel`.
+
+## Pinecone-only dynamic RAG and memory reset (2026-08-30)
+
+The live site agent no longer performs unconditional retrieval. Authoritative base facts answer directly; every other personal question must call the private `search_personal_memory` function before answering, and unsupported facts return an explicit unknown. Private tool calls execute only on the server and are never dispatched as browser commands. Bounded recent conversation plus model-authored standalone queries and entity lists resolve multi-turn references before search.
+
+The private search pipeline classifies each query by memory domain, extracts named entities, embeds a conversation-aware query with `text-embedding-3-small`, and runs three Pinecone searches in parallel: broad dense, metadata-domain-filtered dense, and lexically constrained search over per-vector `searchTerms`. Reciprocal-rank fusion combines candidates with entity and domain boosts. Pinecone is the sole deployed memory store; no source or corpus mirror is checked into the repository.
+
+The `memories` index's `__default__` namespace was explicitly validated, cleared, and rebuilt from Google Doc revision `AIroW37fgTiUkERk989h3bgJUd8RStHrCnGz-ugu1TTLGPChXzKiaG2g1ZG5D88FCjleFP-pSivqLvoVjJHz63U1j1laxKMAPXPtoqPhqQ`. It now contains exactly 166 contextual chunks across 153 records. Temporary source/corpus files were deleted after successful ingestion. Live checks verified base-fact bypass, private personal retrieval, multi-turn pronoun resolution, lexical filtering, and unknown-answer refusal.
+
+## Latest reply-control overlap fix (2026-08-30)
+
+Replying from a retained tour or choice caption no longer renders that caption's old action row alongside the agent response controls. Scripted actions are suppressed while an agent request is pending and whenever the response renderer owns a Next or Done presentation.
+
+Targeted ESLint, full TypeScript, and live-browser verification pass after the concurrent retrieval work removed the temporary local corpus import.
+
+## Latest dialogue-state and transcript polish (2026-08-30)
+
+The avatar's talking mouth now starts only when the first non-whitespace assistant text delta becomes visible. It remains neutral while the agent request is pending or reasoning, pauses for semantic emotes, resumes only when visible response text already exists, and stops at stream completion.
+
+Expanded chat history now includes visitor replies in conversation order as right-aligned light bubbles. The experimental message tails and continuous SVG silhouettes were reverted after they distorted and clipped minimized captions; the original rounded bubble artwork is authoritative again. Docked mode continues to show only the latest assistant caption.
+
+The minimized Reply control now opens the inline text composer in every dialogue phase. Composer-open state takes precedence over both action-row and phase-specific input gates. In the initial choice phase, Yes/No remain fixed on the left while the redundant Reply trigger is replaced by a flexible composer that occupies the remaining width in the same row.
+
+The avatar exposes separate global effects and music mute controls as two circular buttons with minimal monochrome SVG icons. Their row spans the full docked tile width for exact centering below the avatar and moves to the top-right inside the expanded modal. Audio and social controls now match the assistant message bubble directly: dark translucent layered surface, light foreground, subtle border and inset highlight, 22 px blur, saturation, and soft shadow. Docked controls remain invisible for the full 460 ms minimize motion, then fade in after the tile reaches its settled position instead of visibly following the transition. Accessible labels and hover titles retain explicit meanings. Effects covers dialogue blips, traffic/crowd ambience, and globe travel audio; music independently covers the four-track background playlist. Three matching circular SVG logo buttons at the top-left link to Yuyang's GitHub, LinkedIn, and Instagram profiles, and hide while the avatar is expanded.
+
+All five control SVGs are 30% smaller than their initial icon size. Social paths use direct pure-white fill/stroke values, matching the audio icons without relying on link color inheritance or a glow.
+
+Fullscreen audio controls now use the same settled-state reveal policy as docked controls: they remain hidden for the complete 460 ms expansion and fade in over 220 ms only after the modal reaches its final fullscreen geometry.
+
+The rejected fixed 78 × 62.4 rem docked source-plane override and proportional mobile correction were removed because they distorted desktop and could leave the mobile tile blank after live resizing. Desktop is restored exactly to its approved `translate(-59%, -50%) scale(0.34)` crop. Mobile now owns completely separate coordinates: docked `translate(-50%, -49%) scale(0.72)` and expanded `translate(-72%, -18%)`. Social controls continue to hide while a docked caption is visible, preventing narrow-screen overlap with dialogue.
+
+Mobile expanded dialogue no longer uses a collapsing auto-height flex container. It receives `min(18rem, 42dvh)` of explicit height and a `min-height: 0` internal message scroller, allowing complete wrapped captions and controls to render. The modal close button is raised from stacking level 2 to 4 so the later-rendered chat cannot cover it.
+
+The narrow expanded dialogue top offset is 3.25 rem, keeping the caption below the close and audio controls without the earlier excessive five-rem gap. Its dimensions and desktop layout remain unchanged.
+
+Expanded audio buttons now exactly match the close button's 1.25-rem circle size. Their SVGs reduce to 0.65 rem, and mobile aligns both audio controls to the same one-rem top inset as the close control; desktop uses the shared 1.5-rem top inset. Docked audio buttons remain larger.
+
+The avatar renderer now synchronizes its framebuffer and orthographic projection after live window resizes while expanded and after the modal's width transition completes. It temporarily removes the cached render dimensions, measures the responsive CSS host once, re-locks those dimensions, resizes WebGL, and recomputes the projection width from the preserved framed height. This replaces CSS-only attempts to compensate for a stale canvas and avoids reintroducing the rejected host ResizeObserver feedback loop.
+
+Mobile framing receives a second isolated adjustment from visual review: docked translation moves from `-50%` to `-72%`, while expanded translation moves from `-72%` to `-88%`, shifting the right-weighted avatar into the center without changing desktop. The expanded mobile modal now reserves 1.25 rem on all viewport edges, and short landscape dialogue uses up to the complete remaining height below its top controls rather than only 42 d.v.h.
+
+Mobile docked avatar scale reduces from `0.72` to `0.58`, preserving the reviewed horizontal coordinate while adding breathing room around the portrait. Narrow expanded assistant cards now force `width: 100%`, normal whitespace, and anywhere wrapping so their text cannot remain on one max-content line and be paint-clipped in landscape.
+
+Mobile no longer centers the avatar by translating its canvas beyond the render host. The Three.js renderer stores the approved desktop right-offset camera center and a separate mobile center derived from the avatar bounds, switching at 760 px during responsive synchronization. Mobile CSS returns to a centered `-50%` canvas transform, eliminating the vertical edge that cropped the avatar's right side. Mobile assistant cards additionally disable paint containment/overflow clipping. Social controls remain visible throughout docked conversations and hide only while the avatar is expanded.
+
+At 600 px and narrower, the social-control row moves from the desktop top-left position to a fixed 0.75-rem bottom-right inset. It remains visible while docked and follows the existing fullscreen hiding rule.
+
+Expanded chat no longer lets its message list consume all remaining flex height when a direct choice row follows. A relational selector switches the list to content height, placing both choice buttons directly below the caption in desktop and mobile layouts.
+
+The expanded phase-specific Reply branch is suppressed whenever the terminal presentation state already owns Reply. This removes the duplicate Reply triggers observed on mobile and applies identically on desktop.
+
 ## Shared site audio controller (2026-08-30)
 
 All browser audio construction and playback lifecycle now live in `src/components/site-audio.ts`. The map runtime reports only its current geographic view, landmark lock/settle state, and globe-transition state to a dedicated controller; `agent-chat.tsx` requests throttled dialogue blips through the same module. No other source file constructs an HTML `Audio` element.
@@ -10,13 +174,13 @@ Four user-provided chiptune instrumentals now form the site-wide background play
 
 ## Latest web-agent canonical base context (2026-08-30)
 
-The portfolio guide's base system instructions now include a small authoritative personal-facts block: San Diego hometown, 5'11" height, favorite country song ("Springsteen" by Luke Combs), former BAC ML Director status after stepping down following Spring 2026, Sally Hu's corrected name, and a compact Shift contribution summary. The Shift facts cover the April–August 2026 Founders Associate role, U.S. growth-stack architecture, Indeed Flex and Crossing Hurdles onboarding, and the custom Stripe-native checkout connected to Shopify, Supabase, PostHog, Meta, Triple Whale, and GoHighLevel for attribution, session-replay analysis, and abandoned-cart recovery. The agent is instructed to use these facts only when directly relevant, never expose them as a Quick Facts section/list, and never infer or state Yuyang's current residential base. Pinecone retrieval remains mandatory for every accepted user turn.
+The portfolio guide's base system instructions now include a small authoritative personal-facts block: San Diego hometown, 5'11" height, favorite country song ("Springsteen" by Luke Combs), former BAC ML Director status after stepping down following Spring 2026, Sally Hu's corrected name, and a compact Shift contribution summary. The agent uses these facts directly, never exposes them as a Quick Facts section/list, never infers or states Yuyang's current residential base, and dynamically retrieves any other personal knowledge.
 
-The authored 235 Park Avenue South narration now tells the same cohesive Shift story: full role dates, growth-stack and checkout architecture, 100× U.S. operations growth, the negative-CAC acquisition funnel, the 100-million-view global launch, and the Crossing Hurdles and Indeed Flex partnerships. Renderer-owned caption segmentation continues to enforce the 170-character visible-caption ceiling.
+The authored 235 Park Avenue South narration tells the complete Shift story in roughly 120-character segments queued behind manual Next controls.
 
 ## Latest agent presentation-tool cleanup (2026-08-30)
 
-The portfolio guide no longer exposes `display_blue` or `display_white` to the model. The browser's shared caption renderer now exclusively splits complete streamed answers at natural boundaries under the 170-character visible-caption limit, queues overflow for blue Next controls, and selects the final white Cancel state without a presentation tool call. The remaining model-callable tools are map navigation and avatar emotes.
+The portfolio guide no longer exposes `display_blue` or `display_white` to the model. The browser renders each complete streamed answer as one message and selects the final Done state without presentation tool calls or overflow segmentation. The remaining model-callable tools are map navigation and avatar emotes.
 
 The avatar-emote schema now exposes only the three animations backed by production runtime sources: `wave_hello`, `nod_smile`, and `head_shake_disappointed`. The unimplemented `smile_tap`, `thumbs_up`, `point_right`, `sad`, and `thumbs_down` values were removed so the model cannot queue no-op emotes.
 
@@ -118,7 +282,7 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 - The minimized avatar render is now centered inside the actual docked modal with a neutral 50% horizontal transform; the prior 59% offset was removed.
 - Expanded avatar calls now use a narrow-screen vertical composition below 760 px: dialogue sits above the avatar, while the avatar is centered, reduced, and protected from the desktop horizontal overscan crop.
 
-- Camera dialogue is now authored as one Markdown file per scripted view under `src/components/dialogue/`, grouped into `global/`, `manhattan/`, and `union-square/`. A small build-time loader injects the scripts as strings in both Turbopack and webpack before the shared renderer applies its 170-character natural-boundary cap. The Washington guided tour continues Lipton Hall → Bobst Library → Stern School → Courant Institute, with cleaned Courant double-major and Tech@NYU narration. During the guided tour, blue Next appears first and gray Back second. Back returns to the previous caption on the current camera when possible; from the first caption, it returns to the preceding camera and restores that stop's final caption. Back is absent from direct landmark dialogue, but blue Next remains available there until every capped segment has streamed.
+- Camera dialogue is authored as one Markdown file per scripted view under `src/components/dialogue/`. The renderer segments each imported script around 120 characters, while tour Next and Back controls also navigate between authored stops after overflow is exhausted.
 
 - Avatar one-shots share `avatar-emote-player.ts`. The production `idle.glb` remains the only mounted avatar scene and owns the mesh, skin, materials, textures, face, and idle clip. The wave, nod, and head-shake runtime GLBs are now animation-only: wave is 12 KiB with 19 moving-arm rotation channels; nod and shake are 41 KiB each with only `Head` and `neck` rotation channels. They contain no duplicate mesh, skin, material, texture, or camera, reducing the emote set from roughly 15 MiB to about 94 KiB. The player reconstructs all locked channels from the already-loaded idle clip, preserves exact idle bookends, and remains completion-aware. Versioned animation URLs receive one-year immutable HTTP caching. The unused wave v1 remains removed.
 
@@ -158,11 +322,11 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 
 - The docked bubble's top-left × now exactly matches the fullscreen close control's 1.25-rem dimensions, red fill, dark-red glyph, type weight, hover color, and keyboard focus ring.
 
-- Every minimized action pill—Yes/No, Okay, neighborhood destinations, guided or agent Next, and Cancel—now fades and hides the current message over 180 ms before running. Reply is intentionally excluded because it edits the current bubble. Queued continuations explicitly reveal their new bubble after the fade; streamed continuations use the existing automatic reveal.
+- Every minimized action pill—Yes/No, Okay, neighborhood destinations, guided or agent Next, and Done—now fades and hides the current message over 180 ms before running. Reply is intentionally excluded because it edits the current bubble. Queued continuations explicitly reveal their new bubble after the fade; streamed continuations use the existing automatic reveal.
 
 - An unapproved `wave_hello` candidate exists at `public/animations/wave-hello-review-v1.glb`, authored in `assets/blender/yuyang-avatar-wave-hello-review.blend` directly from the approved 52-bone `Idle_Loop` runtime checkpoint. Weight inspection showed that the inner underarm is dominated by `RightArm` influence and the low-poly shirt lacks enough fold topology for a natural near-horizontal arm raise. A localized reweighting test traded the long torso sheet for a pointed pinch and was rejected/restored. V6 therefore retains the original connected mesh and compatible skeleton, turns the palm outward, keeps the elbow below the shoulder, and lets the bent forearm carry the wave. The four-second one-shot retains the idle lower body, embeds the approved face, exports one finite `wave_hello` animation, and returns to the exact complete starting pose at frame 120 (`0.0` maximum pose-matrix delta). It still requires user approval before runtime integration or promotion.
 
-- Agent captions now have a shared 170-character per-turn ceiling, matching the approved Manhattan introduction reference. The model is instructed to split longer answers naturally and call the blue continuation tool, while the client independently enforces the ceiling, queues overflow, and reveals exactly one additional caption per blue Next action. Blue Next and final white Cancel presentation pills render beneath the message card; Cancel minimizes the guide. Expanding a multi-message call re-establishes the latest-caption default scroll anchor after docked mode, so it no longer opens at the full-history position; older turns remain available by scrolling upward. A single-message call stays at its natural unshifted top position.
+- Agent answers use the shared 120-character segmentation and manual overflow queue. Final Done minimizes the guide after the last segment while Reply remains available.
 
 - The initial greeting no longer hardcodes Yuyang's age. It calculates completed years from October 29, 2006 against the browser's current local calendar, so the displayed age advances automatically on the birthday. Separately, every accepted agent request generates a fresh ISO UTC timestamp for that exact turn and places it at the top of the model's developer context before the current camera and retrieval evidence.
 
@@ -180,9 +344,9 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 
 - The later shoulder-joints-only candidate was also rejected because moving the downstream rest-bone chains damaged the finger deformation. `public/animations/idle-shoulder-joints-review.glb` was deleted, all experiment objects and orphaned Actions were removed, and exactly one pristine `Idle_Loop` import from `public/animations/idle.glb` remains visible in Blender with the rig overlay hidden. The accepted idle still matches its pre-experiment SHA-256 `d78abbf1e221741737df06b596c8bec02a04310b547d80b3ab1f15cf42e74a39`. No shoulder experiment remains active.
 
-- The first functional guided-agent slice now lives under `src/agent/` with a server-only streaming `POST /api/agent` boundary. Every accepted user turn is embedded with OpenAI `text-embedding-3-small` and must complete a Pinecone cosine search before the OpenAI Responses generation begins; retrieval failure fails the turn instead of silently running ungrounded. The current index contains 306 records with `text`, `source`, and timestamp metadata. Assistant words stream into a compact Apple FaceTime-caption-inspired dark liquid-glass block with a `Yuyang` speaker line rather than a traditional chat panel or comic speech tail. The first OpenAI output-message event emits `speech_start` before the first text delta so user-initiated replies can begin their dialogue blip immediately after reasoning; later non-whitespace deltas maintain a 58 ms throttled cadence. The CC0 blip plays at 1.4× with pitch preservation off and volume `0.11`. Browser autoplay policy still prevents guaranteed sound for the automatic first greeting before user activation.
+- The first functional guided-agent slice lives under `src/agent/` with a server-only streaming `POST /api/agent` boundary. It now performs private Pinecone retrieval only when required by the dynamic memory policy; retrieval failure prevents an ungrounded personal answer. Assistant words stream into a compact Apple FaceTime-caption-inspired dark liquid-glass block with a `Yuyang` speaker line. Tool-round draft text is buffered and discarded so private retrieval never leaks pre-tool prose; `speech_start` fires only for the visible final answer. Later non-whitespace deltas maintain a 58 ms throttled cadence. The CC0 blip plays at 1.4× with pitch preservation off and volume `0.11`.
 - Production first load begins with a solid-white full-screen loader containing an animated inline globe SVG. Its “Building your world…” phase lasts exactly two seconds, then exposes “Press to continue.” That gesture primes the shared dialogue audio and removes the loader; non-production builds bypass it. The agent UI additionally waits for avatar first-frame readiness and a 500 ms visual beat before mounting. It then queues `wave_hello`, progressively streams the birthday-derived-age introduction, and fades in dark liquid-glass `Yes`/`No` controls. `Yes` streams “Gotcha, let me show you around.”, minimizes the guide, and starts the authored globe-to-Manhattan zoom/cloud flight. Once the Manhattan camera fully settles, the minimized guide streams: “Welcome to Manhattan! I'm currently a Junior at NYU, and I spend most of my time split between either Union Square or Washington Square. Where would you like to go first?” The arrival is driven by a reusable settled-view event and fires only once in the intro tour state. After the stream completes, two white liquid-glass `Union Square` and `Washington Square` buttons appear inside the latest caption—even while docked—and each minimizes the guide before routing through the existing authored camera navigation. Their pointer and click events are isolated from the docked avatar shell, so selecting either while minimized cannot reopen fullscreen. Choosing Washington Square queues a second arrival-gated caption after the neighborhood camera settles: “Washington square is where NYU has it's campus. This is where I take my classes, go to club meetings, and study. I also lived at Lipton hall, on the west side of the park my Freshman year!” `No` streams “Gotcha, feel free to take a look around.” and fades in an `Okay` button that minimizes the persistent call. The guide state remains mounted so reopening does not replay the first-load wave and choice. The newest caption keeps a Reply action below its text except while the destination buttons are active; selecting Reply otherwise replaces that row in place with the normally hidden inline composer inside the same glass card. Submitting creates the next assistant card immediately with animated dots, which the first streamed character replaces.
-- Guided-tour narration follows the same strict 170-character maximum as agent captions. The 188-character Washington Square script splits at a natural sentence boundary into two deterministic scripted messages. A blue `Next` pill uses the same dimensions as `Yes`, sits inside the current bubble, and streams the next queued tour segment without asking the AI to generate continuation text. In minimized mode, agent-requested blue/white presentation pills also render inside the current bubble. Reply stays visible immediately to the right of every in-bubble pill row, is vertically centered against the pill label, and swaps that row for the inline composer when selected. The docked avatar shell rejects both drag and fullscreen-open handling for every event whose target is inside `.agent-chat`, covering all Reply variants and caption controls. The initial Manhattan choice caption is dismissed immediately when a neighborhood is selected; the destination caption appears only on arrival.
+- Guided-tour narration uses the same 120-character segmentation. Blue Next reveals queued overflow before navigating to the next authored stop; gray Back retains its tour-history behavior.
 - Standalone Reply spacing is tightened to a `0.25rem` top margin and `0.2rem` top padding so the space above and below it is visually balanced. Opening Reply now shortens the flexible text field to accommodate both the circular blue send arrow and a plain blue `Cancel` text action at `0.66rem`/500 weight; Cancel closes the composer and restores the prior caption actions without expanding the avatar.
 - Agent camera tools may not cut between view modes. The runtime routes every `navigate_map` command through the authored camera animation path: globe transitions use the cloud flight, neighborhood/Manhattan transitions use camera interpolation, and multi-level requests queue Manhattan as an animated intermediate stage. Assistant captions accumulate in an assistant-only FaceTime history with older entries visually subdued, a larger vertical gap, a 30%-wider maximum caption column, a five-rem left inset, and matching two-rem top/bottom insets. Live-offset scrolling has explicit endpoints: maximum upward scroll reveals the complete history; the default and maximum downward state show the latest caption plus half of the preceding caption, extending farther only when necessary to keep active controls visible. New messages enter at that default/downward endpoint. This avoids ResizeObservers and stale stored-coordinate rewrites. Each newly inserted assistant card uses a 360 ms opacity/lift/scale entrance with a reduced-motion fallback. Caption cards/controls cannot flex-shrink when invisible scroll room is present, preserving full text height. Caption cards are paint-contained to prevent filtered compositing rectangles from leaking across the viewport, and repeated scripted captions are deduplicated. The caption glass is 20% lighter without a perimeter stroke; `Yes` uses blue liquid glass and `No` uses white liquid glass. Reply may open its inline composer without removing the active scripted choice pills. The complete caption/control layer fades immediately on minimize and fades back only after the 460 ms modal expansion reaches full size.
 - The OpenAI tool loop exposes validated navigation, avatar-emote, and presentation controls. Browser commands cross a typed event boundary; the map runtime executes navigation while animation filenames/timing remain client-owned. The endpoint bounds message size/history, treats RAG chunks as untrusted evidence, and applies a basic per-instance request limit. Retrieval source metadata remains available in the stream contract but citation chips are intentionally hidden from the FaceTime interface.
@@ -265,7 +429,7 @@ The literal expanded modal is centered with `left: 50%` and `translate(-50%, -50
 - Rejected scroll-in over ordinary map space now triggers one immediate 180 ms pointer-anchored pulse per physical wheel/trackpad gesture. The pulse scales from and restores the active view's actual camera zoom, so it works correctly in the base Manhattan overview (`0.3`) as well as neighborhood views (`1`). Subsequent momentum events extend a short gesture-settle window without restarting the animation, eliminating the delayed double-zoom effect.
 - `src/components/atlas-map.tsx` has been removed.
 - `src/components/map/runtime/map-runtime.tsx` contains the single persistent globe, Manhattan, Washington, and Union scene orchestrator behind the thin `src/components/map/map.tsx` entry.
-- `src/app/globals.css` has been replaced with a minimal stylesheet for the single study.
+- The global base now lives at `src/styles/globals.css`; map, loader, avatar, chat, and social-link presentation is split into neighboring feature stylesheets.
 - The initial orthographic camera is the fixed Manhattan composition. Washington Square and Union Square retain their north-facing overview presets and horizontal drag rotation after the user zooms into them.
 - Lighting now adapts Figma Direction 05 with reduced cool ambient fill, a stronger warm directional key, reduced exposure, firmer soft shadows, and cream haze beginning farther from the foreground to preserve building contrast. Exact token extraction remains blocked by the Figma Starter-plan MCP limit.
 - Official planimetric roadbeds use dark brown-gray (`#6F6A61`) to make the street network more legible against the deeper warm buildings and cooler sidewalk datum.

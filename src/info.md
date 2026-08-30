@@ -5,9 +5,10 @@ The application source includes the Next.js route shell, server-side agent orche
 ## Direct subfolders
 
 - `agent/` owns agent contracts, mandatory Pinecone retrieval, and the OpenAI Responses tool loop.
-- `app/` owns App Router pages, metadata, global styles, and API routes.
+- `app/` owns App Router pages, metadata, and API routes.
 - `components/` owns reusable UI and the persistent Three.js experience.
 - `generated/` contains deterministic generated map source.
+- `styles/` centralizes the global base layer and feature-owned stylesheets imported by their corresponding routes or components.
 
 ## Direct files
 

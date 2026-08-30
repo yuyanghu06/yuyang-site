@@ -1,8 +1,8 @@
 # App Router entry
 
-Docked-caption styles in `globals.css` place dialogue to the right of a left-docked avatar, to the left of a right-docked avatar, and align it with the avatar's bottom edge at either lower corner. Past transcript messages remain hidden for the entire docked lifecycle, including caption fade transitions.
+Docked-caption styles in `src/styles/agent-chat.css` place dialogue to the right of a left-docked avatar, to the left of a right-docked avatar, and align it with the avatar's bottom edge at either lower corner. Past transcript messages remain hidden for the entire docked lifecycle, including caption fade transitions.
 
-This directory owns the root App Router layout, page, metadata/icon, global CSS, and API routes. The root page mounts the browser-only map shell.
+This directory owns the root App Router layout, page, metadata/icon, and API routes. The root page mounts the browser-only map shell; styles live in `src/styles/`.
 
 ## Direct subfolders
 
@@ -12,9 +12,8 @@ This directory owns the root App Router layout, page, metadata/icon, global CSS,
 ## Direct files
 
 - `info.md` documents this folder.
-- `globals.css` defines global map, avatar-call, and responsive presentation styles, including the centered expanded modal with bounded dimensions, dynamic viewport-height sizing, safe mobile insets, responsive dialogue placement, and the minimized tile's nearest-corner drag interaction. The minimized tile is re-clamped after viewport changes and uses the Washington development branch's approved 59% horizontal portrait crop.
 - `icon.png` is the transparent illustrated application icon.
-- `layout.tsx` defines metadata, viewport settings, asset preloading, and the document shell.
-- `page.tsx` mounts the map shell for the home route.
+- `layout.tsx` defines metadata, viewport settings, asset preloading, the document shell, and imports the global base stylesheet from `src/styles/`.
+- `page.tsx` mounts the map shell, imports its social-link presentation from `src/styles/`, and renders fixed external GitHub, LinkedIn, and Instagram profile links as minimal inline SVG logos.
 
-Before changing App Router conventions, read the relevant installed Next.js documentation under `node_modules/next/dist/docs/`. `globals.css` includes the FaceTime shell's original responsive dimensions and vertically centered placement, stable 12 px CSS backdrop-blur surface with a localized golden camera-light highlight, overscanned avatar canvas, expanded avatar placement, and the minimized tile's nearest-corner drag interaction, responsive edge spacing, and separately tuned crop.
+Before changing App Router conventions, read the relevant installed Next.js documentation under `node_modules/next/dist/docs/`. Feature presentation belongs in `src/styles/`; keep this route folder focused on App Router concerns.
