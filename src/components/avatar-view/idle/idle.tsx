@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { AVATAR_EMOTE_REQUEST_EVENT, type AvatarEmote, type AvatarEmoteRequestDetail } from "@/agent/types";
+import { AVATAR_EMOTE_REQUEST_EVENT, type AvatarEmote, type AvatarEmoteRequestDetail } from "@/agent/contracts/types";
 import AvatarFullscreen, { type AvatarAnimationSource } from "../avatar-fullscreen";
 import { createAvatarEmotePlayer } from "../avatar-emote-player";
 

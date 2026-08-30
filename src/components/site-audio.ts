@@ -3,10 +3,32 @@
 export type SiteAudioView = "globe" | "manhattan" | "washington" | "union";
 
 type FadeHandle = { cancel: () => void };
+export type SiteAudioChannel = "effects" | "music";
 
 const EXPONENTIAL_STRENGTH = 5;
 const MIN_AUDIBLE_VOLUME = 0.0001;
+const clampVolume = (volume: number) => Math.min(1, Math.max(0, volume));
 const activeFades = new WeakMap<HTMLAudioElement, FadeHandle>();
+const channelAudio = {
+  effects: new Set<HTMLAudioElement>(),
+  music: new Set<HTMLAudioElement>(),
+};
+const channelMuted: Record<SiteAudioChannel, boolean> = { effects: false, music: false };
+
+const registerChannelAudio = (audio: HTMLAudioElement, channel: SiteAudioChannel) => {
+  channelAudio[channel].add(audio);
+  audio.muted = channelMuted[channel];
+  return audio;
+};
+
+export const getSiteAudioMuted = (channel: SiteAudioChannel) => channelMuted[channel];
+
+export const setSiteAudioMuted = (channel: SiteAudioChannel, muted: boolean) => {
+  channelMuted[channel] = muted;
+  channelAudio[channel].forEach((audio) => {
+    audio.muted = muted;
+  });
+};
 
 const exponentialProgress = (progress: number, fadingIn: boolean) => {
   if (fadingIn) {
@@ -23,7 +45,7 @@ export const fadeAudioVolume = (
 ) => {
   activeFades.get(audio)?.cancel();
   const fromVolume = audio.volume;
-  const safeTarget = Math.min(1, Math.max(0, targetVolume));
+  const safeTarget = clampVolume(targetVolume);
   if (durationMs <= 0 || Math.abs(fromVolume - safeTarget) < MIN_AUDIBLE_VOLUME) {
     audio.volume = safeTarget;
     onComplete?.();
@@ -45,9 +67,9 @@ export const fadeAudioVolume = (
 
   const update = (now: number) => {
     if (cancelled) return;
-    const progress = Math.min(1, (now - startedAt) / durationMs);
+    const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
     const eased = exponentialProgress(progress, fadingIn);
-    audio.volume = fromVolume + (safeTarget - fromVolume) * eased;
+    audio.volume = clampVolume(fromVolume + (safeTarget - fromVolume) * eased);
     if (progress < 1) {
       frame = requestAnimationFrame(update);
       return;
@@ -69,7 +91,7 @@ const stopAndReset = (audio: HTMLAudioElement) => {
 let dialogueAudio: HTMLAudioElement | null = null;
 const getDialogueAudio = () => {
   if (!dialogueAudio) {
-    dialogueAudio = new Audio("/audio/sans-dialogue-blip.mp3");
+    dialogueAudio = registerChannelAudio(new Audio("/audio/sans-dialogue-blip.mp3"), "effects");
     dialogueAudio.preload = "auto";
     dialogueAudio.volume = 0.11;
     dialogueAudio.playbackRate = 1.4;
@@ -108,13 +130,13 @@ export type MapAudioState = {
 };
 
 export const createMapAudioController = () => {
-  const crowd = new Audio("/audio/community-crowd-talking-1m20.m4a");
+  const crowd = registerChannelAudio(new Audio("/audio/community-crowd-talking-1m20.m4a"), "effects");
   crowd.loop = true;
   crowd.volume = 0;
-  const ambience = new Audio("/audio/far-away-city-traffic-ambience.wav");
+  const ambience = registerChannelAudio(new Audio("/audio/far-away-city-traffic-ambience.wav"), "effects");
   ambience.loop = true;
   ambience.volume = 0;
-  const zoom = new Audio("/audio/gamestudio-world-cloud-zoom.mp3");
+  const zoom = registerChannelAudio(new Audio("/audio/gamestudio-world-cloud-zoom.mp3"), "effects");
   zoom.preload = "auto";
   zoom.volume = 0;
   const backgroundTracks = [
@@ -123,7 +145,7 @@ export const createMapAudioController = () => {
     "/audio/background-pixel-dreams.mp3",
     "/audio/background-exploration-chiptune.mp3",
   ].map((source) => {
-    const audio = new Audio(source);
+    const audio = registerChannelAudio(new Audio(source), "music");
     audio.preload = "metadata";
     audio.volume = 0;
     return audio;
@@ -261,6 +283,7 @@ export const createMapAudioController = () => {
       loopGenerations.set(audio, (loopGenerations.get(audio) ?? 0) + 1);
       stopAndReset(audio);
       audio.src = "";
+      channelAudio[backgroundTracks.includes(audio) ? "music" : "effects"].delete(audio);
     }
   };
 

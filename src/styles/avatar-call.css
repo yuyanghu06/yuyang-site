@@ -1,0 +1,344 @@
+.avatar-call {
+  --avatar-glass-width: min(82.08rem, calc(100vw - clamp(2rem, 6vw, 5rem)));
+  --avatar-glass-height: min(48rem, calc(100dvh - clamp(2rem, 6vw, 5rem)));
+  --agent-caption-boundary-inset: 5rem;
+  --call-ink: #f4f0e6;
+  --call-shell: rgb(53 67 69 / 72%);
+  --call-screen: radial-gradient(circle at 50% 42%, #f8f6f0 0%, #eeeae1 72%, #e7e2d8 100%);
+  font-family: inherit;
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  pointer-events: none;
+}
+
+.avatar-call--expanded {
+  background: transparent;
+  pointer-events: auto;
+}
+
+.avatar-call__modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(82.08rem, calc(100% - clamp(2rem, 6vw, 5rem)));
+  height: min(48rem, calc(100dvh - clamp(2rem, 6vw, 5rem)));
+  min-height: 24rem;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 2rem;
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+  transition:
+    top 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    left 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    width 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    height 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    min-height 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    border-radius 460ms cubic-bezier(0.64, 0, 0.3, 1),
+    transform 460ms cubic-bezier(0.64, 0, 0.3, 1);
+}
+
+.avatar-call__close {
+  position: absolute;
+  z-index: 4;
+  top: 1.5rem;
+  left: 1.5rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  color: rgb(91 22 22 / 82%);
+  background: #ff605c;
+  border: 0;
+  border-radius: 50%;
+  font: 600 0.9rem/1 Arial, sans-serif;
+  cursor: pointer;
+}
+
+.avatar-call__glass-surface {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 74% 36%, rgb(255 213 148 / 22%) 0 9%, rgb(255 223 170 / 9%) 24%, transparent 46%),
+    rgb(232 230 221 / 30%);
+  -webkit-backdrop-filter: blur(12px) saturate(105%);
+  backdrop-filter: blur(12px) saturate(105%);
+  pointer-events: none;
+}
+
+.avatar-call__close:hover {
+  background: #ff756f;
+}
+
+.avatar-call__close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.avatar-call__screen {
+  position: relative;
+  overflow: hidden;
+  background: var(--call-screen);
+  border: 1px solid rgb(244 240 230 / 65%);
+  border-radius: 50%;
+  box-shadow: 0 1rem 3rem rgb(13 22 23 / 22%);
+}
+
+.avatar-call__avatar-stage {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.avatar-call--expanded .avatar-call__avatar-view {
+  left: clamp(1rem, 4vw, 4rem);
+  width: calc(100% - clamp(1rem, 4vw, 4rem) - 0.375rem);
+  transform: translateY(-62%);
+}
+
+.avatar-call__avatar-view {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--avatar-render-width, calc(100% - clamp(2rem, 8vw, 8rem)));
+  height: var(--avatar-render-height, 130%);
+  opacity: 0;
+  transform: translate(-50%, -62%);
+  scale: 1;
+  transition:
+    opacity 260ms ease,
+    transform 460ms linear,
+    scale 460ms linear;
+}
+
+.avatar-call__avatar-view[data-ready="true"] {
+  opacity: 1;
+}
+
+.avatar-call__avatar-view canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-call--docked:focus-visible {
+  outline: 2px solid var(--call-ink);
+  outline-offset: 4px;
+}
+
+.avatar-call--docked {
+  z-index: 10;
+}
+
+.avatar-call--docked .avatar-call__modal {
+  top: 1.25rem;
+  right: 1.25rem;
+  left: auto;
+  width: 9rem;
+  height: 9rem;
+  min-height: 0;
+  border-radius: 1.4rem;
+  box-shadow: 0 0.75rem 2.5rem rgb(13 22 23 / 22%);
+  transform: translate(0, 0);
+  overflow: visible;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.avatar-call--docked .avatar-call__glass-surface,
+.avatar-call--docked .avatar-call__avatar-stage {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.avatar-call--docked .avatar-call__modal--dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.avatar-call--docked .avatar-call__close {
+  display: none;
+}
+
+.avatar-call--docked .avatar-call__avatar-view {
+  transform: translate(-59%, -50%);
+  scale: 0.34;
+}
+
+.avatar-call__audio-controls {
+  display: none;
+}
+
+.avatar-call--expanded .avatar-call__audio-controls {
+  position: absolute;
+  z-index: 3;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  gap: 0.5rem;
+  touch-action: auto;
+  user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear 220ms;
+}
+
+.avatar-call--expanded-settled .avatar-call__audio-controls {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear;
+}
+
+.avatar-call--docked .avatar-call__audio-controls {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  transform: none;
+  touch-action: auto;
+  user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear 220ms;
+}
+
+.avatar-call--docked-settled .avatar-call__audio-controls {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear;
+}
+
+.avatar-call__audio-controls button {
+  display: grid;
+  flex: 0 0 2.75rem;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  aspect-ratio: 1;
+  padding: 0;
+  color: rgb(255 255 255 / 94%);
+  border-radius: 50%;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (min-width: 601px) {
+  .avatar-call--docked .avatar-call__audio-controls button {
+    flex-basis: 2.65rem;
+    width: 2.65rem;
+    height: 2.65rem;
+  }
+}
+
+.avatar-call--expanded .avatar-call__audio-controls button {
+  flex-basis: 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.avatar-call--expanded .avatar-call__audio-controls svg {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+.avatar-call__audio-controls button:hover {
+  background-color: rgb(76 84 77 / 78%);
+}
+
+.avatar-call__audio-controls button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .avatar-call {
+    --avatar-glass-width: 100vw;
+    --avatar-glass-height: min(44rem, 100vh);
+  }
+
+  .avatar-call--expanded {
+    padding: 0;
+  }
+
+  .avatar-call__close {
+    top: 1rem;
+    left: 1rem;
+  }
+
+  .avatar-call--expanded .avatar-call__audio-controls {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .avatar-call__modal {
+    width: 100%;
+    height: min(44rem, 100dvh);
+    min-height: 0;
+    border-radius: 1.4rem;
+  }
+
+  .avatar-call--expanded .avatar-call__modal {
+    right: auto;
+    left: 50%;
+    width: min(100%, calc(100% - 2.5rem));
+    height: min(44rem, calc(100dvh - 2.5rem));
+    transform: translate(-50%, -50%);
+  }
+
+  .avatar-call--docked .avatar-call__modal {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: auto;
+    width: 7rem;
+    height: 7rem;
+  }
+
+  .avatar-call--docked .avatar-call__avatar-view {
+    top: 50%;
+    left: 50%;
+    width: var(--avatar-render-width, 92vw);
+    height: var(--avatar-render-height, 70vh);
+    transform: translate(-50%, -49%);
+    scale: 0.58;
+  }
+}
+
+@media (max-width: 760px), (max-width: 900px) and (max-height: 500px) {
+
+  .avatar-call--expanded .avatar-call__avatar-view {
+    top: 48%;
+    left: 50%;
+    width: 92%;
+    height: 70%;
+    transform: translate(-50%, -18%);
+    scale: 1;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .avatar-call--expanded .avatar-call__avatar-view {
+    top: clamp(32%, var(--expanded-avatar-top, 41%), 48%);
+  }
+}

@@ -117,9 +117,9 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = renderStyle === "flat-illustrated-preview" ? 1.25 : 1.05;
     host.appendChild(renderer.domElement);
-    const renderWidth = Math.max(host.clientWidth, 1);
-    const renderHeight = Math.max(host.clientHeight, 1);
-    const renderAspect = renderWidth / renderHeight;
+    let renderWidth = Math.max(host.clientWidth, 1);
+    let renderHeight = Math.max(host.clientHeight, 1);
+    let projectionHeight = FULLSCREEN_VIEW_HEIGHT * VERTICAL_RENDER_OVERSCAN;
     renderer.setSize(renderWidth, renderHeight, false);
     host.style.setProperty("--avatar-render-width", `${renderWidth}px`);
     host.style.setProperty("--avatar-render-height", `${renderHeight}px`);
@@ -143,14 +143,51 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     let animationFrame = 0;
     let lastFrameTime = performance.now();
     let animationElapsedSeconds = 0;
+    let framedDesktopCenterX: number | null = null;
+    let framedMobileCenterX: number | null = null;
 
-    const overscannedViewHeight = FULLSCREEN_VIEW_HEIGHT * VERTICAL_RENDER_OVERSCAN;
-    const viewWidth = overscannedViewHeight * renderAspect;
-    camera.left = -viewWidth / 2;
-    camera.right = viewWidth / 2;
-    camera.top = overscannedViewHeight / 2;
-    camera.bottom = -overscannedViewHeight / 2;
-    camera.updateProjectionMatrix();
+    const updateResponsiveCameraCenter = () => {
+      if (framedDesktopCenterX === null || framedMobileCenterX === null) return;
+      camera.position.x = window.matchMedia("(max-width: 760px)").matches
+        ? framedMobileCenterX
+        : framedDesktopCenterX;
+      camera.lookAt(camera.position.x, camera.position.y, 0);
+    };
+
+    const updateViewport = (width: number, height: number) => {
+      renderWidth = Math.max(width, 1);
+      renderHeight = Math.max(height, 1);
+      renderer.setSize(renderWidth, renderHeight, false);
+      updateResponsiveCameraCenter();
+      const projectionWidth = projectionHeight * (renderWidth / renderHeight);
+      camera.left = -projectionWidth / 2;
+      camera.right = projectionWidth / 2;
+      camera.top = projectionHeight / 2;
+      camera.bottom = -projectionHeight / 2;
+      camera.updateProjectionMatrix();
+    };
+    updateViewport(renderWidth, renderHeight);
+
+    let resizeFrame = 0;
+    const syncExpandedViewport = () => {
+      if (!host.closest(".avatar-call--expanded")) return;
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        host.style.removeProperty("--avatar-render-width");
+        host.style.removeProperty("--avatar-render-height");
+        const width = Math.max(host.clientWidth, 1);
+        const height = Math.max(host.clientHeight, 1);
+        host.style.setProperty("--avatar-render-width", `${width}px`);
+        host.style.setProperty("--avatar-render-height", `${height}px`);
+        updateViewport(width, height);
+      });
+    };
+    const modal = host.closest<HTMLElement>(".avatar-call__modal");
+    const handleModalTransitionEnd = (event: TransitionEvent) => {
+      if (event.target === modal && event.propertyName === "width") syncExpandedViewport();
+    };
+    window.addEventListener("resize", syncExpandedViewport);
+    modal?.addEventListener("transitionend", handleModalTransitionEnd);
 
     loadAvatar()
       .then(async ({ root, mixer: loadedMixer, start, update, dispose }) => {
@@ -175,14 +212,16 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
           avatarCenter.z,
         );
         const framedViewHeight = Math.max(FULLSCREEN_VIEW_HEIGHT, avatarHeight * 1.12) / FULLSCREEN_AVATAR_SCALE;
-        const framedOverscanHeight = framedViewHeight * VERTICAL_RENDER_OVERSCAN;
-        const framedViewWidth = framedOverscanHeight * renderAspect;
+        projectionHeight = framedViewHeight * VERTICAL_RENDER_OVERSCAN;
+        const framedViewWidth = projectionHeight * (renderWidth / renderHeight);
         camera.position.set(framedCenter.x, framedCenter.y, avatarBounds.max.z + 4.8);
-        camera.lookAt(framedCenter);
+        framedDesktopCenterX = framedCenter.x;
+        framedMobileCenterX = avatarCenter.x;
+        updateResponsiveCameraCenter();
         camera.left = -framedViewWidth / 2;
         camera.right = framedViewWidth / 2;
-        camera.top = framedOverscanHeight / 2;
-        camera.bottom = -framedOverscanHeight / 2;
+        camera.top = projectionHeight / 2;
+        camera.bottom = -projectionHeight / 2;
         camera.updateProjectionMatrix();
         cameraLight.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1.2));
         const toonMaterials = new Map<THREE.Material, THREE.Material>();
@@ -254,7 +293,10 @@ export default function AvatarFullscreen({ ariaLabel, loadAvatar, loadErrorMessa
     return () => {
       disposed = true;
       cancelAnimationFrame(animationFrame);
+      cancelAnimationFrame(resizeFrame);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("resize", syncExpandedViewport);
+      modal?.removeEventListener("transitionend", handleModalTransitionEnd);
       mixer?.stopAllAction();
       disposeAnimation?.();
       scene.traverse((object) => {

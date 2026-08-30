@@ -1,0 +1,50 @@
+:root {
+  --ink: #454a47;
+  --ground: #aaa9a1;
+  --water: #354345;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ground);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.liquid-glass-surface,
+.liquid-glass-control {
+  position: relative;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 8%), transparent 42%),
+    rgb(64 71 65 / 66%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    0 0.65rem 2rem rgb(10 16 16 / 22%);
+  -webkit-backdrop-filter: blur(22px) saturate(125%);
+  backdrop-filter: blur(22px) saturate(125%);
+}
+
+.liquid-glass-control {
+  overflow: hidden;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.liquid-glass-control:hover {
+  background-color: rgb(76 84 77 / 78%);
+  transform: translateY(-1px);
+}
+
+body {
+  color: var(--ink);
+  font-family: "Helvetica Neue", "Inter", "Avenir Next", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

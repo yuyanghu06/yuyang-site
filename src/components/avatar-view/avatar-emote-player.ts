@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { AvatarEmote } from "@/agent/types";
+import type { AvatarEmote } from "@/agent/contracts/types";
 
 type EmoteSource = {
   clip: THREE.AnimationClip;

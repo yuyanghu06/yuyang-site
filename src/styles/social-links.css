@@ -1,0 +1,86 @@
+.social-links {
+  position: fixed;
+  z-index: 20;
+  top: 1.25rem;
+  left: 1.25rem;
+  display: flex;
+  gap: 0.45rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear 220ms;
+}
+
+body:has(.avatar-call--docked-settled) .social-links {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear;
+}
+
+.social-links a {
+  display: grid;
+  place-items: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  padding: 0;
+  color: #344143;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.social-links svg,
+.avatar-call__audio-controls svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.social-links a:first-child svg,
+.social-links a:nth-child(2) svg {
+  fill: #fff;
+  stroke: none;
+}
+
+.social-links a:nth-child(3) svg {
+  fill: none;
+  stroke: #fff;
+}
+
+.social-links .social-links__solid {
+  fill: #fff;
+  stroke: none;
+}
+
+.social-links a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .social-links {
+    top: auto;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: auto;
+    gap: 0.3rem;
+  }
+
+.social-links a {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+}
+
+.social-links a svg {
+  opacity: 1;
+  filter: drop-shadow(0 0 0.22rem rgb(255 255 255 / 42%));
+}

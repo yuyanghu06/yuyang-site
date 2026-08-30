@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { AvatarIdle } from "./avatar-view";
 import AgentChat from "./agent-chat";
-import type { MapDestination } from "@/agent/types";
+import { getSiteAudioMuted, setSiteAudioMuted, type SiteAudioChannel } from "./site-audio";
+import type { MapDestination } from "@/agent/contracts/types";
+import "@/styles/avatar-call.css";
 
 type DockPosition = { left: number; top: number };
 type DockPlacement = { horizontal: "left" | "right"; vertical: "top" | "bottom" };
@@ -17,7 +19,13 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   const [avatarReady, setAvatarReady] = useState(false);
   const [introWaveComplete, setIntroWaveComplete] = useState(false);
   const [agentStreaming, setAgentStreaming] = useState(false);
+  const [audioMuted, setAudioMuted] = useState(() => ({
+    effects: getSiteAudioMuted("effects"),
+    music: getSiteAudioMuted("music"),
+  }));
   const [dockedCaptionVisible, setDockedCaptionVisible] = useState(false);
+  const [dockedCaptionDismissed, setDockedCaptionDismissed] = useState(false);
+  const [dockedSettled, setDockedSettled] = useState(false);
   const [dockPosition, setDockPosition] = useState<DockPosition | null>(null);
   const [dockPlacement, setDockPlacement] = useState<DockPlacement>({ horizontal: "right", vertical: "top" });
   const [dragging, setDragging] = useState(false);
@@ -66,6 +74,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     if (dockedCaptionRevealTimerRef.current !== null) window.clearTimeout(dockedCaptionRevealTimerRef.current);
     dockedCaptionRevealTimerRef.current = null;
     dockSettledRef.current = false;
+    setDockedSettled(false);
     expandedRef.current = true;
     setExpandedSettled(false);
     setExpanded(true);
@@ -81,6 +90,7 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     if (!expandedRef.current) return;
     expandedRef.current = false;
     dockSettledRef.current = false;
+    setDockedSettled(false);
     setExpandedSettled(false);
     setExpanded(false);
     setDockedCaptionVisible(false);
@@ -90,13 +100,17 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
     dockedCaptionRevealTimerRef.current = window.setTimeout(() => {
       dockedCaptionRevealTimerRef.current = null;
       dockSettledRef.current = true;
+      setDockedSettled(true);
       if (agentReady && !dockedCaptionDismissedRef.current) setDockedCaptionVisible(true);
     }, MINIMIZE_TRANSITION_MS);
   }, [agentReady]);
 
   const handleAgentStreamingChange = useCallback((streaming: boolean) => {
     setAgentStreaming(streaming);
-    if (streaming) dockedCaptionDismissedRef.current = false;
+    if (streaming) {
+      dockedCaptionDismissedRef.current = false;
+      setDockedCaptionDismissed(false);
+    }
     if (dockedStreamRevealFrameRef.current !== null) cancelAnimationFrame(dockedStreamRevealFrameRef.current);
     dockedStreamRevealFrameRef.current = null;
     if (streaming && !expandedRef.current && dockSettledRef.current) {
@@ -109,11 +123,21 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
 
   const dismissDockedCaption = useCallback(() => {
     dockedCaptionDismissedRef.current = true;
+    setDockedCaptionDismissed(true);
     setDockedCaptionVisible(false);
   }, []);
   const revealDockedCaption = useCallback(() => {
     dockedCaptionDismissedRef.current = false;
+    setDockedCaptionDismissed(false);
     if (!expandedRef.current && dockSettledRef.current) setDockedCaptionVisible(true);
+  }, []);
+
+  const toggleAudioChannel = useCallback((channel: SiteAudioChannel) => {
+    setAudioMuted((current) => {
+      const muted = !current[channel];
+      setSiteAudioMuted(channel, muted);
+      return { ...current, [channel]: muted };
+    });
   }, []);
 
   const handleAvatarReady = useCallback(() => {
@@ -200,10 +224,12 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   const dockStyle = !expanded && dockPosition
     ? ({ left: `${dockPosition.left}px`, top: `${dockPosition.top}px` } satisfies CSSProperties)
     : undefined;
+  const effectiveDockedCaptionVisible = dockedCaptionVisible
+    || (!expanded && dockedSettled && agentStreaming && !dockedCaptionDismissed);
 
   return (
     <section
-      className={`avatar-call ${expanded ? `avatar-call--expanded${expandedSettled ? " avatar-call--expanded-settled" : ""}` : `avatar-call--docked avatar-call--dock-${dockPlacement.horizontal} avatar-call--dock-${dockPlacement.vertical}`}`}
+      className={`avatar-call ${expanded ? `avatar-call--expanded${expandedSettled ? " avatar-call--expanded-settled" : ""}` : `avatar-call--docked${dockedSettled ? " avatar-call--docked-settled" : ""} avatar-call--dock-${dockPlacement.horizontal} avatar-call--dock-${dockPlacement.vertical}`}`}
       aria-label={expanded ? "Yuyang video guide" : "Open Yuyang's guide window"}
       role={expanded ? "dialog" : "button"}
       aria-modal={expanded ? "true" : undefined}
@@ -237,11 +263,25 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
         <div className="avatar-call__avatar-stage">
           <AvatarIdle onReady={handleAvatarReady} onWaveComplete={handleIntroWaveComplete} talking={agentStreaming} />
         </div>
+        <div className="avatar-call__audio-controls" aria-label="Audio controls" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+          <button className="liquid-glass-control" type="button" aria-label={audioMuted.effects ? "Unmute sound effects" : "Mute sound effects"} title={audioMuted.effects ? "Unmute sound effects" : "Mute sound effects"} aria-pressed={audioMuted.effects} onClick={() => toggleAudioChannel("effects")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 9v6h4l5 4V5L9 9H5Z" />
+              {audioMuted.effects ? <path d="m17 9 4 4m0-4-4 4" /> : <path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" />}
+            </svg>
+          </button>
+          <button className="liquid-glass-control" type="button" aria-label={audioMuted.music ? "Unmute music" : "Mute music"} title={audioMuted.music ? "Unmute music" : "Mute music"} aria-pressed={audioMuted.music} onClick={() => toggleAudioChannel("music")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18V6l10-2v12M9 18a3 3 0 1 1-3-3h3m10 1a3 3 0 1 1-3-3h3" />
+              {audioMuted.music && <path d="M4 4 20 20" />}
+            </svg>
+          </button>
+        </div>
         {agentReady && (
           <AgentChat
             currentView={currentView}
             expanded={expanded}
-            dockedCaptionVisible={dockedCaptionVisible}
+            dockedCaptionVisible={effectiveDockedCaptionVisible}
             onDismissDockedCaption={dismissDockedCaption}
             onRevealDockedCaption={revealDockedCaption}
             onStreamingChange={handleAgentStreamingChange}
