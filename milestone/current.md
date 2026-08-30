@@ -1,5 +1,11 @@
 # Current Project Milestone
 
+## One-time cross-location guided-tour handoff (2026-08-30)
+
+The guided Union Square route now continues from the full-square overview to Carlyle Court at 25 Union Square West and then Shift at 235 Park Avenue South. After Shift, the guide asks whether the visitor is ready to move on and offers the full Washington Square view when Washington has not yet been visited during that tour.
+
+The existing Washington Square route makes the reciprocal offer after its final Courant stop when Union Square has not yet been visited. Per-tour visit flags are set before cross-location navigation, so completing the second route ends normally instead of offering the first route again. The handoff also includes a Done choice, and Union landmark stops participate in guided Next/Back navigation.
+
 ## Mandatory paragraph caption boundaries (2026-08-30)
 
 Every blank-line paragraph break in authored or model-generated dialogue now creates a new caption turn, even when the combined paragraphs would fit below the 120-character soft target. Long individual paragraphs continue to split near natural line or punctuation boundaries.

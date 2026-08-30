@@ -40,7 +40,7 @@ const DOCKED_CAPTION_FADE_MS = 180;
 const MAX_CAPTION_CHARACTERS = 120;
 const MIN_CAPTION_BREAK_CHARACTERS = Math.floor(MAX_CAPTION_CHARACTERS * 0.4);
 const DIALOGUE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "camera_dialogue_streaming" | "free";
+type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "camera_dialogue_streaming" | "free";
 
 const AnimatedAgentStatus = ({ status }: { status: AgentStatus }) => {
   const label = status === "remembering" ? "Remembering…" : status === "researching" ? "Researching…" : "Thinking…";
@@ -158,6 +158,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const [presentationAction, setPresentationAction] = useState<"next" | "reply" | null>(null);
   const [guidedTourActive, setGuidedTourActive] = useState(false);
   const [fixedCameraDialogueActive, setFixedCameraDialogueActive] = useState(false);
+  const [nextTourLocation, setNextTourLocation] = useState<"union" | "washington" | null>(null);
   const [scriptSegmentIndex, setScriptSegmentIndex] = useState(0);
   const requestRef = useRef<AbortController | null>(null);
   const scriptTimerRef = useRef<number | null>(null);
@@ -172,6 +173,8 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const terminalPresentationRef = useRef<"next" | "reply" | null>(null);
   const unionTourShownRef = useRef(false);
   const washingtonTourShownRef = useRef(false);
+  const unionTourVisitedRef = useRef(false);
+  const washingtonTourVisitedRef = useRef(false);
   const guidedTourActiveRef = useRef(false);
 
   useEffect(() => {
@@ -265,6 +268,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         backwardTourDestinationRef.current = null;
         const previousStop = view === "manhattan"
           ? { content: manhattanDialogue, phase: "manhattan_choice" as const }
+          : view === "union"
+            ? { content: unionSquareDialogue, phase: "union_next" as const }
+            : view === "25-union-square-west"
+              ? { content: twentyFiveUnionSquareWestDialogue, phase: "carlyle_next" as const }
           : view === "washington"
             ? { content: washingtonSquareDialogue, phase: "washington_next" as const }
             : view === "lipton-hall"
@@ -294,10 +301,14 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         setFixedCameraDialogueActive(true);
         unionTourShownRef.current = true;
         streamScript(unionSquareDialogue, () => {
-          introPhaseRef.current = "free";
-          setIntroPhase("free");
-          terminalPresentationRef.current = "reply";
-          setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
+          const nextPhase = guidedTourActiveRef.current ? "union_next" : "free";
+          introPhaseRef.current = nextPhase;
+          setIntroPhase(nextPhase);
+          if (guidedTourActiveRef.current) setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+          else {
+            terminalPresentationRef.current = "reply";
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
+          }
         });
         return;
       }
@@ -390,10 +401,15 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           ? twentyFiveUnionSquareWestDialogue
           : twoThirtyFiveParkAvenueSouthDialogue;
         streamScript(dialogue, () => {
-          introPhaseRef.current = "free";
-          setIntroPhase("free");
-          terminalPresentationRef.current = "reply";
-          setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
+          const guidedPhase = view === "25-union-square-west" ? "carlyle_next" : "shift_next";
+          const nextPhase = guidedTourActiveRef.current ? guidedPhase : "free";
+          introPhaseRef.current = nextPhase;
+          setIntroPhase(nextPhase);
+          if (guidedTourActiveRef.current) setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+          else {
+            terminalPresentationRef.current = "reply";
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
+          }
         });
         return;
       }
@@ -411,10 +427,8 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   }, [streamScript]);
 
   const chooseManhattanNeighborhood = (destination: "union" | "washington") => {
-    if (destination === "union") {
-      guidedTourActiveRef.current = false;
-      setGuidedTourActive(false);
-    }
+    if (destination === "union") unionTourVisitedRef.current = true;
+    else washingtonTourVisitedRef.current = true;
     const nextPhase = destination === "washington" ? "washington_arrival" : "free";
     introPhaseRef.current = nextPhase;
     setIntroPhase(nextPhase);
@@ -485,12 +499,14 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       setScriptSegmentIndex((current) => Math.max(0, current - 1));
       return;
     }
-    const destination = introPhaseRef.current === "washington_next" ? "manhattan"
-      : introPhaseRef.current === "lipton_next" ? "washington"
-        : introPhaseRef.current === "bobst_next" ? "lipton-hall"
-          : introPhaseRef.current === "stern_next" ? "bobst-library"
-            : introPhaseRef.current === "courant_next" ? "stern-school-of-business"
-              : null;
+    const destination = introPhaseRef.current === "washington_next" || introPhaseRef.current === "union_next" ? "manhattan"
+      : introPhaseRef.current === "carlyle_next" ? "union"
+        : introPhaseRef.current === "shift_next" ? "25-union-square-west"
+          : introPhaseRef.current === "lipton_next" ? "washington"
+            : introPhaseRef.current === "bobst_next" ? "lipton-hall"
+              : introPhaseRef.current === "stern_next" ? "bobst-library"
+                : introPhaseRef.current === "courant_next" ? "stern-school-of-business"
+                  : null;
     if (!destination) return;
     backwardTourDestinationRef.current = destination;
     introPhaseRef.current = "free";
@@ -515,6 +531,44 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     introPhaseRef.current = "lipton_arrival";
     setIntroPhase("lipton_arrival");
     dispatchAgentCommand({ type: "navigate_map", destination: "lipton-hall" });
+  };
+
+  const continueUnionTour = () => {
+    introPhaseRef.current = "camera_dialogue_streaming";
+    setIntroPhase("camera_dialogue_streaming");
+    dispatchAgentCommand({ type: "navigate_map", destination: "25-union-square-west" });
+  };
+
+  const continueFromCarlyle = () => {
+    introPhaseRef.current = "camera_dialogue_streaming";
+    setIntroPhase("camera_dialogue_streaming");
+    dispatchAgentCommand({ type: "navigate_map", destination: "235-park-avenue-south" });
+  };
+
+  const offerOtherTourLocation = (destination: "union" | "washington") => {
+    setNextTourLocation(destination);
+    introPhaseRef.current = "camera_dialogue_streaming";
+    setIntroPhase("camera_dialogue_streaming");
+    const label = destination === "union" ? "Union Square" : "Washington Square";
+    streamScript(`Ready to move on? We can head to ${label} next.`, () => {
+      introPhaseRef.current = "tour_location_choice";
+      setIntroPhase("tour_location_choice");
+    });
+  };
+
+  const finishGuidedTour = () => {
+    setNextTourLocation(null);
+    guidedTourActiveRef.current = false;
+    setGuidedTourActive(false);
+    introPhaseRef.current = "free";
+    setIntroPhase("free");
+    terminalPresentationRef.current = "reply";
+    setPresentationAction("reply");
+  };
+
+  const continueFromShift = () => {
+    if (!washingtonTourVisitedRef.current) offerOtherTourLocation("washington");
+    else finishGuidedTour();
   };
 
   const continueFromLipton = () => {
@@ -551,11 +605,21 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       streamScript(nextSegment, () => undefined, true);
       return;
     }
-    guidedTourActiveRef.current = false;
-    setGuidedTourActive(false);
-    introPhaseRef.current = "free";
-    setIntroPhase("free");
-    requestNextMessage();
+    if (!unionTourVisitedRef.current) offerOtherTourLocation("union");
+    else finishGuidedTour();
+  };
+
+  const moveToOtherTourLocation = () => {
+    const destination = nextTourLocation;
+    if (!destination) return;
+    setNextTourLocation(null);
+    if (destination === "union") unionTourVisitedRef.current = true;
+    else washingtonTourVisitedRef.current = true;
+    const nextPhase = destination === "washington" ? "washington_arrival" : "free";
+    introPhaseRef.current = nextPhase;
+    setIntroPhase(nextPhase);
+    onMinimize();
+    dispatchAgentCommand({ type: "navigate_map", destination });
   };
 
   const acceptTour = () => {
@@ -775,17 +839,35 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && (introPhase === "washington_next" || introPhase === "lipton_next" || introPhase === "bobst_next" || introPhase === "stern_next" || introPhase === "courant_next") && !pending && presentationAction === null && !composerOpen && (
+            {index === assistantMessages.length - 1 && (introPhase === "union_next" || introPhase === "carlyle_next" || introPhase === "shift_next" || introPhase === "washington_next" || introPhase === "lipton_next" || introPhase === "bobst_next" || introPhase === "stern_next" || introPhase === "courant_next") && !pending && presentationAction === null && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div
                   className="agent-chat__choices"
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(introPhase === "washington_next" ? continueWashingtonTour : introPhase === "lipton_next" ? continueFromLipton : introPhase === "bobst_next" ? continueFromBobst : introPhase === "stern_next" ? continueFromStern : continueFromCourant)}>Next</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(introPhase === "union_next" ? continueUnionTour : introPhase === "carlyle_next" ? continueFromCarlyle : introPhase === "shift_next" ? continueFromShift : introPhase === "washington_next" ? continueWashingtonTour : introPhase === "lipton_next" ? continueFromLipton : introPhase === "bobst_next" ? continueFromBobst : introPhase === "stern_next" ? continueFromStern : continueFromCourant)}>Next</button>
                   {guidedTourActive && (
                     <button type="button" onClick={() => runAfterDockedCaptionFade(returnToPreviousTourStop)}>Back</button>
                   )}
+                </div>
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
+              </div>
+            )}
+            {index === assistantMessages.length - 1 && introPhase === "tour_location_choice" && !pending && presentationAction === null && !composerOpen && (
+              <div className="agent-chat__caption-actions">
+                <div
+                  className="agent-chat__choices agent-chat__choices--white"
+                  aria-label="Choose whether to visit the other tour location"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(moveToOtherTourLocation)}>
+                    {nextTourLocation === "union" ? "Union Square" : "Washington Square"}
+                  </button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => { finishGuidedTour(); onMinimize(); })}>Done</button>
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                   <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
@@ -819,7 +901,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 )}
               </div>
             )}
-            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
+            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
               composerOpen ? (
                 <form className="agent-chat__form agent-chat__form--inline" onSubmit={submit} ref={formRef}>
                   <div className="agent-chat__input-row">

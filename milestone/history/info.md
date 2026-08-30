@@ -6,6 +6,8 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_16-04-27-cross-location-tour-handoff.md` records the complete Union Square landmark sequence and the one-time reciprocal handoff between the Union and Washington tour branches.
+
 - `2026-08-30_15-57-28-force-paragraph-caption-breaks.md` records treating every blank-line paragraph boundary as a new dialogue turn regardless of length.
 
 - `2026-08-30_15-48-05-prioritize-tour-next.md` records hiding terminal tour controls until the final authored dialogue segment.
