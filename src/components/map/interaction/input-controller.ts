@@ -31,10 +31,12 @@ export interface InputControllerOptions extends PointerHitTesting {
 }
 
 export function createInputController(options: InputControllerOptions) {
+  const TOUCH_ZOOM_THRESHOLD = 24;
   let dragging = false;
   let globeDragging = false;
   const touchPointers = new Map<number, { x: number; y: number }>();
   let touchDistance = 0;
+  let touchZoomDelta = 0;
   let multiTouchGesture = false;
   let interactionFullRateUntil = 0;
   let pointerX = 0;
@@ -48,12 +50,64 @@ export function createInputController(options: InputControllerOptions) {
   let zoomOutGestureActive = false;
   let zoomOutGestureReset = 0;
 
+  const routeZoom = (deltaY: number, event: { clientX: number; clientY: number; preventDefault: () => void }) => {
+    const activeView = options.getActiveView();
+    if (activeView === "globe") {
+      event.preventDefault();
+      interactionFullRateUntil = performance.now() + 180;
+      if (deltaY < 0) {
+        if (options.globeManhattanAtPointer(event)) options.enterManhattanFromGlobe();
+        else options.blockGlobeZoom();
+      } else options.zoomGlobeOut(options.getGlobeCameraDistance() * Math.exp(deltaY * 0.0025));
+      return;
+    }
+    if (deltaY > 0) {
+      event.preventDefault();
+      window.clearTimeout(zoomOutGestureReset);
+      zoomOutGestureReset = window.setTimeout(() => { zoomOutGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
+      if (zoomOutGestureActive) return;
+      zoomOutGestureActive = true;
+    }
+    if (options.getCameraLocked()) {
+      if (deltaY > 0) options.clearLandmarkSelection();
+      else if (deltaY < 0) {
+        event.preventDefault();
+        window.clearTimeout(blockedZoomGestureReset);
+        blockedZoomGestureReset = window.setTimeout(() => { blockedZoomGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
+        if (blockedZoomGestureActive) return;
+        blockedZoomGestureActive = true;
+        const hovered = options.landmarkAtPointer(event);
+        if (hovered && !hovered.selected) options.selectLandmark(hovered);
+      }
+      return;
+    }
+    if (deltaY > 0) {
+      if (activeView === "manhattan") options.enterGlobeFromManhattan();
+      else options.switchView("manhattan");
+      return;
+    }
+    if (deltaY >= 0) return;
+    event.preventDefault();
+    window.clearTimeout(blockedZoomGestureReset);
+    blockedZoomGestureReset = window.setTimeout(() => { blockedZoomGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
+    if (blockedZoomGestureActive) return;
+    blockedZoomGestureActive = true;
+    const parkDestination = options.parkDestinationAtPointer(event);
+    if (parkDestination) options.switchView(parkDestination);
+    else {
+      const hovered = options.landmarkAtPointer(event);
+      if (hovered) options.selectLandmark(hovered);
+      else options.triggerBlockedZoom(event as WheelEvent);
+    }
+  };
+
   const pointerDown = (event: PointerEvent) => {
     const activeView = options.getActiveView();
     dragging = !options.getCameraLocked() && activeView !== "manhattan" && activeView !== "globe";
-    if (event.pointerType === "touch" && activeView === "globe" && !options.isGlobeTransitioning()) {
+    if (event.pointerType === "touch" && !options.isGlobeTransitioning()) {
       touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      globeDragging = true;
+      globeDragging = activeView === "globe";
+      touchZoomDelta = 0;
       if (touchPointers.size >= 2) {
         const touches = [...touchPointers.values()];
         touchDistance = Math.hypot(touches[1].x - touches[0].x, touches[1].y - touches[0].y);
@@ -77,15 +131,38 @@ export function createInputController(options: InputControllerOptions) {
         const touches = [...touchPointers.values()];
         const nextDistance = Math.hypot(touches[1].x - touches[0].x, touches[1].y - touches[0].y);
         if (touchDistance > 0 && nextDistance > 0) {
-          const currentDistance = options.getGlobeCameraDistance();
-          const requestedDistance = currentDistance * (touchDistance / nextDistance);
-          if (requestedDistance < currentDistance) {
-            if (options.getGlobeMarkerFacing() > 0.94) options.enterManhattanFromGlobe();
-            else options.blockGlobeZoom();
-          } else options.zoomGlobeOut(requestedDistance);
+          const pinchDelta = Math.log(touchDistance / nextDistance) * 500;
+          if (options.getActiveView() === "globe") {
+            const currentDistance = options.getGlobeCameraDistance();
+            const requestedDistance = currentDistance * (touchDistance / nextDistance);
+            if (requestedDistance < currentDistance) {
+              if (options.getGlobeMarkerFacing() > 0.94) options.enterManhattanFromGlobe();
+              else options.blockGlobeZoom();
+            } else options.zoomGlobeOut(requestedDistance);
+          } else {
+            touchZoomDelta += pinchDelta;
+            if (Math.abs(touchZoomDelta) >= TOUCH_ZOOM_THRESHOLD) {
+              routeZoom(touchZoomDelta, event);
+              touchZoomDelta = 0;
+            }
+          }
         }
         touchDistance = nextDistance;
         pointerMoved = true;
+        return;
+      }
+      const previousY = pointerY;
+      const deltaX = event.clientX - pointerX;
+      const deltaY = event.clientY - previousY;
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        touchZoomDelta += deltaY;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        pointerMoved ||= Math.abs(touchZoomDelta) > 5;
+        if (Math.abs(touchZoomDelta) >= TOUCH_ZOOM_THRESHOLD) {
+          routeZoom(touchZoomDelta, event);
+          touchZoomDelta = 0;
+        }
         return;
       }
     }
@@ -150,54 +227,7 @@ export function createInputController(options: InputControllerOptions) {
     if (event.key === "Escape" && options.getCameraLocked()) options.clearLandmarkSelection();
   };
   const wheel = (event: WheelEvent) => {
-    const activeView = options.getActiveView();
-    if (activeView === "globe") {
-      event.preventDefault();
-      interactionFullRateUntil = performance.now() + 180;
-      if (event.deltaY < 0) {
-        if (options.globeManhattanAtPointer(event)) options.enterManhattanFromGlobe();
-        else options.blockGlobeZoom();
-      } else options.zoomGlobeOut(options.getGlobeCameraDistance() * Math.exp(event.deltaY * (event.ctrlKey ? 0.004 : 0.0025)));
-      return;
-    }
-    if (event.deltaY > 0) {
-      event.preventDefault();
-      window.clearTimeout(zoomOutGestureReset);
-      zoomOutGestureReset = window.setTimeout(() => { zoomOutGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
-      if (zoomOutGestureActive) return;
-      zoomOutGestureActive = true;
-    }
-    if (options.getCameraLocked()) {
-      if (event.deltaY > 0) options.clearLandmarkSelection();
-      else if (event.deltaY < 0) {
-        event.preventDefault();
-        window.clearTimeout(blockedZoomGestureReset);
-        blockedZoomGestureReset = window.setTimeout(() => { blockedZoomGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
-        if (blockedZoomGestureActive) return;
-        blockedZoomGestureActive = true;
-        const hovered = options.landmarkAtPointer(event);
-        if (hovered && !hovered.selected) options.selectLandmark(hovered);
-      }
-      return;
-    }
-    if (event.deltaY > 0) {
-      if (activeView === "manhattan") options.enterGlobeFromManhattan();
-      else options.switchView("manhattan");
-      return;
-    }
-    if (event.deltaY >= 0) return;
-    event.preventDefault();
-    window.clearTimeout(blockedZoomGestureReset);
-    blockedZoomGestureReset = window.setTimeout(() => { blockedZoomGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
-    if (blockedZoomGestureActive) return;
-    blockedZoomGestureActive = true;
-    const parkDestination = options.parkDestinationAtPointer(event);
-    if (parkDestination) options.switchView(parkDestination);
-    else {
-      const hovered = options.landmarkAtPointer(event);
-      if (hovered) options.selectLandmark(hovered);
-      else options.triggerBlockedZoom(event);
-    }
+    routeZoom(event.deltaY * (event.ctrlKey ? 1.6 : 1), event);
   };
 
   const element = options.renderer.domElement;

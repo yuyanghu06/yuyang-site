@@ -6,6 +6,8 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_17-26-26-mobile-swipe-pinch-zoom.md` records enabling correctly directed vertical swipe and pinch navigation across all mobile map views.
+
 - `2026-08-30_17-00-55-smooth-streaming-audio.md` records decoupling live answer reveal and dialogue-blip cadence from network delivery timing.
 
 - `2026-08-30_16-12-00-prioritize-intro-next.md` records showing only Next until every authored introduction segment has been revealed.

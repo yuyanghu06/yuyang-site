@@ -1,5 +1,9 @@
 # Current Project Milestone
 
+## Mobile swipe and pinch map zoom (2026-08-30)
+
+The map input controller now routes one-finger vertical swipes and two-finger pinches through the same navigation semantics as wheel input at every map level. Swiping up or spreading a pinch zooms inward; swiping down or closing a pinch zooms outward. Horizontal globe and neighborhood rotation remains available, pinch movement is thresholded outside the globe to avoid repeated view changes, and targeted ESLint plus full TypeScript validation pass.
+
 ## Connection-independent agent dialogue playback (2026-08-30)
 
 Completed model answer deltas are now coalesced into one bounded server event. The browser buffers that answer and reveals it with the existing local character timer, so slow or bursty connections no longer dictate caption timing or repeatedly restart the dialogue blip. Targeted ESLint and full TypeScript validation pass.
