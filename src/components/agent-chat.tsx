@@ -533,7 +533,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     setPresentationAction(null);
     streamedTextRef.current = "";
     queuedCaptionSegmentsRef.current = [];
-    terminalPresentationRef.current = null;
+    terminalPresentationRef.current = "reply";
     setPending(true);
     onStreamingChange(true);
     requestRef.current?.abort();
@@ -568,9 +568,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
               index === current.length - 1 ? { ...message, content: visibleContent } : message,
             ));
           } else if (streamEvent.type === "command") {
-            if (streamEvent.command.type === "display_blue") terminalPresentationRef.current = "next";
-            else if (streamEvent.command.type === "display_white") terminalPresentationRef.current = "reply";
-            else if (streamEvent.command.type === "trigger_avatar_emote") {
+            if (streamEvent.command.type === "trigger_avatar_emote") {
               onStreamingChange(false);
               await requestAvatarEmote(streamEvent.command.emote);
               onStreamingChange(true);

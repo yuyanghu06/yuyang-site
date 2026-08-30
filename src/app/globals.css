@@ -1005,7 +1005,7 @@ body {
 }
 
 .avatar-call--docked .avatar-call__avatar-view {
-  transform: translate(-50%, -50%);
+  transform: translate(-59%, -50%);
   scale: 0.34;
 }
 

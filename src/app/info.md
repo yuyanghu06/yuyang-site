@@ -12,7 +12,7 @@ This directory owns the root App Router layout, page, metadata/icon, global CSS,
 ## Direct files
 
 - `info.md` documents this folder.
-- `globals.css` defines global map, avatar-call, and responsive presentation styles, including the centered expanded modal with bounded dimensions, dynamic viewport-height sizing, safe mobile insets, responsive dialogue placement, and the minimized tile's nearest-corner drag interaction. The minimized tile is re-clamped after viewport changes, while the expanded avatar uses a readable centered mobile composition.
+- `globals.css` defines global map, avatar-call, and responsive presentation styles, including the centered expanded modal with bounded dimensions, dynamic viewport-height sizing, safe mobile insets, responsive dialogue placement, and the minimized tile's nearest-corner drag interaction. The minimized tile is re-clamped after viewport changes and uses the Washington development branch's approved 59% horizontal portrait crop.
 - `icon.png` is the transparent illustrated application icon.
 - `layout.tsx` defines metadata, viewport settings, asset preloading, and the document shell.
 - `page.tsx` mounts the map shell for the home route.

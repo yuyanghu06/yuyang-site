@@ -3,14 +3,12 @@ import { CAMERA_VIEW_IDS, type CameraViewId } from "./camera-views";
 export const MAP_DESTINATIONS = CAMERA_VIEW_IDS;
 export type MapDestination = CameraViewId;
 
-export const AVATAR_EMOTES = ["wave_hello", "nod_smile", "head_shake_disappointed", "smile_tap", "thumbs_up", "point_right", "sad", "thumbs_down"] as const;
+export const AVATAR_EMOTES = ["wave_hello", "nod_smile", "head_shake_disappointed"] as const;
 export type AvatarEmote = (typeof AVATAR_EMOTES)[number];
 
 export type AgentCommand =
   | { type: "navigate_map"; destination: MapDestination }
-  | { type: "trigger_avatar_emote"; emote: AvatarEmote }
-  | { type: "display_blue" }
-  | { type: "display_white" };
+  | { type: "trigger_avatar_emote"; emote: AvatarEmote };
 
 export type AgentMessage = { role: "user" | "assistant"; content: string };
 export type RagCitation = { id: string; source: string; score: number };

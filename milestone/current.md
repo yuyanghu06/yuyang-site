@@ -1,5 +1,31 @@
 # Current Project Milestone
 
+## Latest agent presentation-tool cleanup (2026-08-30)
+
+The portfolio guide no longer exposes `display_blue` or `display_white` to the model. The browser's shared caption renderer now exclusively splits complete streamed answers at natural boundaries under the 170-character visible-caption limit, queues overflow for blue Next controls, and selects the final white Cancel state without a presentation tool call. The remaining model-callable tools are map navigation and avatar emotes.
+
+The avatar-emote schema now exposes only the three animations backed by production runtime sources: `wave_hello`, `nod_smile`, and `head_shake_disappointed`. The unimplemented `smile_tap`, `thumbs_up`, `point_right`, `sad`, and `thumbs_down` values were removed so the model cannot queue no-op emotes.
+
+## Latest avatar framing repair (2026-08-30)
+
+The avatar renderer and docked transform now match the approved `washington-square-dev` composition again: 225% camera framing, its original right-offset camera, 1.5× pixel-ratio ceiling, and 59% docked horizontal transform. The later resize observer was removed because it fed measured canvas dimensions back into the render host during expanded-to-docked transitions, leaving the avatar outside the minimized tile's clipped viewport.
+
+The continuous far-away city traffic ambience is 30% louder in both supported mixes: Manhattan overview rises from `0.108` to `0.1404`, while Washington/Union zoomed-in views rise from `0.1296` to `0.16848`. Building-only crowd audio and globe transition effects are unchanged.
+
+A follow-up audio adjustment raises both traffic-ambience mixes by another 30%, producing `0.18252` in Manhattan and `0.219024` in Washington/Union. The globe ↔ Manhattan transition effect is independently 30% louder, rising from `0.025` to `0.0325`; its 300 ms fades and routing remain unchanged.
+
+All three recently adjusted audio levels then receive a further 50% increase: Manhattan traffic ambience is `0.27378`, Washington/Union traffic ambience is `0.328536`, and the globe ↔ Manhattan transition effect is `0.04875`. Crowd audio, dialogue audio, routing, and fades remain unchanged.
+
+The globe ↔ Manhattan transition effect receives one additional 30% increase, from `0.04875` to `0.063375`. Its routing and 300 ms fades remain unchanged.
+
+The community people-talking track is 80% louder, rising from `0.12` to `0.216`. It retains its building-only routing: it loops only after an individual Washington/Union landmark zoom settles and stops outside that state.
+
+The globe ↔ Manhattan transition effect is now set directly to `0.1`. Its routing remains unchanged.
+
+The globe-transition effect's fade-in and fade-out are shortened from 300 ms to 50 ms, making the sound audible nearly immediately while retaining a small anti-click envelope.
+
+The ElevenLabs hosted MCP remains installed and OAuth-authorized at the provider's US endpoint. The Sputnik experiment was rejected completely: its runtime loop is removed and all five original/processed/generated repository candidates have been removed from `public/audio/`. The user's source remains outside the repository in Downloads, while a recoverable copy of the removed candidates is in the macOS Trash.
+
 ## Latest responsive avatar pass (2026-08-26)
 
 The avatar shell now uses dynamic viewport height units for expanded layouts, a one-rem mobile-safe modal inset, and a resize listener that re-clamps a manually docked tile to the current viewport. The Three.js avatar renderer uses a resize observer and a pixel-ratio ceiling of 2 so responsive changes redraw at the current canvas resolution. Avatar framing is now a prominent 110% scale, and the narrow-screen composition uses a larger centered canvas. Targeted lint passes; mobile and 1920×1080 Chrome viewport screenshots were visually checked.
@@ -14,7 +40,7 @@ This is the authoritative rolling project state. Historical session handoffs are
 
 ## Milestone status
 
-The uncommitted procedural ambient-audio experiment and globe-transition whoosh were reverted. A user-provided community-crowd recording is now trimmed to 80 seconds and loops quietly only after an individual building zoom settles, never in neighborhood or Manhattan overview views. A separate 2.168-second user-provided zoom effect now triggers only for globe ↔ Manhattan travel, playing at 18.75% volume with fast 40 ms fades; it does not play for park or building zooms. The base Manhattan traffic recording fades in at `0.108`, stays continuous through park zooms, and rises gradually to `0.1296` in neighborhood views. The existing dialogue blip remains unchanged.
+The uncommitted procedural ambient-audio experiment was reverted. A user-provided community-crowd recording is trimmed to 80 seconds and loops at `0.216` only after an individual building zoom settles, never in neighborhood or Manhattan overview views. A separate 2.168-second user-provided zoom effect triggers only for globe ↔ Manhattan travel, peaks at `0.1`, and uses 50 ms fades; it does not play for park or building zooms. The base Manhattan traffic recording fades in to `0.27378`, stays continuous through park zooms, and rises gradually to `0.328536` in neighborhood views. The existing dialogue blip remains unchanged.
 
 The approved Washington Square visual language now extends from a new globe entry view into the base Manhattan overview. The single persistent renderer starts at globe scale, flies into Manhattan, and retains Washington Square and Union Square as zoomable neighborhood views.
 

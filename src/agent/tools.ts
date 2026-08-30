@@ -27,20 +27,6 @@ export const AGENT_TOOLS: FunctionTool[] = [
       additionalProperties: false,
     },
   },
-  {
-    type: "function",
-    name: "display_blue",
-    description: "End this caption as an incomplete segment and show the blue control that requests the next message. Use this whenever more of the answer remains after the 170-character caption limit.",
-    strict: true,
-    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
-  },
-  {
-    type: "function",
-    name: "display_white",
-    description: "End this caption as the final segment and show the white Cancel control. Use only when the complete answer has been delivered within the 170-character caption limit.",
-    strict: true,
-    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
-  },
 ];
 
 function hasString(value: unknown, key: string): value is Record<string, string> {
@@ -62,7 +48,5 @@ export function parseAgentCommand(name: string, rawArguments: string): AgentComm
     && AVATAR_EMOTES.includes(argumentsValue.emote as AvatarEmote)) {
     return { type: "trigger_avatar_emote", emote: argumentsValue.emote as AvatarEmote };
   }
-  if (name === "display_blue") return { type: "display_blue" };
-  if (name === "display_white") return { type: "display_white" };
   throw new Error(`Tool ${name} supplied unsupported arguments.`);
 }

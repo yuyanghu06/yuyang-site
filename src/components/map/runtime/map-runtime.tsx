@@ -46,7 +46,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let activeStudy: MapView = "globe";
     const crowdAudio = new Audio("/audio/community-crowd-talking-1m20.m4a");
     crowdAudio.loop = true;
-    crowdAudio.volume = 0.12;
+    crowdAudio.volume = 0.216;
     const updateCrowdAudio = () => {
       if ((activeStudy === "washington" || activeStudy === "union") && cameraLocked && !cameraTransitioning && !globeTransitionStartedAt) {
         void crowdAudio.play().catch(() => undefined);
@@ -57,8 +57,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     };
     const ambienceAudio = new Audio("/audio/far-away-city-traffic-ambience.wav");
     ambienceAudio.loop = true;
-    const AMBIENCE_BASE_VOLUME = 0.108;
-    const AMBIENCE_CLOSE_VOLUME = 0.1296;
+    const AMBIENCE_BASE_VOLUME = 0.27378;
+    const AMBIENCE_CLOSE_VOLUME = 0.328536;
     const AMBIENCE_FADE_IN_SECONDS = 1.2;
     let ambienceFadeStartedAt = 0;
     let ambienceFadeFromVolume = 0;
@@ -91,8 +91,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     };
     const zoomAudio = new Audio("/audio/gamestudio-world-cloud-zoom.mp3");
     zoomAudio.preload = "auto";
-    const ZOOM_AUDIO_VOLUME = 0.025;
-    const ZOOM_AUDIO_FADE_SECONDS = 0.3;
+    const ZOOM_AUDIO_VOLUME = 0.1;
+    const ZOOM_AUDIO_FADE_SECONDS = 0.2;
     let zoomFadeFrame = 0;
     const playZoomAudio = (reverse: boolean) => {
       if (zoomFadeFrame) cancelAnimationFrame(zoomFadeFrame);

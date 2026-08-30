@@ -6,6 +6,40 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_13-11-16-remove-sputnik-audio-assets.md` records removal of all rejected Sputnik repository assets with recoverable Trash copies retained.
+
+- `2026-08-30_13-06-31-remove-sputnik-loop.md` records removal of the globe-only Sputnik playback while preserving its audio files as unwired references.
+
+- `2026-08-30_13-05-37-remove-unimplemented-emotes.md` records narrowing the avatar-emote schema to the three animations backed by production runtime sources.
+
+- `2026-08-30_13-04-56-loop-sputnik-on-globe.md` records wiring the cleaned Sputnik signal as an experience-gated globe-only loop.
+
+- `2026-08-30_13-03-35-remove-agent-presentation-tools.md` records removal of the blue/white presentation function calls in favor of renderer-owned caption segmentation and controls.
+
+- `2026-08-30_12-59-30-clean-and-lower-sputnik-beep.md` records the static-reduced, 6 dB quieter production derivative of the original Sputnik recording.
+
+- `2026-08-30_12-58-57-select-original-sputnik-beep.md` records rejection of the generated candidates and selection of the byte-identical original Sputnik recording.
+
+- `2026-08-30_12-57-59-generate-slower-sputnik-beep.md` records the slower, more explicitly Sputnik-like second ElevenLabs satellite-beacon candidate.
+
+- `2026-08-30_12-54-17-generate-clean-satellite-beep.md` records the ElevenLabs Sound Effects v2 generation and validation of the unwired clean satellite telemetry candidate.
+
+- `2026-08-30_12-50-29-clean-slow-sputnik-beep.md` records ElevenLabs authorization and creation of the cleaned, slowed, reference-faithful Sputnik beep derivative.
+
+- `2026-08-30_12-49-23-shorten-zoom-audio-fade.md` records shortening the globe-transition sound envelope from 300 ms to 50 ms.
+
+- `2026-08-30_12-39-16-set-zoom-audio.md` records setting the globe-transition sound directly to `0.1`.
+
+- `2026-08-30_12-32-42-raise-crowd-audio.md` records the 80% increase to the building-only people-talking track.
+
+- `2026-08-30_12-32-23-raise-zoom-audio.md` records the additional 30% globe-transition sound increase.
+
+- `2026-08-30_12-30-51-raise-adjusted-audio.md` records the further 50% increase applied to all three recently modified audio levels.
+
+- `2026-08-30_12-27-32-audio-level-increases.md` records the additional 30% traffic-ambience increase and the separate 30% globe-transition sound increase.
+
+- `2026-08-30_12-25-06-avatar-framing-and-ambience.md` records restoration of the approved Washington development avatar composition, the minimized resize-loop fix, live visual verification, and the 30% traffic-ambience increase.
+
 - `2026-08-26_audio-rollback.md` records removal of the uncommitted ambient-audio experiment and globe-transition whoosh.
 
 - `2026-08-26_community-crowd-soundtrack.md` records the trimmed user-provided crowd recording wired into zoomed-in neighborhood views.
