@@ -6,6 +6,14 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_13-33-34-shift-site-agent-and-dialogue.md` records the compact Shift base context added to the live portfolio agent and the rewritten 235 Park Avenue South narration.
+
+- `2026-08-30_13-32-18-background-chiptune-playlist.md` records the four-track, low-volume, experience-gated background playlist and shared exponential crossfades.
+
+- `2026-08-30_13-22-29-consolidate-site-audio.md` records the shared browser-audio controller and reusable exponential transition primitive.
+
+- `2026-08-30_13-20-17-web-agent-base-context.md` records the authoritative personal facts and privacy/presentation constraints added directly to the portfolio guide's base system prompt.
+
 - `2026-08-30_13-11-16-remove-sputnik-audio-assets.md` records removal of all rejected Sputnik repository assets with recoverable Trash copies retained.
 
 - `2026-08-30_13-06-31-remove-sputnik-loop.md` records removal of the globe-only Sputnik playback while preserving its audio files as unwired references.

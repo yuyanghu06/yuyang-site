@@ -8,8 +8,14 @@ This folder has no direct subfolders.
 
 ## Direct files
 
+- `background-416-chiptune.mp3` is the user-provided 4:16 8-bit instrumental by Nick Panek. It is the first track in the experience-gated background playlist and plays at the shared low background level of `0.06`.
+- `background-platform-shoes.mp3` is the user-provided 2:43 8-bit instrumental by Nick Panek and is the second background-playlist track.
+- `background-pixel-dreams.mp3` is the user-provided 2:48 Pixel Dreams instrumental and is the third background-playlist track.
+- `background-exploration-chiptune.mp3` is the user-provided 3:45 RPG exploration instrumental by Nick Panek and is the fourth background-playlist track before the sequence wraps.
 - `sans-dialogue-blip.mp3` is a 120 ms CC0 dialogue blip by OFresco from Freesound sound 520765. The agent replays it at a throttled cadence, 1.4× speed with pitch preservation disabled, and volume `0.11` while caption text streams, yielding a 40% higher pitch at half the previous volume.
-- `community-crowd-talking-1m20.m4a` is the first 80 seconds of the user-provided Freesound community-crowd recording. It loops at volume `0.216` only after an individual building zoom has finished settling.
-- `gamestudio-world-cloud-zoom.mp3` is the user-provided 2.168-second globe-to-Manhattan transition effect. Runtime playback peaks at `0.1` with 50 ms fades for both travel directions; it does not play for park or building zooms.
-- `far-away-city-traffic-ambience.wav` is the user-provided 65-second city-traffic recording. It fades in over 1.2 seconds, loops at volume `0.27378` in the base Manhattan view, remains continuous during park zooms, rises gradually to `0.328536` as the park zoom begins, and gradually returns to the base level when zooming back out.
+- `community-crowd-talking-1m20.m4a` is the first 80 seconds of the user-provided Freesound community-crowd recording. It loops at volume `0.216` only after an individual building zoom has finished settling, using the shared 250 ms exponential fade in/out.
+- `gamestudio-world-cloud-zoom.mp3` is the user-provided 2.168-second globe-to-Manhattan transition effect. Runtime playback peaks at `0.1` with shared 200 ms exponential fades at both ends; it does not play for park or building zooms.
+- `far-away-city-traffic-ambience.wav` is the user-provided 65-second city-traffic recording. It uses the shared 1.2-second exponential transition, loops at volume `0.27378` in the base Manhattan view, remains continuous during park zooms, rises to `0.328536` as the park zoom begins, and returns to the base level when zooming back out.
 - `INFO.md` is this authoritative folder inventory.
+
+The four background tracks begin only after the user's experience-start gesture, continue across all geographic and landmark views, and transition with the shared three-second exponential crossfade. Source files remain at their supplied encoding; their quieter presentation is controlled non-destructively at runtime.

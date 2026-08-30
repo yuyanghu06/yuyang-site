@@ -1,5 +1,19 @@
 # Current Project Milestone
 
+## Shared site audio controller (2026-08-30)
+
+All browser audio construction and playback lifecycle now live in `src/components/site-audio.ts`. The map runtime reports only its current geographic view, landmark lock/settle state, and globe-transition state to a dedicated controller; `agent-chat.tsx` requests throttled dialogue blips through the same module. No other source file constructs an HTML `Audio` element.
+
+One exported `fadeAudioVolume` primitive now handles every volume envelope with cancellable `requestAnimationFrame` transitions and direction-aware exponential curves. Traffic ambience uses 1.2-second fades between silence, Manhattan `0.27378`, and neighborhood `0.328536`; building crowd audio uses 250 ms fades around its `0.216` landmark-only loop; the `0.1` globe-transition effect uses 200 ms fades at both ends. Superseded fades cancel cleanly, and controller disposal stops/resets every owned audio element.
+
+Four user-provided chiptune instrumentals now form the site-wide background playlist in this order: 4:16 8-bit chiptune, Platform Shoes, Pixel Dreams, and Exploration Chiptune. Playback begins only after the experience-start gesture, stays continuous across globe, city, neighborhood, and landmark views, runs at a deliberately low `0.06` volume, and uses the shared exponential fade function for three-second crossfades before wrapping to the first track. The source MP3s are copied without destructive volume re-encoding.
+
+## Latest web-agent canonical base context (2026-08-30)
+
+The portfolio guide's base system instructions now include a small authoritative personal-facts block: San Diego hometown, 5'11" height, favorite country song ("Springsteen" by Luke Combs), former BAC ML Director status after stepping down following Spring 2026, Sally Hu's corrected name, and a compact Shift contribution summary. The Shift facts cover the April–August 2026 Founders Associate role, U.S. growth-stack architecture, Indeed Flex and Crossing Hurdles onboarding, and the custom Stripe-native checkout connected to Shopify, Supabase, PostHog, Meta, Triple Whale, and GoHighLevel for attribution, session-replay analysis, and abandoned-cart recovery. The agent is instructed to use these facts only when directly relevant, never expose them as a Quick Facts section/list, and never infer or state Yuyang's current residential base. Pinecone retrieval remains mandatory for every accepted user turn.
+
+The authored 235 Park Avenue South narration now tells the same cohesive Shift story: full role dates, growth-stack and checkout architecture, 100× U.S. operations growth, the negative-CAC acquisition funnel, the 100-million-view global launch, and the Crossing Hurdles and Indeed Flex partnerships. Renderer-owned caption segmentation continues to enforce the 170-character visible-caption ceiling.
+
 ## Latest agent presentation-tool cleanup (2026-08-30)
 
 The portfolio guide no longer exposes `display_blue` or `display_white` to the model. The browser's shared caption renderer now exclusively splits complete streamed answers at natural boundaries under the 170-character visible-caption limit, queues overflow for blue Next controls, and selects the final white Cancel state without a presentation tool call. The remaining model-callable tools are map navigation and avatar emotes.

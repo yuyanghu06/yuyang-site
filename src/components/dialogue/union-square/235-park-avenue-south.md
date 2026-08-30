@@ -1,1 +1,9 @@
-This is where [Shift](https://www.joinshift.org/) has it's NYC office! I spent about four months working here during the summer of 2026, helping scale the company’s U.S. operations by more than 100×. My work included building a negative-CAC data acquisition funnel through Meta ads and web conversion optimization; coordinating the company’s global launch on X, which generated more than 100 million video views and coverage from outlets including Forbes and the BBC; and leading the initiative in securing the company’s largest U.S. B2B partnership with Indeed Flex, Indeed’s flexible staffing platform.
+This is [Shift’s](https://www.joinshift.org/) NYC office. I spent April through August 2026 here as a Founders Associate, helping architect and operate the company’s U.S. growth stack.
+
+I connected acquisition to commerce and operations: building web funnels, a custom Stripe-native checkout linked to Shopify, and measurement systems spanning Supabase, PostHog, Meta, Triple Whale, and GoHighLevel.
+
+That work helped scale U.S. operations by more than 100× and supported a negative-CAC data-acquisition funnel through Meta advertising and web conversion optimization.
+
+I also coordinated Shift’s global launch on X, which generated more than 100 million video views and coverage from outlets including Forbes and the BBC.
+
+On the partnership side, I helped bring on Crossing Hurdles and led the initiative that secured Indeed Flex—Indeed’s flexible-staffing platform—as Shift’s largest U.S. B2B client.

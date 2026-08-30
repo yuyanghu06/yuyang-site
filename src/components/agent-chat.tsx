@@ -23,6 +23,7 @@ import {
   unionSquareDialogue,
   washingtonSquareDialogue,
 } from "./dialogue";
+import { playDialogueBlip, primeDialogueAudio, stopDialogueBlip } from "./site-audio";
 
 const YUYANG_BIRTH_DATE = { year: 2006, month: 10, day: 29 } as const;
 const getYuyangAge = (today = new Date()) => {
@@ -80,29 +81,7 @@ const renderDialogueContent = (content: string) => {
   return rendered;
 };
 
-let sharedDialogueAudio: HTMLAudioElement | null = null;
-
-const getDialogueAudio = () => {
-  if (!sharedDialogueAudio) {
-    sharedDialogueAudio = new Audio("/audio/sans-dialogue-blip.mp3");
-    sharedDialogueAudio.preload = "auto";
-    sharedDialogueAudio.volume = 0.11;
-    sharedDialogueAudio.playbackRate = 1.4;
-    sharedDialogueAudio.preservesPitch = false;
-  }
-  return sharedDialogueAudio;
-};
-
-export async function primeAgentDialogueAudio() {
-  const audio = getDialogueAudio();
-  const volume = audio.volume;
-  audio.volume = 0;
-  audio.currentTime = 0;
-  await audio.play();
-  audio.pause();
-  audio.currentTime = 0;
-  audio.volume = volume;
-}
+export const primeAgentDialogueAudio = primeDialogueAudio;
 
 const getCaptionScrollBounds = (list: HTMLDivElement) => {
   const assistantMessages = list.querySelectorAll<HTMLElement>(".agent-chat__message--assistant");
@@ -145,7 +124,6 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const [scriptSegmentIndex, setScriptSegmentIndex] = useState(0);
   const requestRef = useRef<AbortController | null>(null);
   const scriptTimerRef = useRef<number | null>(null);
-  const streamBlipRef = useRef<HTMLAudioElement | null>(null);
   const lastStreamBlipAtRef = useRef(0);
   const messageListRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -164,12 +142,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   }, [introPhase]);
 
   const playStreamBlip = useCallback(() => {
-    const audio = streamBlipRef.current;
     const now = performance.now();
-    if (!audio || now - lastStreamBlipAtRef.current < STREAM_BLIP_INTERVAL_MS) return;
+    if (now - lastStreamBlipAtRef.current < STREAM_BLIP_INTERVAL_MS) return;
     lastStreamBlipAtRef.current = now;
-    audio.currentTime = 0;
-    void audio.play().catch(() => undefined);
+    playDialogueBlip();
   }, []);
 
   const streamScript = useCallback((content: string, onComplete: () => void, preserveQueuedSegments = false) => {
@@ -352,12 +328,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   };
 
   useEffect(() => {
-    const audio = getDialogueAudio();
-    streamBlipRef.current = audio;
-    return () => {
-      audio.pause();
-      streamBlipRef.current = null;
-    };
+    return stopDialogueBlip;
   }, []);
 
   useEffect(() => {

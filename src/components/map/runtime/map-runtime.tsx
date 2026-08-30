@@ -33,88 +33,24 @@ import { createInputController } from "../interaction/input-controller";
 import { createViewportLifecycle } from "./viewport-lifecycle";
 import { AGENT_COMMAND_EVENT, createMapViewSettledReporter, type AgentCommand } from "@/agent/types";
 import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId, type GeographicMapView } from "@/agent/camera-views";
+import { createMapAudioController } from "../../site-audio";
 
 export default function GlobalMap({ experienceStarted }: { experienceStarted: boolean }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const switchStudyRef = useRef<(next: MapView, updateUrl?: boolean) => void>(() => undefined);
+  const experienceStartedRef = useRef(experienceStarted);
   const [status, setStatus] = useState("");
   const [currentView, setCurrentView] = useState<CameraViewId>("globe");
+
+  useEffect(() => {
+    experienceStartedRef.current = experienceStarted;
+  }, [experienceStarted]);
 
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
     let activeStudy: MapView = "globe";
-    const crowdAudio = new Audio("/audio/community-crowd-talking-1m20.m4a");
-    crowdAudio.loop = true;
-    crowdAudio.volume = 0.216;
-    const updateCrowdAudio = () => {
-      if ((activeStudy === "washington" || activeStudy === "union") && cameraLocked && !cameraTransitioning && !globeTransitionStartedAt) {
-        void crowdAudio.play().catch(() => undefined);
-      } else {
-        crowdAudio.pause();
-        crowdAudio.currentTime = 0;
-      }
-    };
-    const ambienceAudio = new Audio("/audio/far-away-city-traffic-ambience.wav");
-    ambienceAudio.loop = true;
-    const AMBIENCE_BASE_VOLUME = 0.27378;
-    const AMBIENCE_CLOSE_VOLUME = 0.328536;
-    const AMBIENCE_FADE_IN_SECONDS = 1.2;
-    let ambienceFadeStartedAt = 0;
-    let ambienceFadeFromVolume = 0;
-    let ambienceTargetVolume = 0;
-    ambienceAudio.volume = 0;
-    const updateAmbienceAudio = () => {
-      const isCityView = activeStudy === "manhattan" || activeStudy === "washington" || activeStudy === "union";
-      if (isCityView && !globeTransitionStartedAt) {
-        if (ambienceAudio.paused) {
-          ambienceFadeFromVolume = 0;
-          ambienceTargetVolume = activeStudy === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
-          ambienceFadeStartedAt = performance.now();
-          void ambienceAudio.play().catch(() => undefined);
-        }
-        const targetVolume = activeStudy === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
-        if (targetVolume !== ambienceTargetVolume) {
-          ambienceFadeFromVolume = ambienceAudio.volume;
-          ambienceTargetVolume = targetVolume;
-          ambienceFadeStartedAt = performance.now();
-        }
-        if (ambienceFadeStartedAt) {
-          const progress = Math.min(1, (performance.now() - ambienceFadeStartedAt) / (AMBIENCE_FADE_IN_SECONDS * 1000));
-          ambienceAudio.volume = THREE.MathUtils.lerp(ambienceFadeFromVolume, ambienceTargetVolume, progress);
-          if (progress >= 1) ambienceFadeStartedAt = 0;
-        }
-      } else {
-        ambienceAudio.pause(); ambienceAudio.currentTime = 0; ambienceAudio.volume = 0;
-        ambienceFadeStartedAt = 0; ambienceFadeFromVolume = 0; ambienceTargetVolume = 0;
-      }
-    };
-    const zoomAudio = new Audio("/audio/gamestudio-world-cloud-zoom.mp3");
-    zoomAudio.preload = "auto";
-    const ZOOM_AUDIO_VOLUME = 0.1;
-    const ZOOM_AUDIO_FADE_SECONDS = 0.2;
-    let zoomFadeFrame = 0;
-    const playZoomAudio = (reverse: boolean) => {
-      if (zoomFadeFrame) cancelAnimationFrame(zoomFadeFrame);
-      zoomAudio.pause();
-      zoomAudio.playbackRate = 1;
-      zoomAudio.currentTime = 0;
-      zoomAudio.volume = 0;
-      void zoomAudio.play().catch(() => undefined);
-      const updateZoomFade = () => {
-        const duration = zoomAudio.duration || 2.168;
-        const fadeIn = reverse ? duration - zoomAudio.currentTime : zoomAudio.currentTime;
-        const fadeOut = reverse ? zoomAudio.currentTime : duration - zoomAudio.currentTime;
-        zoomAudio.volume = ZOOM_AUDIO_VOLUME * Math.min(1, fadeIn / ZOOM_AUDIO_FADE_SECONDS, fadeOut / ZOOM_AUDIO_FADE_SECONDS);
-        if (!zoomAudio.paused && !zoomAudio.ended) {
-          zoomFadeFrame = requestAnimationFrame(updateZoomFade);
-        } else {
-          zoomFadeFrame = 0;
-          zoomAudio.volume = 0;
-        }
-      };
-      zoomFadeFrame = requestAnimationFrame(updateZoomFade);
-    };
+    const mapAudio = createMapAudioController();
     const isUnion = false;
     const studyName = isUnion ? "Union Square" : "Washington Square";
     const loadLogPrefix = `[${studyName.replaceAll(" ", "")} load]`;
@@ -309,8 +245,6 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     switchStudyRef.current = (next, updateUrl = true) => {
       const previousStudy = activeStudy;
       activeStudy = next;
-      updateCrowdAudio();
-      updateAmbienceAudio();
       setCurrentView(next);
       if (next === "globe") {
         if (globeTransitionDirection !== "out") {
@@ -647,7 +581,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     });
     const enterManhattanFromGlobe = () => {
       if (activeStudy !== "globe" || globeTransitionStartedAt) return;
-      playZoomAudio(false);
+      mapAudio.playGlobeTransition();
       globeTransitionStartedAt = performance.now();
       globeTransitionDirection = "in";
       globeTransitionLanded = false;
@@ -657,7 +591,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     };
     const enterGlobeFromManhattan = () => {
       if (activeStudy !== "manhattan" || globeTransitionStartedAt) return;
-      playZoomAudio(true);
+      mapAudio.playGlobeTransition();
       globeTransitionStartedAt = performance.now();
       globeTransitionDirection = "out";
       globeTransitionLanded = false;
@@ -718,7 +652,6 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       cameraLocked = true;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
-      updateCrowdAudio();
       setCurrentView(cameraView.id);
     };
     const clearLandmarkSelection = () => {
@@ -738,7 +671,6 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       cameraLocked = false;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
-      updateCrowdAudio();
       renderer.domElement.style.cursor = "default";
       setCurrentView(activeStudy);
     };
@@ -914,8 +846,13 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           && Math.abs(camera.zoom - desiredCameraZoom) < 0.0005
         ) cameraTransitioning = false;
       }
-      updateCrowdAudio();
-      updateAmbienceAudio();
+      mapAudio.update({
+        view: activeStudy,
+        experienceStarted: experienceStartedRef.current,
+        cameraLocked,
+        cameraTransitioning,
+        globeTransitioning: globeTransitionStartedAt > 0,
+      });
       reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
       if (!cameraTransitioning && !globeTransitionStartedAt && pendingAgentDestination === "globe" && activeStudy === "manhattan") {
         pendingAgentDestination = null;
@@ -985,13 +922,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       inputController.dispose();
       disposeScenes(renderer, [scene, globeScene, skyOverlayScene]);
       timer.dispose();
-      crowdAudio.pause();
-      crowdAudio.src = "";
-      zoomAudio.pause();
-      if (zoomFadeFrame) cancelAnimationFrame(zoomFadeFrame);
-      zoomAudio.src = "";
-      ambienceAudio.pause();
-      ambienceAudio.src = "";
+      mapAudio.dispose();
       cloudVeil.remove();
       switchStudyRef.current = () => undefined;
     };
