@@ -1,5 +1,9 @@
 # Current Project Milestone
 
+## Tour segment control priority (2026-08-30)
+
+Authored tour dialogue with unseen caption segments now shows one Next control and nothing else. Destination choices, tour navigation, Back, and Reply appear only after the final segment of that stop has been revealed, preventing terminal hard-coded controls from competing with dialogue continuation.
+
 ## Shift memory refresh and reusable Pinecone skill (2026-08-30)
 
 The canonical Google Doc's existing `organization:shift` record now includes a dedicated company overview and funding subsection. It records Shift/microagi as a German robotics startup focused on collecting and structuring real-world human and industrial demonstration data for training and fine-tuning industrial robot policies, Yuyang's summer 2026 Founders Associate role, and the $55 million seed round described by the company and contemporary reporting as Germany's largest seed round as of August 2026.

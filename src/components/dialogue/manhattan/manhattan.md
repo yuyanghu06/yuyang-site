@@ -1,3 +1,1 @@
-Welcome to Manhattan. I'm a junior at NYU, and most of my life here happens around Washington Square and Union Square.
-
-Where should we go first?
+Welcome to Manhattan. I'm a junior at NYU, and most of my life here happens around Washington Square and Union Square. Where should we go first?

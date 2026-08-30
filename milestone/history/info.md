@@ -6,6 +6,8 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_15-48-05-prioritize-tour-next.md` records hiding terminal tour controls until the final authored dialogue segment.
+
 - `2026-08-30_15-40-33-add-researching-status.md` records the animated Tavily-specific pending state and mixed-tool status transitions.
 
 - `2026-08-30_15-38-34-enforce-dialogue-only-responses.md` records prohibiting list and heading formatting in visitor-facing model answers.

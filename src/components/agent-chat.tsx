@@ -281,6 +281,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           streamScript(lastSegment, () => {
             introPhaseRef.current = previousStop.phase;
             setIntroPhase(previousStop.phase);
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
           });
           return;
         }
@@ -306,6 +307,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           if (guidedTourActiveRef.current) {
             introPhaseRef.current = "washington_next";
             setIntroPhase("washington_next");
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
           }
           else {
             introPhaseRef.current = "free";
@@ -321,6 +323,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         streamScript(liptonHallDialogue, () => {
           introPhaseRef.current = "lipton_next";
           setIntroPhase("lipton_next");
+          setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
         });
         return;
       }
@@ -332,7 +335,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           const nextPhase = guidedTourActiveRef.current ? "bobst_next" : "free";
           introPhaseRef.current = nextPhase;
           setIntroPhase(nextPhase);
-          if (!guidedTourActiveRef.current) {
+          if (guidedTourActiveRef.current) {
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+          }
+          else {
             terminalPresentationRef.current = "reply";
             setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
           }
@@ -347,7 +353,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           const nextPhase = guidedTourActiveRef.current ? "stern_next" : "free";
           introPhaseRef.current = nextPhase;
           setIntroPhase(nextPhase);
-          if (!guidedTourActiveRef.current) {
+          if (guidedTourActiveRef.current) {
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+          }
+          else {
             terminalPresentationRef.current = "reply";
             setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
           }
@@ -362,7 +371,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           const nextPhase = guidedTourActiveRef.current ? "courant_next" : "free";
           introPhaseRef.current = nextPhase;
           setIntroPhase(nextPhase);
-          if (!guidedTourActiveRef.current) {
+          if (guidedTourActiveRef.current) {
+            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+          }
+          else {
             terminalPresentationRef.current = "reply";
             setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
           }
@@ -390,6 +402,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       streamScript(manhattanDialogue, () => {
         introPhaseRef.current = "manhattan_choice";
         setIntroPhase("manhattan_choice");
+        setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
       });
     };
     window.addEventListener(MAP_VIEW_SETTLED_EVENT, handleViewSettled);
@@ -467,6 +480,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         return lastAssistantIndex < 0 ? current : current.filter((_, index) => index !== lastAssistantIndex);
       });
       if (!expanded) onRevealDockedCaption();
+      setPresentationAction("next");
       setScriptSegmentIndex((current) => Math.max(0, current - 1));
       return;
     }
@@ -797,9 +811,11 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                     {presentationAction === "next" ? "Next" : "Done"}
                   </button>
                 </div>
-                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
-                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
-                </button>
+                {presentationAction === "reply" && (
+                  <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                    <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                  </button>
+                )}
               </div>
             )}
             {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (

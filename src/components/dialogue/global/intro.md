@@ -1,1 +1,3 @@
-Hey, I'm Yuyang. I'm a {{age}} year old NYU student. Welcome to my world! Do you want a tour?
+Hey, I'm Yuyang. I'm a {{age}} year old NYU student. Welcome to my world!
+
+Do you want a tour?
