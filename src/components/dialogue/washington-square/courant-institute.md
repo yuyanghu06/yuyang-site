@@ -1,1 +1,9 @@
-This is Courant, NYU's institute for mathematics and computer science. I'm double-majoring in math and computer science, so I take most of my classes in this building. I'm also the Vice President of [Tech@NYU](https://techatnyu.org/), NYC's largest student-run technology organization and a big part of the Courant community. We help students interested in technology find a community, learn, and build together. I've helped organize events with hundreds of attendees, plan hackathons with major technology companies like NVIDIA, and develop educational partnership programs with companies including Databricks and American Airlines.
+This is Courant, NYU's home for mathematics and computer science, which are also the two subjects I study.
+
+I'm also the Vice President of [Tech@NYU](https://techatnyu.org/), New York's largest student-run technology organization.
+
+We give students a place to meet, learn, and build because the community matters as much as the technology.
+
+I've helped run events with hundreds of attendees and plan hackathons with technology companies like NVIDIA.
+
+I've also built educational partnerships with Databricks, American Airlines, and other teams that want to work with students.

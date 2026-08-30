@@ -1,1 +1,3 @@
-Welcome to Manhattan! I'm currently a Junior at NYU, and I spend most of my time split between either Union Square or Washington Square. Where would you like to go first?
+Welcome to Manhattan. I'm a junior at NYU, and most of my life here happens around Washington Square and Union Square.
+
+Where should we go first?

@@ -8,4 +8,4 @@ This folder has no direct subfolders.
 
 ## Files
 
-- `intro.md` contains the opening tour invitation and uses the `{{age}}` placeholder for the birthday-derived runtime age.
+- `intro.md` contains the brief conversational tour invitation and uses the `{{age}}` placeholder for the birthday-derived runtime age.

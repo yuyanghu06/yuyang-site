@@ -1,9 +1,15 @@
-This is [Shift’s](https://www.joinshift.org/) NYC office. I spent April through August 2026 here as a Founders Associate, helping architect and operate the company’s U.S. growth stack.
+This is [Shift's](https://www.joinshift.org/) New York office, where I worked as a Founders Associate from April through August 2026.
 
-I connected acquisition to commerce and operations: building web funnels, a custom Stripe-native checkout linked to Shopify, and measurement systems spanning Supabase, PostHog, Meta, Triple Whale, and GoHighLevel.
+I worked across growth, product, engineering, and operations while helping build the systems behind Shift's U.S. growth.
 
-That work helped scale U.S. operations by more than 100× and supported a negative-CAC data-acquisition funnel through Meta advertising and web conversion optimization.
+I connected customer acquisition to checkout and analytics, including a custom Stripe flow linked to Shopify.
 
-I also coordinated Shift’s global launch on X, which generated more than 100 million video views and coverage from outlets including Forbes and the BBC.
+I also wired together Supabase, PostHog, Meta, Triple Whale, and GoHighLevel so the team could measure what worked.
 
-On the partnership side, I helped bring on Crossing Hurdles and led the initiative that secured Indeed Flex—Indeed’s flexible-staffing platform—as Shift’s largest U.S. B2B client.
+That work helped grow Shift's U.S. operation by more than 100 times and supported a negative-CAC acquisition funnel.
+
+I coordinated Shift's global launch on X, which passed 100 million video views and earned coverage from Forbes and the BBC.
+
+I also helped bring Crossing Hurdles onto the platform as a major client.
+
+Later, I led the effort that made Indeed Flex Shift's largest U.S. business client.

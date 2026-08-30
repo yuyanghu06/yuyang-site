@@ -1,1 +1,1 @@
-I also lived at Lipton hall, here on the west side of the park, during my Freshman year!
+This is Lipton Hall, the dorm on the west side of the park where I lived while New York and NYU still felt completely new to me.

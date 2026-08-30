@@ -1,2 +1,3 @@
+I spent a lot of my sophomore year around Union Square.
 
-Welcome to Union Square! I spent a lot of time here during my Sophomore year of school.
+It still feels familiar whenever I come back.

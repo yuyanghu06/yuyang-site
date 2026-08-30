@@ -8,9 +8,9 @@ This folder has no direct subfolders.
 
 ## Files
 
-- `washington-square.md` contains the Washington Square campus narration.
-- `lipton-hall.md` contains the Lipton Hall residence narration.
-- `bobst-library.md` contains the Bobst Library campus-life and robotics-project narration.
-- `stern-school-of-business.md` contains the Stern clubs, Machine Learning Team, and Infrastructure Masons project narration.
-- `courant-institute.md` contains the Courant double-major and Tech@NYU leadership narration, including the linked first Tech@NYU mention.
+- `washington-square.md` contains the Washington Square campus narration shaped for the shared 120-character rhythm.
+- `lipton-hall.md` contains a conversational freshman-year Lipton Hall memory shaped for the shared 120-character rhythm.
+- `bobst-library.md` contains roughly 120-character Bobst campus-life and robotics-project beats.
+- `stern-school-of-business.md` contains roughly 120-character beats about Stern clubs, the Machine Learning Team, and the Infrastructure Masons project.
+- `courant-institute.md` contains roughly 120-character beats about the math and computer science double major and Tech@NYU leadership, including the linked first Tech@NYU mention.
 - `INFO.md` is this folder's authoritative inventory.

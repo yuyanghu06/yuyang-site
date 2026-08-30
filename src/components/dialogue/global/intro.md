@@ -1,1 +1,1 @@
-Hello! I’m Yuyang, a {{age}} year old college kid living in New York City. Do you want a tour of my world?
+Hey, I'm Yuyang. I'm a {{age}} year old NYU student. Welcome to my world! Do you want a tour?

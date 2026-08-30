@@ -1,1 +1,1 @@
-Washington square is where NYU has it's campus. This is where I take my classes, go to club meetings, and study.
+Washington Square is the center of NYU's campus, where I take classes, join club meetings, study, and see friends.

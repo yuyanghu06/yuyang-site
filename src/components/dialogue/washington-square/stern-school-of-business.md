@@ -1,1 +1,9 @@
-These are the Stern buildings, home to NYU's business school. Even though I don't go to Stern, I'm pretty involved with Stern clubs, including the [Business Analytics Club](https://www.nyusternbac.org/), NYU's leading student organization for people interested in the intersection of business and technology. During my sophomore year, I was a co-director of the Machine Learning Team, where I led teams building full-stack ML projects across a wide variety of subjects ranging from biotech to accent decoding. I also facilitated a collaboration with Infrastructure Masons, a non profit community focused on developing digital infrastructure for the AI boom. We developed an agentic system for surfacing relevant professional experiences by having LLMs autonomously contact iMasons members to learn about their experiences throughout various industries for use by future generations.
+These are the Stern buildings. I don't study at the business school, but I've spent a lot of time in its student clubs.
+
+One is the [Business Analytics Club](https://www.nyusternbac.org/), a group for students who care about business and technology.
+
+During my sophomore year, I co-directed its Machine Learning Team and led ML projects from biotech to accent recognition.
+
+I also set up a project with Infrastructure Masons, a nonprofit community focused on infrastructure for the AI boom.
+
+We built an agent that gathered members' career stories and organized them so future generations could learn from their work.

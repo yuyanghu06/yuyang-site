@@ -8,4 +8,4 @@ This folder has no direct subfolders.
 
 ## Files
 
-- `manhattan.md` contains the Manhattan arrival and neighborhood-choice narration.
+- `manhattan.md` contains the conversational Manhattan arrival and neighborhood choice, authored for the shared 120-character caption rhythm.

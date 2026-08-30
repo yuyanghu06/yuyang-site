@@ -8,7 +8,7 @@ This folder has no direct subfolders.
 
 ## Files
 
-- `union-square.md` contains the manually authored sophomore-year introduction for the base Union Square camera view.
-- `25-union-square-west.md` contains the Carlyle Court sophomore-year residence and project-work narration for the 25 Union Square West camera view.
-- `235-park-avenue-south.md` contains the Shift/MicroAGI NYC office narration for the 235 Park Avenue South camera view, covering the Founders Associate role, U.S. growth-stack and checkout architecture, analytics integrations, 100× operations growth, the negative-CAC acquisition funnel, global launch reach, and the Crossing Hurdles and Indeed Flex partnerships.
+- `union-square.md` contains the brief sophomore-year introduction for the base Union Square camera view.
+- `25-union-square-west.md` contains conversational Carlyle Court residence, project-work, and all-nighter memories shaped for the shared 120-character rhythm.
+- `235-park-avenue-south.md` tells the Shift office story in roughly 120-character beats covering the Founders Associate role, U.S. growth stack, checkout and analytics systems, 100-times operations growth, negative-CAC acquisition, global launch, and major partnerships.
 - `INFO.md` documents the Union Square dialogue set.
