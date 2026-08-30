@@ -1,5 +1,13 @@
 # Current Project Milestone
 
+## Connection-independent agent dialogue playback (2026-08-30)
+
+Completed model answer deltas are now coalesced into one bounded server event. The browser buffers that answer and reveals it with the existing local character timer, so slow or bursty connections no longer dictate caption timing or repeatedly restart the dialogue blip. Targeted ESLint and full TypeScript validation pass.
+
+## Intro dialogue control priority (2026-08-30)
+
+The initial introduction now shows only Next while authored caption segments remain. Yes/No and Reply appear only after the final introduction segment, matching the existing terminal-control priority used throughout guided-tour dialogue.
+
 ## One-time cross-location guided-tour handoff (2026-08-30)
 
 The guided Union Square route now continues from the full-square overview to Carlyle Court at 25 Union Square West and then Shift at 235 Park Avenue South. After Shift, the guide asks whether the visitor is ready to move on and offers the full Washington Square view when Washington has not yet been visited during that tour.

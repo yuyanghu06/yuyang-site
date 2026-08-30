@@ -442,7 +442,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
 
   useEffect(() => {
     scriptTimerRef.current = window.setTimeout(() => {
-      streamScript(INTRO_GREETING, () => setIntroPhase("choice"));
+      streamScript(INTRO_GREETING, () => {
+        setIntroPhase("choice");
+        setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+      });
     }, 0);
     return () => {
       if (scriptTimerRef.current !== null) window.clearTimeout(scriptTimerRef.current);
@@ -699,29 +702,24 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
           if (streamEvent.type === "status") {
             setAgentStatus(streamEvent.status);
           } else if (streamEvent.type === "speech_start") {
-            playStreamBlip();
+            // The completed answer is revealed locally after it arrives so network
+            // jitter cannot control the visible cadence or repeatedly restart audio.
           } else if (streamEvent.type === "text_delta") {
-            if (!/\S/.test(streamedTextRef.current) && /\S/.test(streamEvent.delta)) onStreamingChange(true);
-            if (/\S/.test(streamEvent.delta)) playStreamBlip();
             streamedTextRef.current += streamEvent.delta;
-            const visibleContent = splitCaptionText(streamedTextRef.current)[0] ?? "";
-            setMessages((current) => current.map((message, index) =>
-              index === current.length - 1 ? { ...message, content: visibleContent } : message,
-            ));
           } else if (streamEvent.type === "command") {
             if (streamEvent.command.type === "trigger_avatar_emote") {
               onStreamingChange(false);
               await requestAvatarEmote(streamEvent.command.emote);
-              if (/\S/.test(streamedTextRef.current)) onStreamingChange(true);
             }
             else dispatchAgentCommand(streamEvent.command);
           } else if (streamEvent.type === "done") {
-            const [visibleSegment = "", ...queuedSegments] = splitCaptionText(streamedTextRef.current);
-            queuedCaptionSegmentsRef.current = queuedSegments;
-            setMessages((current) => current.map((message, index) =>
-              index === current.length - 1 ? { ...message, content: visibleSegment } : message,
-            ));
-            setPresentationAction(queuedSegments.length > 0 ? "next" : terminalPresentationRef.current);
+            await new Promise<void>((resolve) => {
+              streamScript(streamedTextRef.current, () => {
+                terminalPresentationRef.current = "reply";
+                setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
+                resolve();
+              });
+            });
           } else if (streamEvent.type === "error") {
             throw new Error(streamEvent.message);
           }

@@ -6,6 +6,10 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_17-00-55-smooth-streaming-audio.md` records decoupling live answer reveal and dialogue-blip cadence from network delivery timing.
+
+- `2026-08-30_16-12-00-prioritize-intro-next.md` records showing only Next until every authored introduction segment has been revealed.
+
 - `2026-08-30_16-04-27-cross-location-tour-handoff.md` records the complete Union Square landmark sequence and the one-time reciprocal handoff between the Union and Washington tour branches.
 
 - `2026-08-30_15-57-28-force-paragraph-caption-breaks.md` records treating every blank-line paragraph boundary as a new dialogue turn regardless of length.

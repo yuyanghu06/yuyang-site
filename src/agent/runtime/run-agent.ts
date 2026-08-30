@@ -56,7 +56,8 @@ export async function* streamAgent(messages: AgentMessage[], currentView: MapDes
     const calls = response.output.filter((item) => item.type === "function_call");
     if (calls.length === 0) {
       if (bufferedText.some((delta) => delta.trim())) yield { type: "speech_start" };
-      for (const delta of bufferedText) yield { type: "text_delta", delta };
+      const completedText = bufferedText.join("");
+      if (completedText) yield { type: "text_delta", delta: completedText };
       yield { type: "done" };
       return;
     }
