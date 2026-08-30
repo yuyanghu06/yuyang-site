@@ -6,6 +6,8 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_15-57-28-force-paragraph-caption-breaks.md` records treating every blank-line paragraph boundary as a new dialogue turn regardless of length.
+
 - `2026-08-30_15-48-05-prioritize-tour-next.md` records hiding terminal tour controls until the final authored dialogue segment.
 
 - `2026-08-30_15-40-33-add-researching-status.md` records the animated Tavily-specific pending state and mixed-tool status transitions.

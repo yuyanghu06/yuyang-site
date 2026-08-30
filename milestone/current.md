@@ -1,5 +1,9 @@
 # Current Project Milestone
 
+## Mandatory paragraph caption boundaries (2026-08-30)
+
+Every blank-line paragraph break in authored or model-generated dialogue now creates a new caption turn, even when the combined paragraphs would fit below the 120-character soft target. Long individual paragraphs continue to split near natural line or punctuation boundaries.
+
 ## Tour segment control priority (2026-08-30)
 
 Authored tour dialogue with unseen caption segments now shows one Next control and nothing else. Destination choices, tour navigation, Back, and Reply appear only after the final segment of that stop has been revealed, preventing terminal hard-coded controls from competing with dialogue continuation.
