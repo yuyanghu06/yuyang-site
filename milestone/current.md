@@ -1,5 +1,9 @@
 # Current Project Milestone
 
+## Frame-aligned mobile dialogue reveal (2026-08-30)
+
+Caption typing now runs from one animation-frame scheduler with elapsed-time catch-up and at most one React message update per painted frame. Short-landscape avatar spacing uses resize observation instead of synchronous measurement on every character, dialogue audio no longer repeats `play()` while its singleton blip is already active, and transcript live-region announcements pause until the streamed caption is complete. Text speed, punctuation holds, segmentation, controls, avatar speech state, and audible blip rhythm remain unchanged.
+
 ## Pinch-only mobile map zoom (2026-08-30)
 
 Mobile map zoom navigation now requires two fingers at every map level. Spreading a pinch zooms inward and closing a pinch zooms outward; one-finger vertical movement no longer changes zoom and remains available for globe/neighborhood dragging or taps. Desktop wheel behavior is unchanged, and pinch movement remains thresholded outside the globe to avoid repeated view changes.

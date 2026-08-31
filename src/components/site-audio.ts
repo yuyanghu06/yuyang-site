@@ -103,7 +103,7 @@ const getDialogueAudio = () => {
 export const playDialogueBlip = () => {
   const audio = getDialogueAudio();
   audio.currentTime = 0;
-  void audio.play().catch(() => undefined);
+  if (audio.paused) void audio.play().catch(() => undefined);
 };
 
 export const stopDialogueBlip = () => {

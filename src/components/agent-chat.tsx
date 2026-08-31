@@ -2,7 +2,7 @@
 
 import "@/styles/agent-chat.css";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import {
   dispatchAgentCommand,
@@ -26,6 +26,8 @@ import {
   unionSquareDialogue,
   washingtonSquareDialogue,
 } from "./dialogue";
+import { startCaptionReveal, type CaptionRevealHandle } from "./caption-reveal";
+import { AnimatedAgentStatus } from "./agent-status";
 import { playDialogueBlip, primeDialogueAudio, stopDialogueBlip } from "./site-audio";
 
 const YUYANG_BIRTH_DATE = { year: 2006, month: 10, day: 29 } as const;
@@ -41,23 +43,6 @@ const MAX_CAPTION_CHARACTERS = 120;
 const MIN_CAPTION_BREAK_CHARACTERS = Math.floor(MAX_CAPTION_CHARACTERS * 0.4);
 const DIALOGUE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
 type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "camera_dialogue_streaming" | "free";
-
-const AnimatedAgentStatus = ({ status }: { status: AgentStatus }) => {
-  const label = status === "remembering" ? "Remembering…" : status === "researching" ? "Researching…" : "Thinking…";
-  return (
-    <span className="agent-chat__thinking" role="status" aria-live="polite" aria-label={label}>
-      {Array.from(label).map((character, index) => (
-        <span
-          key={`${character}-${index}`}
-          aria-hidden="true"
-          style={{ "--agent-wave-index": index } as CSSProperties}
-        >
-          {character}
-        </span>
-      ))}
-    </span>
-  );
-};
 
 const splitCaptionText = (content: string) => {
   const links: string[] = [];
@@ -155,13 +140,15 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const [agentStatus, setAgentStatus] = useState<AgentStatus>("thinking");
   const [error, setError] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
+  const [captionStreaming, setCaptionStreaming] = useState(false);
   const [presentationAction, setPresentationAction] = useState<"next" | "reply" | null>(null);
   const [guidedTourActive, setGuidedTourActive] = useState(false);
   const [fixedCameraDialogueActive, setFixedCameraDialogueActive] = useState(false);
   const [nextTourLocation, setNextTourLocation] = useState<"union" | "washington" | null>(null);
   const [scriptSegmentIndex, setScriptSegmentIndex] = useState(0);
   const requestRef = useRef<AbortController | null>(null);
-  const scriptTimerRef = useRef<number | null>(null);
+  const introTimerRef = useRef<number | null>(null);
+  const captionRevealRef = useRef<CaptionRevealHandle | null>(null);
   const lastStreamBlipAtRef = useRef(0);
   const messageListRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -194,17 +181,29 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     const visibleElements = chat.querySelectorAll<HTMLElement>(
       ".agent-chat__message--latest, :scope > .agent-chat__choices, :scope > .agent-chat__reply, :scope > .agent-chat__form",
     );
-    const modalTop = modal.getBoundingClientRect().top;
-    const contentBottom = Array.from(visibleElements).reduce((bottom, element) => {
-      if (getComputedStyle(element).display === "none") return bottom;
-      return Math.max(bottom, element.getBoundingClientRect().bottom);
-    }, list.getBoundingClientRect().top);
-    modal.style.setProperty("--expanded-avatar-top", `${Math.max(0, contentBottom - modalTop + 12)}px`);
+    let measurementFrame = 0;
+    const measure = () => {
+      cancelAnimationFrame(measurementFrame);
+      measurementFrame = requestAnimationFrame(() => {
+        const modalTop = modal.getBoundingClientRect().top;
+        const contentBottom = Array.from(visibleElements).reduce((bottom, element) => {
+          if (getComputedStyle(element).display === "none") return bottom;
+          return Math.max(bottom, element.getBoundingClientRect().bottom);
+        }, list.getBoundingClientRect().top);
+        modal.style.setProperty("--expanded-avatar-top", `${Math.max(0, contentBottom - modalTop + 12)}px`);
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    visibleElements.forEach((element) => observer.observe(element));
+    measure();
 
     return () => {
+      observer.disconnect();
+      cancelAnimationFrame(measurementFrame);
       modal.style.removeProperty("--expanded-avatar-top");
     };
-  }, [composerOpen, expanded, introPhase, messages, pending, presentationAction]);
+  }, [composerOpen, expanded, introPhase, messages.length, pending, presentationAction]);
 
   const playStreamBlip = useCallback(() => {
     const now = performance.now();
@@ -227,7 +226,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       setPresentationAction(null);
       setScriptSegmentIndex(0);
     }
-    if (scriptTimerRef.current !== null) window.clearTimeout(scriptTimerRef.current);
+    captionRevealRef.current?.cancel();
     flushSync(() => {
       setMessages((current) => {
         const latest = current.at(-1);
@@ -237,28 +236,27 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         return [...current, { role: "assistant", content: "" } satisfies AgentMessage].slice(-20);
       });
     });
+    setCaptionStreaming(true);
     onStreamingChange(true);
-    let length = 0;
-    const revealNextChunk = () => {
-      length = Math.min(streamingContent.length, length + (streamingContent[length] === " " ? 2 : 1));
-      setMessages((current) => current.map((message, index) =>
-        index === current.length - 1 ? { ...message, content: streamingContent.slice(0, length) } : message,
-      ));
-      if (/\S/.test(streamingContent[length - 1] ?? "")) playStreamBlip();
-      if (length >= streamingContent.length) {
+    captionRevealRef.current = startCaptionReveal({
+      content: streamingContent,
+      timingContent: visibleContent,
+      onReveal: (revealedContent) => {
+        setMessages((current) => current.map((message, index) =>
+          index === current.length - 1 ? { ...message, content: revealedContent } : message,
+        ));
+      },
+      onBlip: playStreamBlip,
+      onComplete: () => {
         setMessages((current) => current.map((message, index) =>
           index === current.length - 1 ? { ...message, content: visibleContent } : message,
         ));
-        scriptTimerRef.current = null;
+        captionRevealRef.current = null;
+        setCaptionStreaming(false);
         onStreamingChange(false);
         onComplete();
-        return;
-      }
-      const character = visibleContent[length - 1];
-      const delay = character === "." || character === "?" ? 150 : character === "," ? 85 : 24;
-      scriptTimerRef.current = window.setTimeout(revealNextChunk, delay);
-    };
-    revealNextChunk();
+      },
+    });
   }, [onStreamingChange, playStreamBlip]);
 
   useEffect(() => {
@@ -441,14 +439,15 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   }, []);
 
   useEffect(() => {
-    scriptTimerRef.current = window.setTimeout(() => {
+    introTimerRef.current = window.setTimeout(() => {
       streamScript(INTRO_GREETING, () => {
         setIntroPhase("choice");
         setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
       });
     }, 0);
     return () => {
-      if (scriptTimerRef.current !== null) window.clearTimeout(scriptTimerRef.current);
+      if (introTimerRef.current !== null) window.clearTimeout(introTimerRef.current);
+      captionRevealRef.current?.cancel();
     };
   }, [streamScript]);
 
@@ -754,7 +753,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       <div
         className="agent-chat__messages"
         role="log"
-        aria-live="polite"
+        aria-live={captionStreaming ? "off" : "polite"}
         ref={messageListRef}
         onScroll={constrainCaptionScroll}
       >
