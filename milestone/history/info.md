@@ -6,6 +6,8 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-08-30_22-01-22-pinch-only-mobile-zoom.md` records reserving mobile zoom navigation for two-finger pinch gestures and removing one-finger vertical swipe zoom.
+
 - `2026-08-30_17-26-26-mobile-swipe-pinch-zoom.md` records enabling correctly directed vertical swipe and pinch navigation across all mobile map views.
 
 - `2026-08-30_17-00-55-smooth-streaming-audio.md` records decoupling live answer reveal and dialogue-blip cadence from network delivery timing.

@@ -151,20 +151,6 @@ export function createInputController(options: InputControllerOptions) {
         pointerMoved = true;
         return;
       }
-      const previousY = pointerY;
-      const deltaX = event.clientX - pointerX;
-      const deltaY = event.clientY - previousY;
-      if (Math.abs(deltaY) > Math.abs(deltaX)) {
-        touchZoomDelta += deltaY;
-        pointerX = event.clientX;
-        pointerY = event.clientY;
-        pointerMoved ||= Math.abs(touchZoomDelta) > 5;
-        if (Math.abs(touchZoomDelta) >= TOUCH_ZOOM_THRESHOLD) {
-          routeZoom(touchZoomDelta, event);
-          touchZoomDelta = 0;
-        }
-        return;
-      }
     }
     pointerMoved ||= Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY) > 5;
     if (globeDragging) {

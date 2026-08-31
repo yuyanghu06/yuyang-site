@@ -1,8 +1,8 @@
 # Current Project Milestone
 
-## Mobile swipe and pinch map zoom (2026-08-30)
+## Pinch-only mobile map zoom (2026-08-30)
 
-The map input controller now routes one-finger vertical swipes and two-finger pinches through the same navigation semantics as wheel input at every map level. Swiping up or spreading a pinch zooms inward; swiping down or closing a pinch zooms outward. Horizontal globe and neighborhood rotation remains available, pinch movement is thresholded outside the globe to avoid repeated view changes, and targeted ESLint plus full TypeScript validation pass.
+Mobile map zoom navigation now requires two fingers at every map level. Spreading a pinch zooms inward and closing a pinch zooms outward; one-finger vertical movement no longer changes zoom and remains available for globe/neighborhood dragging or taps. Desktop wheel behavior is unchanged, and pinch movement remains thresholded outside the globe to avoid repeated view changes.
 
 ## Connection-independent agent dialogue playback (2026-08-30)
 
