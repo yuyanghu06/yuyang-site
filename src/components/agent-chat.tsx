@@ -891,11 +891,9 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                     {presentationAction === "next" ? "Next" : "Done"}
                   </button>
                 </div>
-                {presentationAction === "reply" && (
-                  <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
-                    <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
-                  </button>
-                )}
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
               </div>
             )}
             {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (

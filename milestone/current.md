@@ -1,5 +1,11 @@
 # Current Project Milestone
 
+## Reply on every automatic dialogue segment (2026-09-01)
+
+Every automatically segmented assistant caption now keeps the inline Reply control visible, including intermediate chunks that also expose Next. Reply still opens the composer inside the current bubble, and submitting it continues to discard unseen queued chunks before starting a freeform response.
+
+Targeted ESLint for `src/components/agent-chat.tsx`, full TypeScript validation, and the required production build pass.
+
 ## Frame-aligned mobile dialogue reveal (2026-08-30)
 
 Caption typing now runs from one animation-frame scheduler with elapsed-time catch-up and at most one React message update per painted frame. Short-landscape avatar spacing uses resize observation instead of synchronous measurement on every character, dialogue audio no longer repeats `play()` while its singleton blip is already active, and transcript live-region announcements pause until the streamed caption is complete. Text speed, punctuation holds, segmentation, controls, avatar speech state, and audible blip rhythm remain unchanged.

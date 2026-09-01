@@ -543,3 +543,4 @@ Use these records only when historical context is needed; do not load the entire
 - `2026-08-22_14-04-50-voxel-avatar-v4-review.md` records rejection of the flat-head/robot-arm direction, adoption of the illustrated facial reference, the dense volumetric head, and the current watch-free wider-shouldered V4 candidate.
 - Other timestamped Markdown files are earlier append-only session handoffs.
 - `2026-08-30_15-41-32-shift-memory-and-pinecone-skill.md` records the canonical Shift/microagi funding update, 166-record Pinecone replacement, live retrieval checks, and reusable repo skill.
+- `2026-09-01_14-07-17-dialogue-chunk-reply.md` records Reply availability on every automatically segmented assistant caption, including intermediate Next chunks.
