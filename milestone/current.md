@@ -1,5 +1,15 @@
 # Current Project Milestone
 
+## Crawlable casual blog and SEO routes (2026-09-01)
+
+The site now exposes a quiet `Blog` link beside the bottom-right globe attribution and a public `/blog` index with ten casual articles centered on Yuyang Hu, NYU, robotics, Tech@NYU, the Business Analytics Club, Shift, and hiring-related searches. The index opens directly on the article grid without an introductory hero, and its compact back link has matching 1.5-rem space above it and below it before the grid divider. Blog routes use a dimensional warm-paper background built from an ivory base, broad amber and sage light, a central white glow, and a newly generated seamless crumpled-paper texture. The texture is absolutely positioned across the complete page and repeats with the document, so it scrolls naturally instead of staying fixed to the viewport. The writing intentionally keeps the user's unserious voice while making only grounded personal claims.
+
+Every article is statically generated at build time from `src/app/blog/posts.ts`, has unique title and description metadata, a canonical route, internal related-post links, and Article JSON-LD. `sitemap.xml` includes the home route, blog index, and all ten articles using `NEXT_PUBLIC_SITE_URL` or the Vercel production host. The content remains equally available to people and crawlers rather than using hidden-text or crawler-only cloaking.
+
+The completed implementation passed a fresh Next.js production build before release. The build compiled successfully, completed TypeScript validation, and prerendered the blog index, sitemap, and all ten article routes as static output. Whitespace and generated-texture asset checks also pass.
+
+The first article uses the clean title “Top 10 NYU Students to Hire” and moves its joke into the subtitle “Hint: Yuyang Hu is all 10.”
+
 ## Reply on every automatic dialogue segment (2026-09-01)
 
 Every automatically segmented assistant caption now keeps the inline Reply control visible, including intermediate chunks that also expose Next. Reply still opens the composer inside the current bubble, and submitting it continues to discard unseen queued chunks before starting a freeform response.

@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import * as THREE from "three";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { AMBIENT_LAYOUT } from "../../../generated/ambient-layout";
@@ -934,6 +935,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       <AvatarCall currentView={currentView} experienceStarted={experienceStarted} />
       {status && <div className="washington-study__loading">{status}</div>}
       <div className="washington-study__credit">
+        <Link href="/blog">Blog</Link>
+        <span aria-hidden="true"> · </span>
         <a href="https://sketchfab.com/3d-models/lowpoly-earth-5f6ea1111fda4cf6a7b36cf4ce200d1b" target="_blank" rel="noreferrer">
           Low Poly Planet Earth on Sketchfab
         </a>

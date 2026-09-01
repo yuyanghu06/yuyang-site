@@ -6,6 +6,24 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-09-01_16-59-58-verify-blog-release.md` records the final pre-commit production build and release-readiness review for the complete blog feature.
+
+- `2026-09-01_16-56-44-generate-scroll-bound-paper-texture.md` records generating an original seamless paper asset from the reference and changing it from a fixed viewport layer to a repeating document-scrolling layer.
+
+- `2026-09-01_16-53-17-use-crumpled-paper-texture.md` records replacing procedural grain with the supplied folded-paper image and blending it over the warm blog lighting.
+
+- `2026-09-01_16-52-10-strengthen-blog-paper-grain.md` records increasing the blog's fixed paper-grain layer from 3.5% to 7.5% opacity.
+
+- `2026-09-01_15-08-05-dimensional-blog-background.md` records the layered ivory, amber, sage, center-light, and subtle paper-grain treatment for all blog routes.
+
+- `2026-09-01_15-00-21-match-blog-nav-spacing.md` records matching the blog index's top and pre-divider navigation gaps while preserving roomier article-page spacing.
+
+- `2026-09-01_14-59-13-refine-top-ten-title.md` records simplifying the first article title and moving its Yuyang Hu joke into the subtitle.
+
+- `2026-09-01_14-58-36-remove-blog-hero.md` records removing the oversized blog-index introduction so the page opens directly on its article grid.
+
+- `2026-09-01_14-56-55-casual-seo-blog.md` records the ten crawlable casual articles, static blog routes, metadata, structured data, sitemap, footer link, and production-build verification.
+
 - `2026-08-30_22-15-00-smooth-mobile-dialogue-reveal.md` records frame-aligned caption batching, resize-driven mobile layout measurement, reduced dialogue-audio churn, and completion-only transcript announcements.
 
 - `2026-08-30_22-01-22-pinch-only-mobile-zoom.md` records reserving mobile zoom navigation for two-finger pinch gestures and removing one-finger vertical swipe zoom.
