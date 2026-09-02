@@ -1,5 +1,11 @@
 # Current Project Milestone
 
+## Final-answer-only agent stream (2026-09-02)
+
+Production Vercel logs reproduced a raw RAG-call display for the prompt “tell me about yoonchul shin.” In that response, the model wrote the intended private search arguments as an assistant `commentary` text item instead of emitting a function call, then returned the visitor-facing answer as a separate `final_answer` item. The runtime had been buffering every `response.output_text.delta`, so both phases reached the browser even though the NDJSON contract itself exposed no tool-call event type.
+
+The runtime now consumes the model stream privately and derives browser-visible text only from completed assistant messages whose phase is not `commentary`. This preserves unphased compatible answer messages while excluding intermediate commentary and tool-like text at the server boundary. A synthetic reproduction returns only `Safe answer.`; full TypeScript validation and targeted ESLint pass. A live local request using the production prompt emitted only status events, one safe final `text_delta`, and `done`, with no query arguments or tool payload. The final Next.js production build also passes, including TypeScript validation and generation of all 18 routes.
+
 ## Crawlable casual blog and SEO routes (2026-09-01)
 
 The site now exposes a quiet `Blog` link beside the bottom-right globe attribution and a public `/blog` index with ten casual articles centered on Yuyang Hu, NYU, robotics, Tech@NYU, the Business Analytics Club, Shift, and hiring-related searches. The index opens directly on the article grid without an introductory hero, and its compact back link has matching 1.5-rem space above it and below it before the grid divider. Blog routes use a dimensional warm-paper background built from an ivory base, broad amber and sage light, a central white glow, and a newly generated seamless crumpled-paper texture. The texture is absolutely positioned across the complete page and repeats with the document, so it scrolls naturally instead of staying fixed to the viewport. The writing intentionally keeps the user's unserious voice while making only grounded personal claims.

@@ -1,4 +1,4 @@
-import type { ResponseInputItem } from "openai/resources/responses/responses";
+import type { ResponseInputItem, ResponseOutputItem } from "openai/resources/responses/responses";
 import { readFileSync } from "node:fs";
 import { formatRetrievedContext, getOpenAIClient, retrieveContext } from "../memory/retrieval";
 import { AGENT_TOOLS, parseAgentCommand, parseMemorySearch, resolveHyperlink, searchWeb } from "./tools";
@@ -16,6 +16,13 @@ function explicitlyRequestsApprovedLink(messages: AgentMessage[]) {
   if (/\b(github|linkedin|instagram)\b/i.test(question)) return true;
   const asksForLink = /\b(link|url|website|web site|profile|account|follow)\b/i.test(question);
   return asksForLink && /\b(tech\s*@?\s*nyu|bac|business analytics club|shift)\b/i.test(question);
+}
+
+export function extractFinalAnswerText(output: ResponseOutputItem[]) {
+  return output.flatMap((item) => {
+    if (item.type !== "message" || item.role !== "assistant" || item.phase === "commentary") return [];
+    return item.content.flatMap((part) => part.type === "output_text" ? [part.text] : []);
+  }).join("");
 }
 
 export async function* streamAgent(messages: AgentMessage[], currentView: MapDestination): AsyncGenerator<AgentStreamEvent> {
@@ -36,14 +43,17 @@ export async function* streamAgent(messages: AgentMessage[], currentView: MapDes
 
   yield { type: "status", status: "thinking" };
   for (let round = 0; round < 10; round += 1) {
-    const bufferedText: string[] = [];
     const stream = openai.responses.stream({
       model, instructions: INSTRUCTIONS, input: roundInput, previous_response_id: previousResponseId,
       tools: AGENT_TOOLS,
       tool_choice: round === 0 && forceHyperlinkFirst ? { type: "function", name: "hyperlink" } : "auto",
       parallel_tool_calls: true,
     });
-    for await (const event of stream) if (event.type === "response.output_text.delta") bufferedText.push(event.delta);
+    for await (const _event of stream) {
+      // The browser receives text only after the completed response has been
+      // classified by message phase below. Streaming every output-text delta can
+      // expose intermediate commentary when a model writes tool arguments as text.
+    }
     const response = await stream.finalResponse();
     console.info("[Agent][LLM turn]", JSON.stringify({
       requestId: requestLogId,
@@ -55,8 +65,8 @@ export async function* streamAgent(messages: AgentMessage[], currentView: MapDes
     }));
     const calls = response.output.filter((item) => item.type === "function_call");
     if (calls.length === 0) {
-      if (bufferedText.some((delta) => delta.trim())) yield { type: "speech_start" };
-      const completedText = bufferedText.join("");
+      const completedText = extractFinalAnswerText(response.output);
+      if (completedText.trim()) yield { type: "speech_start" };
       if (completedText) yield { type: "text_delta", delta: completedText };
       yield { type: "done" };
       return;

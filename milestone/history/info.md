@@ -6,6 +6,10 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-09-02_16-57-56-verify-commentary-filter-release.md` records the required production-build verification before committing and pushing the agent-stream privacy fix.
+
+- `2026-09-02_14-05-33-filter-agent-commentary.md` records the production-log reproduction and server-side phase filter that prevents commentary and tool-like text from reaching the visitor stream.
+
 - `2026-09-01_16-59-58-verify-blog-release.md` records the final pre-commit production build and release-readiness review for the complete blog feature.
 
 - `2026-09-01_16-56-44-generate-scroll-bound-paper-texture.md` records generating an original seamless paper asset from the reference and changing it from a fixed viewport layer to a repeating document-scrolling layer.
