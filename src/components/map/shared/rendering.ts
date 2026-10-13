@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { MapView } from "./core";
 
 export interface MapRendererState {
   renderer: THREE.WebGLRenderer;
@@ -36,7 +37,7 @@ export function createMapRenderer(): MapRendererState {
 
 export function renderMapFrame(
   renderer: THREE.WebGLRenderer,
-  activeView: "globe" | "manhattan" | "washington" | "union",
+  activeView: MapView,
   globeScene: THREE.Scene,
   globeCamera: THREE.Camera,
   mapScene: THREE.Scene,
@@ -49,6 +50,8 @@ export function renderMapFrame(
     return;
   }
   renderer.render(mapScene, mapCamera);
-  renderer.clearDepth();
-  renderer.render(overlayScene, mapCamera);
+  if (activeView !== "san-diego") {
+    renderer.clearDepth();
+    renderer.render(overlayScene, mapCamera);
+  }
 }

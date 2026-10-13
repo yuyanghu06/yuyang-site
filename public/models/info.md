@@ -4,6 +4,7 @@ This folder contains web-served 3D models and reusable external motion sources. 
 
 ## Direct subfolders
 
+- `san-diego/` contains generated Map3D-derived Torrey Highlands buildings, roads, and merged landmark assets.
 - `washington-city/` contains generated, tiled CityGML geometry plus its browser manifests and runtime data.
 
 ## Direct files

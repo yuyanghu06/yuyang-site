@@ -6,6 +6,16 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-13_12-01-52-prepare-dev-branch-release.md` records the complete diff prepared for the dev branch and fresh production-build verification.
+
+- `2026-10-13_10-44-12-fixed-san-diego-cameras.md` records restoring fixed San Diego cameras, hiding authoring controls, and checking guided navigation.
+
+- `2026-10-11_12-10-00-san-diego-free-camera-palette.md` records temporary San Diego free camera controls, greener geometry-preserving palette, and desktop/mobile-emulation verification.
+
+- `2026-10-11_11-20-09-san-diego-torrey-highlands.md` records the San Diego scene, Map3D pipeline, shared navigation/dialogue/audio, independent verification, and remaining manual browser checks.
+
+- `2026-10-10_21-13-54-orchestrator-agent-configuration.md` records the default orchestrator workflow, reusable specialist configurations, and validation.
+
 - `2026-09-02_16-57-56-verify-commentary-filter-release.md` records the required production-build verification before committing and pushing the agent-stream privacy fix.
 
 - `2026-09-02_14-05-33-filter-agent-commentary.md` records the production-log reproduction and server-side phase filter that prevents commentary and tool-like text from reaching the visitor stream.

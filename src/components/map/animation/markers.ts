@@ -14,7 +14,7 @@ export function animateNavigationArrow(
   springStartedAt: number,
   springComplete: boolean,
 ) {
-  if (!arrow || activeView === "manhattan" || now < springStartedAt) return springComplete;
+  if (!arrow || (activeView !== "washington" && activeView !== "union") || now < springStartedAt) return springComplete;
   arrow.visible = true;
   if (springComplete) {
     arrow.position.y = NAVIGATION_ARROW_Y + Math.sin(elapsed * 1.8) * 3;
@@ -65,7 +65,7 @@ export function animateDestinationMarkers(
 }
 
 export function animateNeighborhoodMarkers(
-  markersByView: Map<"washington" | "union", THREE.Group[]>,
+  markersByView: Map<"washington" | "union" | "san-diego", THREE.Group[]>,
   activeView: MapView,
   elapsed: number,
   cameraLocked: boolean,

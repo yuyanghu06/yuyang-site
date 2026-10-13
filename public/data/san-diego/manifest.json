@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "name": "Torrey Highlands · San Diego",
+  "modelUrl": "/models/san-diego/torrey-highlands.glb",
+  "contentHash": "a7152380bc1a5e5e6ae90003507d12287cf32234b2f81fade26f51d835fce797",
+  "byteLength": 3606512,
+  "attribution": "© OpenStreetMap contributors · Map3D (MIT)",
+  "source": {
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "sourceUrl": "https://api.openstreetmap.org/api/0.6/map?bbox=-117.163,32.951,-117.138,32.971",
+    "retrievedAt": "2026-10-11T15:11:00.960Z",
+    "bounds": {
+      "west": -117.163,
+      "south": 32.951,
+      "east": -117.138,
+      "north": 32.971
+    },
+    "snapshot": "/data/san-diego/source.osm.json"
+  },
+  "map3d": {
+    "repository": "https://github.com/cartesiancs/map3d",
+    "commit": "2c5d732477ba7c55995572aae926bf80303c00b9",
+    "license": "MIT",
+    "sourceFile": "src/three/Space.tsx",
+    "implementation": "Executes the pinned upstream areaData extrusion function; replaces its 51000 arbitrary scale with a local metric projection and supplies explicit inferred heights where OSM has none."
+  },
+  "projection": {
+    "type": "local-equirectangular",
+    "originLongitudeLatitude": [
+      -117.1518,
+      32.9606
+    ],
+    "units": "meters",
+    "axes": "east +X, up +Y, north -Z",
+    "metersPerLatitudeDegree": 111320,
+    "metersPerLongitudeDegree": 93402.4778173281
+  },
+  "bounds": {
+    "west": -117.163,
+    "south": 32.951,
+    "east": -117.138,
+    "north": 32.971
+  },
+  "localBounds": {
+    "minX": -1046.1077515542913,
+    "maxX": 1288.9541938781147,
+    "minZ": -1157.7279999996747,
+    "maxZ": 1068.6719999998822
+  },
+  "overview": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "height": 1200,
+    "radius": 1350,
+    "zoom": 0.65
+  },
+  "landmarks": [
+    {
+      "cameraViewId": "westview-high-school",
+      "rootName": "Westview High School",
+      "address": "13500 Camino Del Sur, San Diego, CA 92129",
+      "areaSourceId": "way/61862546",
+      "buildingSourceIds": [
+        "way/31816015",
+        "way/31816508",
+        "way/31816603",
+        "way/31816723",
+        "way/31816751",
+        "way/31817172",
+        "way/31817203",
+        "way/31817302",
+        "way/31817646",
+        "way/31817915",
+        "way/31818278",
+        "way/31818575",
+        "way/31819388",
+        "way/31819442",
+        "way/31819445",
+        "way/31819456",
+        "way/564506521",
+        "way/564506522",
+        "way/1326247608",
+        "way/1326247609",
+        "way/1326247610",
+        "way/1326247611",
+        "way/1326247612",
+        "way/1326247613",
+        "way/1326247614",
+        "way/1326247615",
+        "way/1326247616",
+        "way/1326247617",
+        "way/1326247618",
+        "way/1326247619",
+        "way/1326247620",
+        "way/1326247621",
+        "way/1326247622",
+        "way/1326247623",
+        "way/1326247624",
+        "way/1326247625",
+        "way/1326247626",
+        "way/1326247627",
+        "way/1488675457"
+      ],
+      "center": [
+        142.709,
+        0,
+        -675.178
+      ],
+      "bounds": {
+        "min": [
+          -58.48,
+          0.35,
+          -880.04
+        ],
+        "max": [
+          343.899,
+          8.87,
+          -470.316
+        ]
+      },
+      "camera": {
+        "azimuth": 0,
+        "height": 500,
+        "radius": 650,
+        "zoom": 1.4
+      }
+    },
+    {
+      "cameraViewId": "torrey-highlands-plaza",
+      "rootName": "Torrey Highlands Plaza",
+      "address": "7845 Highlands Village Place, San Diego, CA 92129 (Chef Zhu, C101)",
+      "areaSourceId": "way/61862581",
+      "buildingSourceIds": [
+        "way/61862583",
+        "way/219864476",
+        "way/219864477",
+        "way/219864478",
+        "way/219864479",
+        "way/219864480",
+        "way/1235654905",
+        "way/1235654906"
+      ],
+      "center": [
+        -222.439,
+        0,
+        -77.419
+      ],
+      "bounds": {
+        "min": [
+          -324.221,
+          0.35,
+          -166.304
+        ],
+        "max": [
+          -120.657,
+          7.37,
+          11.466
+        ]
+      },
+      "camera": {
+        "azimuth": 0,
+        "height": 350,
+        "radius": 460,
+        "zoom": 1.6
+      }
+    }
+  ],
+  "counts": {
+    "buildings": 2637,
+    "buildingsWithInferredHeight": 2631,
+    "roadsAndPaths": 1092,
+    "bridges": 15,
+    "landcoverPolygons": 97,
+    "greenAreas": 32,
+    "trees": 804,
+    "sourcedTrees": 12,
+    "selectableLandmarks": 2,
+    "meshes": 6
+  },
+  "assumptions": [
+    "Flat stylized terrain; no surveyed elevation model.",
+    "Building footprints, roads, campus, plaza, parks, and sport surfaces use OpenStreetMap geometry. Missing building heights: homes 6.5 m, offices/commercial 12 m, Westview 8.5 m, plaza 7 m. Supplied OSM levels retain Map3D's 2.2 m/level convention.",
+    "Window panels, flat roof colors, and supplemental trees are deterministic artistic details, not surveyed architecture or vegetation.",
+    "Road widths are inferred from tagged lane counts or highway class where explicit widths are absent. Mapped bridges are raised to 5.9 m with 70 m approach ramps.",
+    "All landmark buildings, roofs, and facade panels are merged into one selectable mesh per destination."
+  ],
+  "compression": {
+    "extension": "EXT_meshopt_compression",
+    "positions": "lossless Float32 (preserves centimeter layer gaps)",
+    "normals": "10-bit",
+    "colors": "8-bit"
+  },
+  "palette": {
+    "ground": "#9fb77f",
+    "road": "#797d73",
+    "freeway": "#747c77",
+    "walk": "#e3d8ba",
+    "park": "#83a96d",
+    "scrub": "#b0b982",
+    "meadow": "#b4c285",
+    "campus": "#dfd1ae",
+    "parking": "#a4a28e",
+    "pitch": "#6d9e62",
+    "track": "#c08b71",
+    "water": "#82b6b9",
+    "wall": [
+      "#e2cdab",
+      "#d9c19e",
+      "#ecddbd",
+      "#d5c9a7",
+      "#e5cdb3"
+    ],
+    "roof": [
+      "#b77f61",
+      "#c58b68",
+      "#b49673",
+      "#cf9c79"
+    ],
+    "campusWall": "#e7d6b4",
+    "landmarkRoof": "#ca9970",
+    "leaf": [
+      "#628c54",
+      "#7e9e5d",
+      "#9aaf6a",
+      "#72956a"
+    ],
+    "trunk": "#91795c",
+    "window": "#769ca0"
+  },
+  "treeValidation": {
+    "seed": 56013500,
+    "excluded": [
+      "building footprint plus canopy radius + 1 m",
+      "road/path half-width plus canopy radius + 1 m",
+      "parking and sports polygons plus canopy radius + 1 m",
+      "other canopies plus 1 m"
+    ],
+    "conflicts": 0
+  }
+}

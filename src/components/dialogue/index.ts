@@ -8,6 +8,10 @@ import twentyFiveUnionSquareWestDialogue from "./union-square/25-union-square-we
 import twoThirtyFiveParkAvenueSouthDialogue from "./union-square/235-park-avenue-south.md";
 import unionSquareDialogue from "./union-square/union-square.md";
 import washingtonSquareDialogue from "./washington-square/washington-square.md";
+import sanDiegoDialogue from "./san-diego/san-diego.md";
+import westviewHighSchoolDialogue from "./san-diego/westview-high-school.md";
+import torreyHighlandsPlazaDialogue from "./san-diego/torrey-highlands-plaza.md";
+import sanDiegoCompleteDialogue from "./san-diego/tour-complete.md";
 
 export {
   bobstLibraryDialogue,
@@ -20,4 +24,8 @@ export {
   twoThirtyFiveParkAvenueSouthDialogue,
   unionSquareDialogue,
   washingtonSquareDialogue,
+  sanDiegoDialogue,
+  westviewHighSchoolDialogue,
+  torreyHighlandsPlazaDialogue,
+  sanDiegoCompleteDialogue,
 };

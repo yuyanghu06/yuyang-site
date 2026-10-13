@@ -7,8 +7,8 @@ import * as THREE from "three";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { AMBIENT_LAYOUT } from "../../../generated/ambient-layout";
 import AvatarCall from "../../avatar-call";
-import { Point3, CityGmlSurface, WashingtonCityRuntimeData, WashingtonCityManifest, WashingtonParkData, SHARED_DATA_VERSION, isAbortError, createLoadLogger, SkyTraveler, AmbientAnimation, BLOCKED_ZOOM_DURATION_MS, BLOCKED_ZOOM_SCALE, BLOCKED_ZOOM_GESTURE_SETTLE_MS, NAVIGATION_ARROW_Y, NAVIGATION_ARROW_SCALE, NAVIGATION_ARROW_SPRING_DURATION_MS, WASHINGTON_ARROW_POSITION, UNION_ARROW_POSITION, MANHATTAN_CENTER, WASHINGTON_CENTER, UNION_CENTER, WASHINGTON_PARK_VISUAL_CENTER, UNION_PARK_VISUAL_CENTER, MANHATTAN_TILE_RADIUS, NEIGHBORHOOD_TILE_RADIUS, PARK_ZOOM_HIT_RADIUS, MANHATTAN_CAMERA_HEIGHT, MANHATTAN_CAMERA_RADIUS, HUDSON_MIN_CITY_TILE_X, WORLD_UP, MapView } from "../shared/core";
-import { GLOBE_RADIUS, GLOBE_START_CAMERA_DISTANCE, GLOBE_MAX_CAMERA_DISTANCE, createWatercolorGlobe, createStarField } from "../globe/scene";
+import { Point3, CityGmlSurface, WashingtonCityRuntimeData, WashingtonCityManifest, WashingtonParkData, SHARED_DATA_VERSION, isAbortError, createLoadLogger, SkyTraveler, AmbientAnimation, BLOCKED_ZOOM_DURATION_MS, BLOCKED_ZOOM_SCALE, BLOCKED_ZOOM_GESTURE_SETTLE_MS, NAVIGATION_ARROW_Y, NAVIGATION_ARROW_SCALE, NAVIGATION_ARROW_SPRING_DURATION_MS, WASHINGTON_ARROW_POSITION, UNION_ARROW_POSITION, MANHATTAN_CENTER, WASHINGTON_CENTER, UNION_CENTER, WASHINGTON_PARK_VISUAL_CENTER, UNION_PARK_VISUAL_CENTER, MANHATTAN_TILE_RADIUS, NEIGHBORHOOD_TILE_RADIUS, PARK_ZOOM_HIT_RADIUS, MANHATTAN_CAMERA_HEIGHT, MANHATTAN_CAMERA_RADIUS, HUDSON_MIN_CITY_TILE_X, WORLD_UP, MapView, type CityOverview } from "../shared/core";
+import { GLOBE_RADIUS, GLOBE_START_CAMERA_DISTANCE, GLOBE_MAX_CAMERA_DISTANCE, createWatercolorGlobe, createStarField, northUpGlobeQuaternion, IMPORTED_EARTH_SD_LATITUDE, IMPORTED_EARTH_SD_LONGITUDE } from "../globe/scene";
 import { createManhattanDestinationMarker, ClickableLandmark, createBuildingGlow, createWorldNavigationArrow } from "../manhattan/navigation";
 import { makeSurfaceGeometry, createParkPaths, createParkTrees, createSimpleFountain, createSimpleArch, loadGlb, loadBlenderArch, loadBobstLibrary, createCrosswalks } from "../manhattan/neighborhoods/park";
 import { createNeighborhoodBirdTravelers, createGlobeClouds, createSkyTravelers } from "../manhattan/ambient/sky";
@@ -28,12 +28,14 @@ import {
 } from "../animation/markers";
 import { createAdaptiveResolution } from "../animation/adaptive-resolution";
 import { startManhattanLoading } from "../manhattan/loading/manhattan-loader";
-import { disposeScenes } from "./dispose-runtime";
+import { disposeScenes, disposeSceneObjects } from "./dispose-runtime";
 import { createHitTesting } from "../interaction/hit-testing";
 import { createInputController } from "../interaction/input-controller";
 import { createViewportLifecycle } from "./viewport-lifecycle";
+import { getLandmarkFitZoom } from "./landmark-framing";
+import { adjustFreeCamera, serializeFreeCamera, SAN_DIEGO_FREE_CAMERA_ENABLED, type FreeCameraGesture } from "./san-diego-free-camera";
 import { AGENT_COMMAND_EVENT, createMapViewSettledReporter, type AgentCommand } from "@/agent/contracts/types";
-import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId, type GeographicMapView } from "@/agent/context/camera-views";
+import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId } from "@/agent/context/camera-views";
 import { createMapAudioController } from "../../site-audio";
 
 export default function GlobalMap({ experienceStarted }: { experienceStarted: boolean }) {
@@ -42,6 +44,23 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
   const experienceStartedRef = useRef(experienceStarted);
   const [status, setStatus] = useState("");
   const [currentView, setCurrentView] = useState<CameraViewId>("globe");
+  const freeCameraActionsRef = useRef<{ reset: () => void; snapshot: () => string | null } | null>(null);
+  const [cameraCopyStatus, setCameraCopyStatus] = useState("");
+  const [cameraCopyFallback, setCameraCopyFallback] = useState("");
+  const showFreeCamera = SAN_DIEGO_FREE_CAMERA_ENABLED
+    && (currentView === "san-diego" || currentView === "westview-high-school" || currentView === "torrey-highlands-plaza");
+  const copyCameraView = async () => {
+    const snapshot = freeCameraActionsRef.current?.snapshot();
+    if (!snapshot) return;
+    try {
+      await navigator.clipboard.writeText(snapshot);
+      setCameraCopyStatus("View copied.");
+      setCameraCopyFallback("");
+    } catch {
+      setCameraCopyStatus("Clipboard unavailable. Select and copy this view:");
+      setCameraCopyFallback(snapshot);
+    }
+  };
 
   useEffect(() => {
     experienceStartedRef.current = experienceStarted;
@@ -68,6 +87,23 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const yieldToMainThread = () => new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 
     const scene = new THREE.Scene();
+    const sanDiegoScene = new THREE.Scene();
+    sanDiegoScene.name = "San Diego — Torrey Highlands";
+    sanDiegoScene.background = new THREE.Color(0x9fb77f);
+    sanDiegoScene.add(new THREE.HemisphereLight(0xfffcf2, 0x839975, 1.9));
+    const sanDiegoSun = new THREE.DirectionalLight(0xfff0d9, 1.4);
+    sanDiegoSun.position.set(-900, 1800, 800);
+    sanDiegoSun.castShadow = true;
+    sanDiegoSun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sanDiegoSun.shadow.camera, { left: -1600, right: 1600, top: 1600, bottom: -1600, far: 5000 });
+    sanDiegoSun.shadow.camera.updateProjectionMatrix();
+    sanDiegoSun.shadow.bias = -0.00015;
+    sanDiegoSun.shadow.radius = 6;
+    sanDiegoScene.add(sanDiegoSun, sanDiegoSun.target);
+    let sanDiegoOverview = { target: [0, 28, 0] as Point3, height: 1700, radius: 1700, zoom: 0.32 };
+    let sanDiegoReady = false;
+    let sanDiegoLoading: Promise<boolean> | null = null;
+    let ensureSanDiego: () => Promise<boolean> = () => Promise.resolve(false);
     const globeScene = new THREE.Scene();
     const skyOverlayScene = new THREE.Scene();
     skyOverlayScene.add(new THREE.HemisphereLight(0xffffff, 0xded8cc, 2.4));
@@ -89,6 +125,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       group: globe,
       marker: manhattanGlobeMarker,
       leader: manhattanGlobeLeader,
+      sanDiegoMarker: sanDiegoGlobeMarker,
+      sanDiegoLeader: sanDiegoGlobeLeader,
       placeholder: globePlaceholder,
     } = createWatercolorGlobe();
     const globeClouds = createGlobeClouds();
@@ -100,7 +138,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     globeScene.add(globe);
     void loadGlb("/models/low-poly-planet-earth-e54e8607.glb", abortController.signal)
       .then((gltf) => {
-        if (disposed) return;
+        if (disposed) { disposeSceneObjects([gltf.scene]); return; }
         const bounds = new THREE.Box3().setFromObject(gltf.scene);
         const size = bounds.getSize(new THREE.Vector3());
         const center = bounds.getCenter(new THREE.Vector3());
@@ -130,29 +168,33 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       .catch((error) => {
         if (!isAbortError(error)) console.warn("[Globe] Imported Earth failed; using placeholder", error);
       });
-    const manhattanMarkerMaterials: Array<THREE.MeshBasicMaterial | THREE.SpriteMaterial> = [];
-    manhattanGlobeMarker.traverse((object) => {
-      if (!(object instanceof THREE.Mesh || object instanceof THREE.Sprite)) return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      materials.forEach((material) => {
-        if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.SpriteMaterial) {
-          manhattanMarkerMaterials.push(material);
+    const globeMarkers = new Map<CityOverview, THREE.Object3D>([
+      ["manhattan", manhattanGlobeMarker], ["san-diego", sanDiegoGlobeMarker],
+    ]);
+    const globeMarkerStates = [
+      { destination: "manhattan" as const, marker: manhattanGlobeMarker, leader: manhattanGlobeLeader },
+      { destination: "san-diego" as const, marker: sanDiegoGlobeMarker, leader: sanDiegoGlobeLeader },
+    ].map((entry) => {
+      const markerMaterials: Array<THREE.MeshBasicMaterial | THREE.SpriteMaterial> = [];
+      const leaderMaterials: THREE.LineBasicMaterial[] = [];
+      entry.marker.traverse((object) => {
+        if (!(object instanceof THREE.Mesh || object instanceof THREE.Sprite || object instanceof THREE.Line)) return;
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          if (material instanceof THREE.LineBasicMaterial) leaderMaterials.push(material);
+          else if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.SpriteMaterial) markerMaterials.push(material);
         }
       });
-    });
-    const manhattanLeaderMaterials: THREE.LineBasicMaterial[] = [];
-    manhattanGlobeLeader.traverse((object) => {
-      if (!(object instanceof THREE.Line)) return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      materials.forEach((material) => {
-        if (material instanceof THREE.LineBasicMaterial) manhattanLeaderMaterials.push(material);
-      });
+      return { ...entry, markerMaterials, leaderMaterials, facing: 0 };
     });
     const markerWorldPosition = new THREE.Vector3();
     const globeCameraDirection = new THREE.Vector3();
-    let currentGlobeMarkerFacing = 1;
     const globeHomeQuaternion = globe.quaternion.clone();
     const globeTransitionStartQuaternion = globe.quaternion.clone();
+    const globeTransitionTargetQuaternion = globe.quaternion.clone();
+    const cityGlobeQuaternions = {
+      manhattan: globeHomeQuaternion.clone(),
+      "san-diego": northUpGlobeQuaternion(IMPORTED_EARTH_SD_LATITUDE, IMPORTED_EARTH_SD_LONGITUDE),
+    };
     const globeYawQuaternion = new THREE.Quaternion();
     const globePitchQuaternion = new THREE.Quaternion();
     const globeScreenRight = new THREE.Vector3(1, 0, 0);
@@ -194,6 +236,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let globeTransitionStartedAt = 0;
     let globeTransitionLanded = false;
     let globeTransitionDirection: "in" | "out" | null = null;
+    let globeTransitionCity: CityOverview = "manhattan";
     let reverseTransitionStartZoom = 0.3;
     const GLOBE_TRANSITION_DURATION_MS = 2168;
 
@@ -210,8 +253,10 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let desiredCameraZoom = 0.3;
     camera.zoom = desiredCameraZoom;
     let cameraLocked = false, cameraTransitioning = false; const reportSettledView = createMapViewSettledReporter();
-    let pendingAgentDestination: CameraViewId | null = null, navigateAgentCamera: (destination: CameraViewId) => void = () => undefined;
-    let selectLandmark: (landmark: ClickableLandmark) => void = () => undefined;
+    let pendingAgentDestination: CameraViewId | null = null;
+    let sanDiegoManuallyAdjusted = false;
+    let navigateAgentCamera: (destination: CameraViewId, updateUrl?: boolean) => void = () => undefined;
+    let selectLandmark: (landmark: ClickableLandmark, updateUrl?: boolean) => void = () => undefined;
     let blockedZoomStartedAt = 0;
     let blockedZoomGestureActive = false;
     let blockedZoomGestureReset = 0;
@@ -228,15 +273,33 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       );
       camera.lookAt(cameraTarget);
     };
+    const displayedCameraPose = () => ({ target: cameraTarget, azimuth: cameraAzimuth, height: cameraHeight, radius: cameraRadius, zoom: camera.zoom });
+    const adjustSanDiegoCamera = (gesture: FreeCameraGesture) => {
+      if (!SAN_DIEGO_FREE_CAMERA_ENABLED || activeStudy !== "san-diego" || globeTransitionStartedAt) return;
+      const pose = adjustFreeCamera(displayedCameraPose(), gesture, camera, { width: mount.clientWidth, height: mount.clientHeight });
+      cameraTarget.copy(pose.target);
+      desiredCameraTarget.copy(pose.target);
+      cameraAzimuth = desiredCameraAzimuth = pose.azimuth;
+      cameraHeight = desiredCameraHeight = pose.height;
+      cameraRadius = desiredCameraRadius = pose.radius;
+      camera.zoom = desiredCameraZoom = pose.zoom;
+      cameraTransitioning = false;
+      blockedZoomStartedAt = 0;
+      pendingAgentDestination = null;
+      sanDiegoManuallyAdjusted = true;
+      camera.updateProjectionMatrix();
+      updateCamera();
+    };
     updateCamera();
     let requestNeighborhood: ((center: THREE.Vector3, radius: number) => void) | null = null;
     let navigationArrow: THREE.Group | null = null;
     let manhattanDestinationMarkers: THREE.Group | null = null;
     let washingtonDestinationMarker: THREE.Group | null = null;
     let unionDestinationMarker: THREE.Group | null = null;
-    const neighborhoodBuildingMarkers = new Map<"washington" | "union", THREE.Group[]>([
+    const neighborhoodBuildingMarkers = new Map<"washington" | "union" | "san-diego", THREE.Group[]>([
       ["washington", []],
       ["union", []],
+      ["san-diego", []],
     ]);
     let manhattanMarkerExitStartedAt = 0;
     let manhattanMarkerEnterStartedAt = 0;
@@ -244,8 +307,19 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let navigationArrowSpringStartedAt = Number.POSITIVE_INFINITY;
     let navigationArrowSpringComplete = false;
     switchStudyRef.current = (next, updateUrl = true) => {
+      if (next === "san-diego" && !sanDiegoReady) {
+        void ensureSanDiego().then((ready) => { if (ready && !disposed) switchStudyRef.current(next, updateUrl); });
+        return;
+      }
       const previousStudy = activeStudy;
       activeStudy = next;
+      sanDiegoManuallyAdjusted = false;
+      camera.far = next === "san-diego" ? 12000 : 3500;
+      camera.updateProjectionMatrix();
+      scene.visible = next !== "san-diego";
+      sanDiegoScene.visible = next === "san-diego";
+      clickableLandmarks.forEach((landmark) => { landmark.selected = false; landmark.hovered = false; });
+      renderer.shadowMap.needsUpdate = true;
       setCurrentView(next);
       if (next === "globe") {
         if (globeTransitionDirection !== "out") {
@@ -257,29 +331,33 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           globeCamera.lookAt(0, 0, 0);
         }
         scene.fog = null;
+        cameraLocked = false;
+        cameraTransitioning = false;
         if (updateUrl) window.history.pushState({ study: next }, "", "/");
         return;
       }
       const isManhattan = next === "manhattan";
-      const nextCenter = next === "union"
+      const isSanDiego = next === "san-diego";
+      const nextCenter = isSanDiego ? new THREE.Vector3(...sanDiegoOverview.target) : next === "union"
         ? UNION_CENTER
         : next === "washington" ? WASHINGTON_CENTER : MANHATTAN_CENTER;
       clickableLandmarks.forEach((landmark) => {
         landmark.selected = false;
         landmark.hovered = false;
-        landmark.glow.visible = !isManhattan;
+        const cameraView = getCameraView(landmark.cameraViewId);
+        landmark.glow.visible = cameraView?.kind === "landmark" && cameraView.neighborhood === next;
       });
       desiredCameraTarget.copy(nextCenter);
       desiredCameraAzimuth = 0;
-      desiredCameraHeight = isManhattan ? MANHATTAN_CAMERA_HEIGHT : 560;
-      desiredCameraRadius = isManhattan ? MANHATTAN_CAMERA_RADIUS : 630;
-      desiredCameraZoom = isManhattan ? 0.3 : 1;
+      desiredCameraHeight = isSanDiego ? sanDiegoOverview.height : isManhattan ? MANHATTAN_CAMERA_HEIGHT : 560;
+      desiredCameraRadius = isSanDiego ? sanDiegoOverview.radius : isManhattan ? MANHATTAN_CAMERA_RADIUS : 630;
+      desiredCameraZoom = isSanDiego ? sanDiegoOverview.zoom : isManhattan ? 0.3 : 1;
       scene.fog = isManhattan ? null : new THREE.Fog(0x354345, 920, 1700);
       cameraLocked = false;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
       if (navigationArrow) {
-        navigationArrow.visible = !isManhattan;
+        navigationArrow.visible = !isManhattan && !isSanDiego;
         navigationArrow.position.x = next === "union" ? UNION_ARROW_POSITION.x : WASHINGTON_ARROW_POSITION.x;
         navigationArrow.position.z = next === "union" ? UNION_ARROW_POSITION.y : WASHINGTON_ARROW_POSITION.y;
         navigationArrow.rotation.y = next === "union" ? Math.PI - 0.754 : -0.754;
@@ -305,21 +383,17 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       neighborhoodBuildingMarkers.forEach((markers, view) => {
         markers.forEach((marker) => { marker.visible = next === view; });
       });
-      if (!isManhattan && !neighborhoodBirdsLoaded) {
+      if (!isManhattan && !isSanDiego && !neighborhoodBirdsLoaded) {
         skyTravelers.push(...createNeighborhoodBirdTravelers(scene));
         neighborhoodBirdsLoaded = true;
       }
-      requestNeighborhood?.(nextCenter, isManhattan ? MANHATTAN_TILE_RADIUS : NEIGHBORHOOD_TILE_RADIUS);
+      if (!isSanDiego) requestNeighborhood?.(nextCenter, isManhattan ? MANHATTAN_TILE_RADIUS : NEIGHBORHOOD_TILE_RADIUS);
       if (updateUrl) window.history.pushState({ study: next }, "", "/");
     };
-    const handlePopState = (event: PopStateEvent) => switchStudyRef.current(
-      event.state?.study === "union"
-        ? "union"
-        : event.state?.study === "washington"
-          ? "washington"
-          : event.state?.study === "manhattan" ? "manhattan" : "globe",
-      false,
-    );
+    const handlePopState = (event: PopStateEvent) => {
+      const destination = event.state?.view ?? event.state?.study ?? "globe";
+      navigateAgentCamera(getCameraView(destination) ? destination : "globe", false);
+    };
     window.addEventListener("popstate", handlePopState);
     const handleAgentCommand = (event: Event) => {
       const command = (event as CustomEvent<AgentCommand>).detail;
@@ -409,12 +483,21 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const clickableLandmarks: ClickableLandmark[] = [];
     const landmarkByRoot = new Map<THREE.Object3D, ClickableLandmark>();
     const raycastRoots: THREE.Object3D[] = [];
-    const registerClickableLandmark = (root: THREE.Object3D) => {
+    const fittedLandmarkZoom = (landmark: ClickableLandmark, maximumZoom: number) => getLandmarkFitZoom({
+      root: landmark.root,
+      camera,
+      target: desiredCameraTarget,
+      azimuth: desiredCameraAzimuth,
+      height: desiredCameraHeight,
+      radius: desiredCameraRadius,
+      maximumZoom,
+    });
+    const registerClickableLandmark = (root: THREE.Object3D, parent: THREE.Object3D = scene) => {
       const cameraView = getLandmarkCameraViewForRoot(root.name); if (!cameraView) throw new Error(`Interactive landmark ${root.name} has no registered camera view.`);
       const glow = createBuildingGlow(root);
-      glow.visible = activeStudy !== "manhattan";
+      glow.visible = activeStudy === cameraView.neighborhood;
       root.add(glow);
-      scene.add(root);
+      if (root.parent !== parent) parent.add(root);
       const landmark = { root, glow, cameraViewId: cameraView.id, baseY: root.position.y, hovered: false, selected: false };
       clickableLandmarks.push(landmark);
       landmarkByRoot.set(root, landmark);
@@ -423,7 +506,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       return landmark;
     };
     const addNeighborhoodBuildingMarker = (
-      view: "washington" | "union",
+      view: "washington" | "union" | "san-diego",
       landmark: ClickableLandmark,
     ) => {
       landmark.root.updateWorldMatrix(true, true);
@@ -431,7 +514,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       const center = bounds.getCenter(new THREE.Vector3());
       const marker = createManhattanDestinationMarker(
         view,
-        0.25,
+        view === "san-diego" ? 0.65 : 0.25,
       );
       marker.position.set(center.x, bounds.max.y - 4, center.z);
       marker.userData.baseY = marker.position.y;
@@ -439,7 +522,42 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       neighborhoodBuildingMarkers.get(view)?.push(marker);
       landmarkByRoot.set(marker, landmark);
       raycastRoots.push(marker);
-      scene.add(marker);
+      (view === "san-diego" ? sanDiegoScene : scene).add(marker);
+    };
+    ensureSanDiego = () => {
+      if (sanDiegoReady) return Promise.resolve(true);
+      if (sanDiegoLoading) return sanDiegoLoading;
+      setStatus("Loading San Diego…");
+      sanDiegoLoading = import("../san-diego/load-scene")
+        .then(({ loadSanDiegoScene }) => loadSanDiegoScene({ signal: abortController.signal }))
+        .then((loaded) => {
+          if (disposed) { disposeSceneObjects([loaded.group]); return false; }
+          const landmarkIds = new Set(loaded.landmarks.map((entry) => entry.cameraViewId));
+          if (!landmarkIds.has("westview-high-school") || !landmarkIds.has("torrey-highlands-plaza")
+            || loaded.landmarks.some((entry) => !(entry.root instanceof THREE.Mesh)
+              || getLandmarkCameraViewForRoot(entry.root.name)?.id !== entry.cameraViewId)) {
+            disposeSceneObjects([loaded.group]);
+            throw new Error("San Diego is missing its merged, registered landmark roots.");
+          }
+          sanDiegoScene.add(loaded.group);
+          sanDiegoOverview = loaded.overview;
+          for (const entry of loaded.landmarks) {
+            const landmark = registerClickableLandmark(entry.root, loaded.group);
+            addNeighborhoodBuildingMarker("san-diego", landmark);
+          }
+          sanDiegoReady = true;
+          renderer.shadowMap.needsUpdate = true;
+          setStatus("");
+          return true;
+        }).catch((error) => {
+          if (!disposed && !isAbortError(error)) {
+            console.error("[San Diego] Scene loading failed", error);
+            setStatus("San Diego could not load. Select its globe marker to try again.");
+          }
+          sanDiegoLoading = null;
+          return false;
+        });
+      return sanDiegoLoading;
     };
     const timer = new THREE.Timer();
     timer.connect(document);
@@ -491,7 +609,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       yieldToMainThread,
       logLoad,
       loadLogPrefix,
-      setStatus,
+      setStatus: (message) => { if (activeStudy !== "san-diego" && globeTransitionCity !== "san-diego") setStatus(message); },
       queueSpringArrival,
       registerClickableLandmark,
       addNeighborhoodBuildingMarker,
@@ -512,6 +630,14 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       camera.top = height / 2;
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
+      if (activeStudy === "san-diego" && cameraLocked && !sanDiegoManuallyAdjusted) {
+        const landmark = clickableLandmarks.find((candidate) => candidate.selected);
+        const view = landmark && getCameraView(landmark.cameraViewId);
+        if (landmark && view?.kind === "landmark") {
+          desiredCameraZoom = fittedLandmarkZoom(landmark, view.zoom);
+          cameraTransitioning = true;
+        }
+      }
       const halfPixelWorld = 0.5 * width / (mount.clientWidth * 0.3);
       if (washingtonDestinationMarker) {
         washingtonDestinationMarker.position.x = WASHINGTON_PARK_VISUAL_CENTER.x + halfPixelWorld;
@@ -558,7 +684,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const { shouldAnimate, startAnimation } = viewportLifecycle;
 
     const {
-      globeManhattanAtPointer,
+      globeDestinationAtPointer,
       landmarkAtPointer,
       navigationAtPointer,
       manhattanMarkerAtPointer,
@@ -571,7 +697,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       renderer,
       camera,
       globeCamera,
-      manhattanGlobeMarker,
+      globeMarkers,
       raycastRoots,
       landmarkByRoot,
       manhattanMarkerDestinations,
@@ -580,62 +706,93 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       getNavigationArrow: () => navigationArrow,
       getDestinationMarkers: () => manhattanDestinationMarkers,
     });
-    const enterManhattanFromGlobe = () => {
+    const enterCityFromGlobe = (destination: CityOverview, updateUrl = true) => {
       if (activeStudy !== "globe" || globeTransitionStartedAt) return;
+      if (destination === "san-diego") {
+        void ensureSanDiego().then((ready) => {
+          if (ready || disposed || globeTransitionCity !== destination || globeTransitionDirection !== "in") return;
+          globeTransitionStartedAt = 0;
+          globeTransitionDirection = null;
+          globeTransitionLanded = false;
+          pendingAgentDestination = null;
+          cloudVeil.style.opacity = "0";
+          globe.quaternion.copy(globeHomeQuaternion);
+          globeOrbitYaw = globeOrbitPitch = 0;
+          setGlobeCameraDistance(GLOBE_START_CAMERA_DISTANCE);
+        });
+      }
+      if (destination === "manhattan") setStatus("");
       mapAudio.playGlobeTransition();
       globeTransitionStartedAt = performance.now();
       globeTransitionDirection = "in";
+      globeTransitionCity = destination;
       globeTransitionLanded = false;
       globeTransitionStartQuaternion.copy(globe.quaternion);
-      window.history.pushState({ study: "manhattan" }, "", "/");
+      globeTransitionTargetQuaternion.copy(cityGlobeQuaternions[destination]);
+      if (updateUrl) window.history.pushState({ study: destination }, "", "/");
       renderer.domElement.style.cursor = "default";
     };
-    const enterGlobeFromManhattan = () => {
-      if (activeStudy !== "manhattan" || globeTransitionStartedAt) return;
+    const enterGlobeFromCity = (updateUrl = true) => {
+      if ((activeStudy !== "manhattan" && activeStudy !== "san-diego") || globeTransitionStartedAt) return;
       mapAudio.playGlobeTransition();
+      globeTransitionCity = activeStudy;
+      globeTransitionTargetQuaternion.copy(cityGlobeQuaternions[activeStudy]);
       globeTransitionStartedAt = performance.now();
       globeTransitionDirection = "out";
       globeTransitionLanded = false;
       reverseTransitionStartZoom = camera.zoom;
-      window.history.pushState({ study: "globe" }, "", "/");
+      if (updateUrl) window.history.pushState({ study: "globe" }, "", "/");
       renderer.domElement.style.cursor = "default";
     };
-    navigateAgentCamera = (destination) => {
-      const cameraView = getCameraView(destination);
-      if (!cameraView) return;
+    const cityForView = (view: MapView): CityOverview => view === "san-diego" ? "san-diego" : "manhattan";
+    const advancePendingNavigation = () => {
+      if (!pendingAgentDestination || globeTransitionStartedAt || cameraTransitioning) return;
+      const cameraView = getCameraView(pendingAgentDestination);
+      if (!cameraView) { pendingAgentDestination = null; return; }
+      const geographic = cameraView.kind === "landmark" ? cameraView.neighborhood : cameraView.id;
+      if (activeStudy === "globe") {
+        if (geographic === "globe") { pendingAgentDestination = null; return; }
+        enterCityFromGlobe(cityForView(geographic), false);
+        return;
+      }
+      if (geographic === "globe" || cityForView(geographic) !== cityForView(activeStudy)) {
+        const overview = cityForView(activeStudy);
+        if (cameraLocked || activeStudy !== overview) switchStudyRef.current(overview, false);
+        else enterGlobeFromCity(false);
+        return;
+      }
+      if (activeStudy !== geographic) { switchStudyRef.current(geographic, false); return; }
       if (cameraView.kind === "landmark") {
         const landmark = clickableLandmarks.find((candidate) => candidate.cameraViewId === cameraView.id);
-        if (activeStudy === cameraView.neighborhood && landmark) {
-          pendingAgentDestination = null; selectLandmark(landmark); return;
-        }
-        pendingAgentDestination = destination;
-        if (activeStudy === "globe") enterManhattanFromGlobe();
-        else if (activeStudy !== cameraView.neighborhood) switchStudyRef.current(cameraView.neighborhood);
-        return;
+        if (!landmark) return; // The lazy scene must register its merged landmark before settling.
+        pendingAgentDestination = null;
+        selectLandmark(landmark, false);
+      } else {
+        pendingAgentDestination = null;
+        if (cameraLocked || sanDiegoManuallyAdjusted) switchStudyRef.current(geographic, false);
       }
-      const geographicDestination: GeographicMapView = cameraView.id;
-      if (geographicDestination === activeStudy && !cameraTransitioning && !globeTransitionStartedAt) return;
-      if (activeStudy === "globe") {
-        pendingAgentDestination = geographicDestination === "manhattan" ? null : geographicDestination;
-        enterManhattanFromGlobe();
-        return;
-      }
-      if (geographicDestination === "globe") {
-        if (activeStudy === "manhattan") {
-          pendingAgentDestination = null;
-          enterGlobeFromManhattan();
-        } else {
-          pendingAgentDestination = "globe";
-          switchStudyRef.current("manhattan");
-        }
-        return;
-      }
-      pendingAgentDestination = null;
-      switchStudyRef.current(geographicDestination);
     };
-    selectLandmark = (landmark) => {
+    navigateAgentCamera = (destination, updateUrl = true) => {
+      if (!getCameraView(destination)) return;
+      if (destination === "globe" && activeStudy === "globe" && globeTransitionDirection === "in") {
+        globeTransitionStartedAt = 0;
+        globeTransitionDirection = null;
+        globeTransitionLanded = false;
+        cloudVeil.style.opacity = "0";
+        globe.quaternion.copy(globeHomeQuaternion);
+        globeOrbitYaw = globeOrbitPitch = 0;
+        setGlobeCameraDistance(GLOBE_START_CAMERA_DISTANCE);
+      }
+      pendingAgentDestination = destination;
+      if (updateUrl) window.history.pushState({ view: destination }, "", "/");
+      advancePendingNavigation();
+    };
+    selectLandmark = (landmark, updateUrl = true) => {
       const cameraView = getCameraView(landmark.cameraViewId);
-      if (!cameraView || cameraView.kind !== "landmark") return;
+      if (!cameraView || cameraView.kind !== "landmark" || cameraView.neighborhood !== activeStudy) return;
+      pendingAgentDestination = null;
+      sanDiegoManuallyAdjusted = false;
+      if (updateUrl) window.history.pushState({ view: cameraView.id }, "", "/");
       clickableLandmarks.forEach((candidate) => { candidate.selected = candidate === landmark; });
       landmark.root.updateWorldMatrix(true, true);
       const center = new THREE.Box3().setFromObject(landmark.root).getCenter(new THREE.Vector3());
@@ -649,48 +806,69 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         desiredCameraHeight = desiredCameraTarget.y
           + Math.tan(originalElevation + cameraView.elevationAngleOffset) * desiredCameraRadius;
       }
-      desiredCameraZoom = cameraView.zoom;
+      desiredCameraZoom = activeStudy === "san-diego"
+        ? fittedLandmarkZoom(landmark, cameraView.zoom)
+        : cameraView.zoom;
       cameraLocked = true;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
       setCurrentView(cameraView.id);
     };
     const clearLandmarkSelection = () => {
+      pendingAgentDestination = null;
+      sanDiegoManuallyAdjusted = false;
       clickableLandmarks.forEach((landmark) => {
         landmark.selected = false;
         landmark.hovered = false;
       });
-      desiredCameraTarget.set(
-        activeStudy === "union" ? UNION_CENTER.x : WASHINGTON_CENTER.x,
-        28,
-        activeStudy === "union" ? UNION_CENTER.z : WASHINGTON_CENTER.z,
-      );
+      desiredCameraTarget.copy(activeStudy === "san-diego"
+        ? new THREE.Vector3(...sanDiegoOverview.target)
+        : activeStudy === "union" ? UNION_CENTER : WASHINGTON_CENTER);
       desiredCameraAzimuth = 0;
-      desiredCameraHeight = 560;
-      desiredCameraRadius = 630;
-      desiredCameraZoom = 1;
+      desiredCameraHeight = activeStudy === "san-diego" ? sanDiegoOverview.height : 560;
+      desiredCameraRadius = activeStudy === "san-diego" ? sanDiegoOverview.radius : 630;
+      desiredCameraZoom = activeStudy === "san-diego" ? sanDiegoOverview.zoom : 1;
+      window.history.pushState({ study: activeStudy }, "", "/");
       cameraLocked = false;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
       renderer.domElement.style.cursor = "default";
       setCurrentView(activeStudy);
     };
+    freeCameraActionsRef.current = {
+      reset: () => {
+        if (activeStudy !== "san-diego" || globeTransitionStartedAt) return;
+        pendingAgentDestination = null;
+        const selected = clickableLandmarks.find((landmark) => landmark.selected);
+        if (selected) selectLandmark(selected, false);
+        else switchStudyRef.current("san-diego", false);
+        setCameraCopyStatus("");
+        setCameraCopyFallback("");
+      },
+      snapshot: () => activeStudy === "san-diego"
+        ? serializeFreeCamera(clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? "san-diego", displayedCameraPose())
+        : null,
+    };
 
     const inputController = createInputController({
       renderer,
       clickableLandmarks,
-      globeManhattanAtPointer,
+      globeDestinationAtPointer,
       landmarkAtPointer,
       navigationAtPointer,
       manhattanMarkerAtPointer,
       parkDestinationAtPointer,
       getActiveView: () => activeStudy,
       getCameraLocked: () => cameraLocked,
+      isFreeCameraEnabled: () => SAN_DIEGO_FREE_CAMERA_ENABLED && activeStudy === "san-diego",
+      orbitFreeCamera: (deltaX, deltaY) => adjustSanDiegoCamera({ kind: "orbit", deltaX, deltaY }),
+      panFreeCamera: (deltaX, deltaY) => adjustSanDiegoCamera({ kind: "pan", deltaX, deltaY }),
+      zoomFreeCamera: (delta) => adjustSanDiegoCamera({ kind: "zoom", delta }),
       isGlobeTransitioning: () => globeTransitionStartedAt > 0,
       getGlobeCameraDistance: () => globeCameraDistance,
-      getGlobeMarkerFacing: () => currentGlobeMarkerFacing,
-      enterManhattanFromGlobe,
-      enterGlobeFromManhattan,
+      getFacingGlobeDestination: () => globeMarkerStates.find((entry) => entry.facing > 0.94)?.destination ?? null,
+      enterCityFromGlobe,
+      enterGlobeFromCity,
       blockGlobeZoom,
       zoomGlobeOut,
       rotateGlobe: (yaw, pitch) => {
@@ -749,21 +927,26 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           updateGlobeOrbit();
         }
       }
-      manhattanGlobeMarker.getWorldPosition(markerWorldPosition);
       globeCameraDirection.copy(globeCamera.position).normalize();
-      const markerFacing = markerWorldPosition.normalize().dot(globeCameraDirection);
-      currentGlobeMarkerFacing = markerFacing;
-      const markerOpacity = THREE.MathUtils.smoothstep(markerFacing, 0.3, 0.52);
-      manhattanMarkerMaterials.forEach((material) => { material.opacity = markerOpacity; });
-      const leaderOpacity = THREE.MathUtils.smoothstep(markerFacing, 0.5, 0.68);
-      manhattanLeaderMaterials.forEach((material) => { material.opacity = markerOpacity * leaderOpacity; });
-      manhattanGlobeMarker.visible = markerOpacity > 0.01;
+      for (const entry of globeMarkerStates) {
+        entry.marker.getWorldPosition(markerWorldPosition);
+        entry.facing = markerWorldPosition.normalize().dot(globeCameraDirection);
+        const opacity = THREE.MathUtils.smoothstep(entry.facing, 0.3, 0.52);
+        entry.markerMaterials.forEach((material) => { material.opacity = opacity; });
+        const leaderOpacity = THREE.MathUtils.smoothstep(entry.facing, 0.5, 0.68);
+        entry.leaderMaterials.forEach((material) => { material.opacity = opacity * leaderOpacity; });
+        entry.marker.visible = opacity > 0.01;
+      }
       if (globeBlockedZoomStartedAt) {
         const progress = Math.min(1, (now - globeBlockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
         setGlobeCameraDistance(globeBlockedZoomOriginDistance * (1 - Math.sin(progress * Math.PI) * 0.025));
         if (progress >= 1) globeBlockedZoomStartedAt = 0;
       }
       if (globeTransitionStartedAt) {
+        if (globeTransitionDirection === "in" && globeTransitionCity === "san-diego" && !sanDiegoReady) {
+          // Keep the veil fully covered until decoded geometry and interaction roots are ready.
+          globeTransitionStartedAt = Math.max(globeTransitionStartedAt, now - GLOBE_TRANSITION_DURATION_MS * 0.55);
+        }
         const progress = THREE.MathUtils.clamp(
           (now - globeTransitionStartedAt) / GLOBE_TRANSITION_DURATION_MS,
           0,
@@ -777,7 +960,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           camera.updateProjectionMatrix();
         }
         if (globeTransitionDirection === "in" && !globeTransitionLanded) {
-          globe.quaternion.copy(globeTransitionStartQuaternion).slerp(globeHomeQuaternion, approachEase);
+          globe.quaternion.copy(globeTransitionStartQuaternion).slerp(globeTransitionTargetQuaternion, approachEase);
           globeCamera.position.lerpVectors(globeCameraStart, globeCameraEnd, approachEase);
           globeCamera.lookAt(0, 0, THREE.MathUtils.lerp(0, GLOBE_RADIUS, approachEase * 0.9));
         } else if (globeTransitionDirection === "out" && globeTransitionLanded) {
@@ -795,14 +978,17 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         if (!globeTransitionLanded && progress >= 0.56) {
           globeTransitionLanded = true;
           if (globeTransitionDirection === "in") {
-            switchStudyRef.current("manhattan", false);
-            cameraHeight = 720;
-            cameraRadius = 680;
-            camera.zoom = 0.92;
+            switchStudyRef.current(globeTransitionCity, false);
+            cameraTarget.copy(desiredCameraTarget);
+            cameraAzimuth = desiredCameraAzimuth;
+            cameraHeight = globeTransitionCity === "san-diego" ? desiredCameraHeight * 0.8 : 720;
+            cameraRadius = globeTransitionCity === "san-diego" ? desiredCameraRadius * 0.8 : 680;
+            camera.zoom = globeTransitionCity === "san-diego" ? desiredCameraZoom * 1.18 : 0.92;
             camera.updateProjectionMatrix();
             updateCamera();
             cameraTransitioning = true;
           } else {
+            globeHomeQuaternion.copy(globeTransitionTargetQuaternion);
             globe.quaternion.copy(globeHomeQuaternion);
             globeOrbitYaw = 0;
             globeOrbitPitch = 0;
@@ -817,19 +1003,10 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           globeTransitionLanded = false;
           globeTransitionDirection = null;
           cloudVeil.style.opacity = "0";
-          if (completedDirection === "in" && pendingAgentDestination && pendingAgentDestination !== "globe") {
-            const destination = pendingAgentDestination;
-            navigateAgentCamera(destination);
-          }
+          if (completedDirection === "out") setGlobeCameraDistance(GLOBE_START_CAMERA_DISTANCE);
         }
       }
-      if (pendingAgentDestination && !globeTransitionStartedAt && !cameraTransitioning) {
-        const pendingView = getCameraView(pendingAgentDestination);
-        if (pendingView?.kind === "landmark" && activeStudy === pendingView.neighborhood) {
-          const landmark = clickableLandmarks.find((candidate) => candidate.cameraViewId === pendingView.id);
-          if (landmark) { pendingAgentDestination = null; selectLandmark(landmark); }
-        }
-      }
+      advancePendingNavigation();
       animateLandmarks(clickableLandmarks, elapsed, interactionEase, renderer);
       if (cameraTransitioning) {
         cameraTarget.lerp(desiredCameraTarget, interactionEase);
@@ -854,11 +1031,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         cameraTransitioning,
         globeTransitioning: globeTransitionStartedAt > 0,
       });
-      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
-      if (!cameraTransitioning && !globeTransitionStartedAt && pendingAgentDestination === "globe" && activeStudy === "manhattan") {
-        pendingAgentDestination = null;
-        enterGlobeFromManhattan();
-      }
+      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination && (activeStudy !== "san-diego" || sanDiegoReady) ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
       if (blockedZoomStartedAt) {
         const progress = Math.min(1, (now - blockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
         const pulse = Math.sin(progress * Math.PI);
@@ -902,7 +1075,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       ambientAnimations.forEach((animation) => animation.update(elapsed, now));
       animateArrivals(arrivingTiles, now, renderer);
       const renderStarted = performance.now();
-      renderMapFrame(renderer, activeStudy, globeScene, globeCamera, scene, camera, skyOverlayScene);
+      renderMapFrame(renderer, activeStudy, globeScene, globeCamera, activeStudy === "san-diego" ? sanDiegoScene : scene, camera, skyOverlayScene);
       recordRenderCost(performance.now() - renderStarted);
     }
     startAnimation();
@@ -921,11 +1094,12 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener(AGENT_COMMAND_EVENT, handleAgentCommand);
       inputController.dispose();
-      disposeScenes(renderer, [scene, globeScene, skyOverlayScene]);
+      disposeScenes(renderer, [scene, sanDiegoScene, globeScene, skyOverlayScene]);
       timer.dispose();
       mapAudio.dispose();
       cloudVeil.remove();
       switchStudyRef.current = () => undefined;
+      freeCameraActionsRef.current = null;
     };
   }, []);
 
@@ -933,6 +1107,21 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     <main className="washington-study">
       <div ref={mountRef} className="washington-study__viewport" />
       <AvatarCall currentView={currentView} experienceStarted={experienceStarted} />
+      {showFreeCamera && (
+        <aside className="san-diego-camera" aria-label="San Diego free camera controls">
+          <strong>Free camera · temporary</strong>
+          <p>Drag to orbit / tilt · Shift or right-drag to pan · Scroll to zoom</p>
+          <p className="san-diego-camera__touch-help">Touch: one finger to orbit · two to pan / pinch</p>
+          <div className="san-diego-camera__actions">
+            <button type="button" onClick={() => freeCameraActionsRef.current?.reset()}>Reset view</button>
+            <button type="button" onClick={() => void copyCameraView()}>Copy view</button>
+          </div>
+          <span role="status">{cameraCopyStatus}</span>
+          {cameraCopyFallback && (
+            <textarea aria-label="Camera view to copy" value={cameraCopyFallback} readOnly onFocus={(event) => event.currentTarget.select()} />
+          )}
+        </aside>
+      )}
       {status && <div className="washington-study__loading">{status}</div>}
       <div className="washington-study__credit">
         <Link href="/blog">Blog</Link>
@@ -942,7 +1131,9 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         </a>
         {" · "}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-          NYC Open Data · © OpenStreetMap contributors
+          {currentView === "san-diego" || currentView === "westview-high-school" || currentView === "torrey-highlands-plaza"
+            ? "Map3D · © OpenStreetMap contributors"
+            : "NYC Open Data · © OpenStreetMap contributors"}
         </a>
       </div>
     </main>

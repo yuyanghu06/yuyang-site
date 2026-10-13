@@ -1,6 +1,8 @@
 "use client";
 
-export type SiteAudioView = "globe" | "manhattan" | "washington" | "union";
+import type { GeographicMapView } from "@/agent/context/camera-views";
+
+export type SiteAudioView = GeographicMapView;
 
 type FadeHandle = { cancel: () => void };
 export type SiteAudioChannel = "effects" | "music";
@@ -237,7 +239,7 @@ export const createMapAudioController = () => {
   const update = ({ view, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
     setBackgroundEnabled(experienceStarted);
     updateBackgroundPlaylist();
-    const nextCrowdEnabled = (view === "washington" || view === "union")
+    const nextCrowdEnabled = (view === "washington" || view === "union" || view === "san-diego")
       && cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextCrowdEnabled !== crowdEnabled) {
       crowdEnabled = nextCrowdEnabled;

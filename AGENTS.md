@@ -5,6 +5,18 @@
 - At the start of every new session, read `milestone/current.md` if it exists before beginning work.
 - Use timestamped files in `milestone/history/` when historical context is needed; do not read the entire history by default.
 
+## Orchestrator and specialist workflow
+
+- The primary agent acts as the orchestrator for every project work task: clarify the outcome from existing context, coordinate specialists, integrate their work, and report the verified result to the user. Simple conversational replies do not require a team.
+- Start each project work task with a separate planner agent. Have it inspect relevant context, define acceptance criteria and targeted verification, and propose scoped assignments before implementation begins.
+- Delegate implementation to one or more coder agents. Use multiple instances of the same coder role for independent work; the number of workers follows the task and available capacity, not a fixed requirement for three coders. Give each worker explicit file ownership, dependencies, constraints, and a completion contract.
+- After integration, assign a separate evaluator agent to independently inspect the result against the user's request and the planner's acceptance criteria. It must report concrete findings and verification evidence. Return actionable findings to the responsible coder, then have the evaluator recheck the corrections before declaring completion. Report any unresolved blocker candidly.
+- The orchestrator owns integration, conflicts, shared documentation, `milestone/current.md`, and the session history entry unless explicitly assigning those files to one worker. Workers update the `INFO.md` files within their assigned scope. Do not allow simultaneous edits to the same file; sequence handoffs when ownership must change. Preserve unrelated user and agent changes.
+- Specialist agents follow their assigned role and scope; they do not restart this entire workflow or recursively delegate unless the orchestrator explicitly assigns coordination responsibility. Keep user communication and final delivery with the primary agent.
+- Respect the current runtime's concurrency limits. Run dependent stages sequentially and reuse or finish workers before starting additional ones. The project configuration allows three concurrent sub-agent threads in supporting clients; runtime limits may differ and take precedence.
+- Role definitions live in `.codex/agents/planner.toml`, `.codex/agents/coder.toml`, `.codex/agents/evaluator.toml`, and `.codex/agents/orchestrator.toml`. Use named roles when the runtime supports them. If the spawning API does not accept named roles, read the corresponding TOML and include its `developer_instructions` in the delegated task brief; do not assume the runtime loaded it automatically.
+- If delegation tools are unavailable, state that limitation and perform the same planning, implementation, and verification stages locally without claiming independent agent review.
+
 ## Folder documentation
 
 - Every folder in the repository must contain an `INFO.md` file written in clear, readable English.

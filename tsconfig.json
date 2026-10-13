@@ -37,6 +37,8 @@
   ],
   "exclude": [
     "node_modules",
-    "template"
+    "template",
+    "data/work",
+    "data/raw"
   ]
 }
