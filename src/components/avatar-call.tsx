@@ -133,11 +133,9 @@ export default function AvatarCall({ currentView, experienceStarted }: { current
   }, []);
 
   const toggleAudioChannel = useCallback((channel: SiteAudioChannel) => {
-    setAudioMuted((current) => {
-      const muted = !current[channel];
-      setSiteAudioMuted(channel, muted);
-      return { ...current, [channel]: muted };
-    });
+    const muted = !getSiteAudioMuted(channel);
+    setSiteAudioMuted(channel, muted);
+    setAudioMuted((current) => ({ ...current, [channel]: muted }));
   }, []);
 
   const handleAvatarReady = useCallback(() => {

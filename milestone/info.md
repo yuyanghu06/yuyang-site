@@ -7,3 +7,5 @@ The current state also records the final-answer-only agent stream boundary, craw
 Append-only session handoffs live in `history/`; never revise an old handoff to describe later work.
 
 The minimized avatar's dialogue is inward-facing at either horizontal edge and bottom-aligned with the avatar tile at either lower corner.
+
+The latest `current.md` entry records the music mute playback fix, production build and desktop/mobile Chromium verification, and the separate dev worktree. The requested personal-memory removal, verified 166-vector namespace, and birthplace answer-grounding follow-up remain recorded below it. `history/` contains the corresponding append-only verification handoffs.

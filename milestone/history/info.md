@@ -6,6 +6,14 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-13_12-16-00-fix-music-mute-and-prepare-main-release.md` records pausing and resuming music through the mute control, lifecycle and production browser checks, release validation, and the isolated dev checkout.
+
+- `2026-09-28_21-12-12-remove-requested-memory-record.md` records the requested source-first personal-memory removal, 166-vector replacement verification, and live answer checks.
+
+- `2026-09-03_14-12-16-refresh-christopher-memory-and-align-reply.md` records repairing Christopher Nakayama's canonical Doc boundary, replacement-ingesting the 167-chunk Pinecone corpus, completing the live retrieval matrix, and right-aligning minimized Reply controls.
+
+- `2026-09-03_13-34-51-add-plane-travel-todo.md` records the new deferred plan to use planes as the travel interaction between the site's geographic locations.
+
 - `2026-09-02_16-57-56-verify-commentary-filter-release.md` records the required production-build verification before committing and pushing the agent-stream privacy fix.
 
 - `2026-09-02_14-05-33-filter-agent-commentary.md` records the production-log reproduction and server-side phase filter that prevents commentary and tool-like text from reaching the visitor stream.

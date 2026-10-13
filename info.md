@@ -14,4 +14,4 @@ The server-side portfolio guide uses the official `openai` and `@pinecone-databa
 - The FaceTime shell uses a lightweight native CSS backdrop blur; avoid reintroducing full-surface SVG displacement filters without memory and transition profiling.
 - The live avatar idle is `public/animations/idle.glb`; its manually approved face is embedded and Head-locked in the GLB rather than synthesized by the browser.
 - `package.json` and `package-lock.json` include the VRM runtime plus the official OpenAI and Pinecone server SDKs; `package.json` also exposes the temporary-corpus build and explicitly confirmed replacement-ingestion commands.
-- `TODO.md` tracks deferred project work, including the future view-aware ambient sound and background-music system.
+- `TODO.md` tracks deferred project work, including the future view-aware ambient sound and background-music system and plane-based travel between geographic locations.

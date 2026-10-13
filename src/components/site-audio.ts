@@ -14,6 +14,7 @@ const channelAudio = {
   music: new Set<HTMLAudioElement>(),
 };
 const channelMuted: Record<SiteAudioChannel, boolean> = { effects: false, music: false };
+const musicMuteListeners = new Set<() => void>();
 
 const registerChannelAudio = (audio: HTMLAudioElement, channel: SiteAudioChannel) => {
   channelAudio[channel].add(audio);
@@ -28,6 +29,7 @@ export const setSiteAudioMuted = (channel: SiteAudioChannel, muted: boolean) => 
   channelAudio[channel].forEach((audio) => {
     audio.muted = muted;
   });
+  if (channel === "music") musicMuteListeners.forEach((listener) => listener());
 };
 
 const exponentialProgress = (progress: number, fadingIn: boolean) => {
@@ -188,6 +190,7 @@ export const createMapAudioController = () => {
   };
 
   const playBackgroundTrack = (index: number) => {
+    if (channelMuted.music) return;
     const audio = backgroundTracks[index];
     const generation = ++backgroundGeneration;
     backgroundIndex = index;
@@ -218,7 +221,7 @@ export const createMapAudioController = () => {
   };
 
   const updateBackgroundPlaylist = () => {
-    if (!backgroundEnabled) return;
+    if (!backgroundEnabled || channelMuted.music) return;
     if (!backgroundStarted) {
       playBackgroundTrack(backgroundIndex);
       return;
@@ -233,6 +236,32 @@ export const createMapAudioController = () => {
     playBackgroundTrack(nextIndex);
     fadeAudioVolume(previous, 0, BACKGROUND_CROSSFADE_MS, () => stopAndReset(previous));
   };
+
+  const syncMusicMute = () => {
+    const generation = ++backgroundGeneration;
+    if (channelMuted.music) {
+      for (const audio of backgroundTracks) {
+        activeFades.get(audio)?.cancel();
+        audio.pause();
+      }
+      return;
+    }
+    if (!backgroundEnabled) return;
+    if (!backgroundStarted) {
+      playBackgroundTrack(backgroundIndex);
+      return;
+    }
+    const audio = backgroundTracks[backgroundIndex];
+    audio.volume = 0;
+    void audio.play().then(() => {
+      if (backgroundGeneration === generation && backgroundEnabled && !channelMuted.music) {
+        fadeAudioVolume(audio, BACKGROUND_VOLUME, BACKGROUND_CROSSFADE_MS);
+      }
+    }).catch(() => {
+      if (backgroundGeneration === generation) backgroundStarted = false;
+    });
+  };
+  musicMuteListeners.add(syncMusicMute);
 
   const update = ({ view, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
     setBackgroundEnabled(experienceStarted);
@@ -276,6 +305,7 @@ export const createMapAudioController = () => {
   };
 
   const dispose = () => {
+    musicMuteListeners.delete(syncMusicMute);
     zoomGeneration += 1;
     backgroundGeneration += 1;
     cancelAnimationFrame(zoomWatcher);

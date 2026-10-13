@@ -558,6 +558,12 @@
   display: flex;
 }
 
+.avatar-call--docked .agent-chat__inline-reply {
+  width: auto;
+  margin-left: auto;
+  text-align: right;
+}
+
 .avatar-call--docked .agent-chat__message:not(.agent-chat__message--latest),
 .avatar-call--docked .agent-chat__choices,
 .avatar-call--docked .agent-chat__reply,
