@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { BLOCKED_ZOOM_GESTURE_SETTLE_MS, type MapView, type CityOverview } from "../shared/core";
 import type { ClickableLandmark } from "../manhattan/navigation";
+import { getParentMapView, isSanDiegoView } from "@/agent/context/camera-views";
 
 interface PointerHitTesting {
   globeDestinationAtPointer: (event: { clientX: number; clientY: number }) => CityOverview | null;
@@ -8,6 +9,7 @@ interface PointerHitTesting {
   navigationAtPointer: (event: { clientX: number; clientY: number }) => boolean;
   manhattanMarkerAtPointer: (event: { clientX: number; clientY: number }) => MapView | null;
   parkDestinationAtPointer: (event: { clientX: number; clientY: number }) => MapView | null;
+  districtDestinationAtPointer: (event: { clientX: number; clientY: number }) => MapView | null;
 }
 
 export interface InputControllerOptions extends PointerHitTesting {
@@ -97,8 +99,9 @@ export function createInputController(options: InputControllerOptions) {
       return;
     }
     if (deltaY > 0) {
-      if (activeView === "manhattan" || activeView === "san-diego") options.enterGlobeFromCity();
-      else options.switchView("manhattan");
+      const parent = getParentMapView(activeView);
+      if (parent === "globe") options.enterGlobeFromCity();
+      else if (parent) options.switchView(parent);
       return;
     }
     if (deltaY >= 0) return;
@@ -107,7 +110,9 @@ export function createInputController(options: InputControllerOptions) {
     blockedZoomGestureReset = window.setTimeout(() => { blockedZoomGestureActive = false; }, BLOCKED_ZOOM_GESTURE_SETTLE_MS);
     if (blockedZoomGestureActive) return;
     blockedZoomGestureActive = true;
-    const parkDestination = options.parkDestinationAtPointer(event);
+    const parkDestination = options.districtDestinationAtPointer(event)
+      ?? options.manhattanMarkerAtPointer(event)
+      ?? options.parkDestinationAtPointer(event);
     if (parkDestination) options.switchView(parkDestination);
     else {
       const hovered = options.landmarkAtPointer(event);
@@ -173,7 +178,11 @@ export function createInputController(options: InputControllerOptions) {
           } else {
             touchZoomDelta += pinchDelta;
             if (Math.abs(touchZoomDelta) >= TOUCH_ZOOM_THRESHOLD) {
-              routeZoom(touchZoomDelta, event);
+              routeZoom(touchZoomDelta, {
+                clientX: nextCenter.x,
+                clientY: nextCenter.y,
+                preventDefault: () => event.preventDefault(),
+              });
               touchZoomDelta = 0;
             }
           }
@@ -214,6 +223,7 @@ export function createInputController(options: InputControllerOptions) {
       || options.navigationAtPointer(event)
       || options.manhattanMarkerAtPointer(event)
       || options.parkDestinationAtPointer(event)
+      || options.districtDestinationAtPointer(event)
       ? "pointer" : options.isFreeCameraEnabled() ? "grab" : "default";
   };
 
@@ -230,7 +240,7 @@ export function createInputController(options: InputControllerOptions) {
       const destination = options.globeDestinationAtPointer(event);
       if (destination) options.enterCityFromGlobe(destination);
       else {
-        const markerDestination = options.manhattanMarkerAtPointer(event);
+        const markerDestination = options.districtDestinationAtPointer(event) ?? options.manhattanMarkerAtPointer(event);
         const parkDestination = options.parkDestinationAtPointer(event);
         if (markerDestination) options.switchView(markerDestination);
         else if (parkDestination) options.switchView(parkDestination);
@@ -268,7 +278,11 @@ export function createInputController(options: InputControllerOptions) {
   const keyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || options.isGlobeTransitioning()) return;
     if (options.getCameraLocked()) options.clearLandmarkSelection();
-    else if (options.getActiveView() === "san-diego") options.enterGlobeFromCity();
+    else if (isSanDiegoView(options.getActiveView())) {
+      const parent = getParentMapView(options.getActiveView());
+      if (parent === "globe") options.enterGlobeFromCity();
+      else if (parent) options.switchView(parent);
+    }
   };
   const wheel = (event: WheelEvent) => {
     const units = options.isFreeCameraEnabled() ? event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1 : 1;

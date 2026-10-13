@@ -6,6 +6,20 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-13_16-33-24-separate-san-diego-dev-branch.md` records the requested separate development branch, complete release scope, preserved original dev ref, and passing production build before publication.
+
+- `2026-10-13_16-30-10-waterfall-rocks-only-scale.md` records the further boulder-only reduction, preserved cascade/pool/foam and all other geometry, and independent verification.
+
+- `2026-10-13_16-24-33-smaller-park-village-waterfall.md` records the user-requested waterfall size reduction, creek alignment, connected low cascade, preserved map geometry, and desktop/phone review.
+
+- `2026-10-13_16-12-53-torrey-pines-raised-terrain.md` records the raised coastal ridge, oblique camera, cohesive cliffs, corrected building shoulder, and independent geometry/coverage verification.
+
+- `2026-10-13_15-53-00-san-diego-road-join-review.md` records the final road-bend gap repair, preserved original geometry, and independent close-up signoff.
+
+- `2026-10-13_15-40-00-san-diego-detailing-qa.md` records camera coverage constraints, terrain/coast/foundation repairs, shadow cleanup, responsive choices, and independent visual/geometry checks.
+
+- `2026-10-13_15-03-45-expanded-san-diego-region.md` records the expanded San Diego overview, three district views, static waterfall scenery, geometry repairs, and verified navigation/framing.
+
 - `2026-10-13_12-01-52-prepare-dev-branch-release.md` records the complete diff prepared for the dev branch and fresh production-build verification.
 
 - `2026-10-13_10-44-12-fixed-san-diego-cameras.md` records restoring fixed San Diego cameras, hiding authoring controls, and checking guided navigation.

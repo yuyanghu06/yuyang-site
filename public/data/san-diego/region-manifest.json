@@ -1,0 +1,487 @@
+{
+  "version": 1,
+  "name": "Northern San Diego · Coast and canyons",
+  "modelUrl": "/models/san-diego/region.glb",
+  "contentHash": "99b84b005c115ff910e941bc72911caaf407a2cf8bb82ee9db3a7e0d64e837b0",
+  "byteLength": 24961752,
+  "attribution": "© OpenStreetMap contributors · Map3D (MIT)",
+  "source": {
+    "version": 1,
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "sourceUrl": "https://api.openstreetmap.org/api/0.6/map",
+    "retrievedAt": "2026-10-13T18:47:20.477Z",
+    "bounds": {
+      "west": -117.292,
+      "south": 32.864,
+      "east": -117.07,
+      "north": 33.007
+    },
+    "tileBounds": [
+      "-117.08233335,32.9116667,-117.07,32.9355",
+      "-117.0946667,32.8640000,-117.0700000,32.8878333",
+      "-117.0946667,32.8878333,-117.0700000,32.9116667",
+      "-117.0946667,32.9116667,-117.08233335,32.9355",
+      "-117.0946667,32.9355000,-117.0700000,32.9593333",
+      "-117.0946667,32.9593333,-117.0700000,32.9831667",
+      "-117.0946667,32.9831667,-117.0700000,33.0070000",
+      "-117.1193333,32.8640000,-117.0946667,32.8878333",
+      "-117.1193333,32.8878333,-117.0946667,32.9116667",
+      "-117.1193333,32.9116667,-117.0946667,32.9355000",
+      "-117.1193333,32.9355000,-117.0946667,32.9593333",
+      "-117.1193333,32.9593333,-117.0946667,32.9831667",
+      "-117.1193333,32.9831667,-117.0946667,33.0070000",
+      "-117.13166665,32.9116667,-117.1193333,32.9355",
+      "-117.13166665,32.9593333,-117.1193333,32.9831667",
+      "-117.144,32.9116667,-117.13166665,32.9355",
+      "-117.144,32.9593333,-117.13166665,32.9831667",
+      "-117.1440000,32.8640000,-117.1193333,32.8878333",
+      "-117.1440000,32.8878333,-117.1193333,32.9116667",
+      "-117.1440000,32.9355000,-117.1193333,32.9593333",
+      "-117.1440000,32.9831667,-117.1193333,33.0070000",
+      "-117.15633335000001,32.9116667,-117.144,32.9355",
+      "-117.1686667,32.8640000,-117.1440000,32.8878333",
+      "-117.1686667,32.8878333,-117.1440000,32.9116667",
+      "-117.1686667,32.9116667,-117.15633335000001,32.9355",
+      "-117.1686667,32.9355000,-117.1440000,32.9593333",
+      "-117.1686667,32.9593333,-117.1440000,32.9831667",
+      "-117.1686667,32.9831667,-117.1440000,33.0070000",
+      "-117.1933333,32.8640000,-117.1686667,32.8878333",
+      "-117.1933333,32.8878333,-117.1686667,32.9116667",
+      "-117.1933333,32.9116667,-117.1686667,32.9355000",
+      "-117.1933333,32.9355000,-117.1686667,32.9593333",
+      "-117.1933333,32.9593333,-117.1686667,32.9831667",
+      "-117.1933333,32.9831667,-117.1686667,33.0070000",
+      "-117.20566665000001,32.9355,-117.1933333,32.9593333",
+      "-117.218,32.9355,-117.20566665000001,32.9593333",
+      "-117.2180000,32.8640000,-117.1933333,32.8878333",
+      "-117.2180000,32.8878333,-117.1933333,32.9116667",
+      "-117.2180000,32.9116667,-117.1933333,32.9355000",
+      "-117.2180000,32.9593333,-117.1933333,32.9831667",
+      "-117.2180000,32.9831667,-117.1933333,33.0070000",
+      "-117.23033335,32.864,-117.218,32.8878333",
+      "-117.23033335,32.9355,-117.218,32.9593333",
+      "-117.2426667,32.864,-117.23033335,32.8878333",
+      "-117.2426667,32.8878333,-117.2180000,32.9116667",
+      "-117.2426667,32.9116667,-117.2180000,32.9355000",
+      "-117.2426667,32.9355,-117.23033335,32.9593333",
+      "-117.2426667,32.9593333,-117.2180000,32.9831667",
+      "-117.2426667,32.9831667,-117.2180000,33.0070000",
+      "-117.2673333,32.8640000,-117.2426667,32.8878333",
+      "-117.2673333,32.8878333,-117.2426667,32.9116667",
+      "-117.2673333,32.9116667,-117.2426667,32.9355000",
+      "-117.2673333,32.9355000,-117.2426667,32.9593333",
+      "-117.2673333,32.9593333,-117.2426667,32.9831667",
+      "-117.2673333,32.9831667,-117.2426667,33.0070000",
+      "-117.2920000,32.8640000,-117.2673333,32.8878333",
+      "-117.2920000,32.8878333,-117.2673333,32.9116667",
+      "-117.2920000,32.9116667,-117.2673333,32.9355000",
+      "-117.2920000,32.9355000,-117.2673333,32.9593333",
+      "-117.2920000,32.9593333,-117.2673333,32.9831667",
+      "-117.2920000,32.9831667,-117.2673333,33.0070000"
+    ],
+    "reduction": "Deduplicated OSM feature IDs; only map geometry and relevant public geographic tags retained. No inferred features in this snapshot.",
+    "snapshot": "/data/san-diego/region-source.osm.json.gz",
+    "snapshotSha256": "6c47c6c5c3e88505fe7d563133327b47c9a826ed7c4a811c52bd2afe3610c4b1"
+  },
+  "projection": {
+    "type": "local-equirectangular",
+    "originLongitudeLatitude": [
+      -117.1518,
+      32.9606
+    ],
+    "units": "meters",
+    "axes": "east +X, up +Y, north -Z",
+    "metersPerLatitudeDegree": 111320,
+    "metersPerLongitudeDegree": 93402.4778173281
+  },
+  "geographicBounds": {
+    "west": -117.292,
+    "south": 32.864,
+    "east": -117.07,
+    "north": 33.007
+  },
+  "coverageBounds": {
+    "min": [
+      -13095.027,
+      -5,
+      -5165.248
+    ],
+    "max": [
+      7640.323,
+      344,
+      10753.512
+    ]
+  },
+  "groundHeightRange": {
+    "min": -3,
+    "max": 319
+  },
+  "contentHeightRange": {
+    "min": -5,
+    "max": 344
+  },
+  "bounds": {
+    "min": [
+      -13095.027,
+      -3,
+      -5165.248
+    ],
+    "max": [
+      7640.323,
+      344,
+      10753.512
+    ]
+  },
+  "peripheralGeometryBounds": {
+    "min": [
+      -18095.027,
+      -5,
+      -7665.248
+    ],
+    "max": [
+      10140.323,
+      344,
+      13253.512
+    ]
+  },
+  "originalPatchExclusion": {
+    "min": [
+      -1046.108,
+      -3,
+      -1157.728
+    ],
+    "max": [
+      1288.954,
+      180,
+      1068.672
+    ]
+  },
+  "overview": {
+    "target": [
+      -2727.352,
+      0,
+      2794.132
+    ],
+    "azimuth": 0,
+    "height": 11500,
+    "radius": 13500,
+    "zoom": 0.042
+  },
+  "districts": [
+    {
+      "id": "torrey-highlands",
+      "label": "Torrey Highlands",
+      "markerPosition": [
+        0,
+        100,
+        0
+      ],
+      "camera": {
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "azimuth": 0,
+        "height": 1200,
+        "radius": 1350,
+        "zoom": 0.65
+      },
+      "bounds": {
+        "min": [
+          -1046.108,
+          -0.03,
+          -1157.728
+        ],
+        "max": [
+          1288.954,
+          60,
+          1068.672
+        ]
+      }
+    },
+    {
+      "id": "torrey-pines",
+      "label": "Torrey Pines",
+      "markerPosition": [
+        -9600,
+        387.233,
+        4650
+      ],
+      "camera": {
+        "target": [
+          -9775,
+          115,
+          4350
+        ],
+        "azimuth": -0.62,
+        "height": 2115,
+        "radius": 3200,
+        "zoom": 0.32
+      },
+      "bounds": {
+        "min": [
+          -10800,
+          -3,
+          2100
+        ],
+        "max": [
+          -7700,
+          344,
+          7000
+        ]
+      }
+    },
+    {
+      "id": "park-village",
+      "label": "Park Village",
+      "markerPosition": [
+        -1750,
+        140,
+        2600
+      ],
+      "camera": {
+        "target": [
+          -1850,
+          20,
+          3450
+        ],
+        "azimuth": 0,
+        "height": 2600,
+        "radius": 2950,
+        "zoom": 0.23
+      },
+      "bounds": {
+        "min": [
+          -4200,
+          -3,
+          1700
+        ],
+        "max": [
+          550,
+          180,
+          5150
+        ]
+      }
+    }
+  ],
+  "annotations": [
+    {
+      "label": "Peñasquitos Waterfall",
+      "view": "park-village",
+      "position": [
+        -2384.612,
+        96.295,
+        3758.052
+      ],
+      "sourceId": "node/1863363847"
+    }
+  ],
+  "waterfall": {
+    "sourceId": "node/1863363847",
+    "sourceName": "Los Penasquitos Waterfall",
+    "longitudeLatitude": [
+      -117.1773305,
+      32.926841
+    ],
+    "position": [
+      -2384.612,
+      16.295,
+      3758.052
+    ],
+    "rootName": "Park Village canyon waterfall",
+    "cameraViewId": null,
+    "bounds": {
+      "min": [
+        -2413.811,
+        14.902,
+        3734.828
+      ],
+      "max": [
+        -2353.717,
+        21.715,
+        3779.473
+      ]
+    },
+    "size": [
+      60.095,
+      6.813,
+      44.645
+    ],
+    "interpretation": "Photo-inspired, non-interactive low-poly canyon landmark, a small formation along the mapped creek, with low 2–4.25 m rock outcrops, a connected 2.7 m stepped cascade and a small pool. Rock radii are 55% of the previous version, with the same centers and 0.8 m terrain embed. Not a surveyed waterfall model.",
+    "supportingSourceUrl": "https://www.sandiego.gov/event/waterfall-rehabilitation-project-0"
+  },
+  "surfaceRendering": {
+    "terrainGridMeters": 130,
+    "insertedGridLines": {
+      "x": [
+        -1046.1077515542913,
+        1288.9541938781147
+      ],
+      "z": [
+        -1157.7279999996747,
+        1068.6719999998822
+      ]
+    },
+    "method": "Landcover, roads, trails, beaches and streams are clipped at the same terrain-grid cells and diagonal as the base surface; all use its exact piecewise-planar interpolation.",
+    "shoreline": "Base terrain and landcover clip against the connected mainland coastline and five closed tidal-island rings, preserving multiple bank crossings through the San Dieguito estuary. Ocean and beach follow the coherent chain rather than latitude-sorted vertices.",
+    "oldPatchSeam": "The original perimeter is an explicit grid boundary at ground Y=-0.03. Semantic surface lifts blend to the original flat neighborhood heights over 260 m.",
+    "semanticLandcoverLifts": {
+      "#b0b982": 0.3,
+      "#83a96d": 0.44999999999999996,
+      "#b4c285": 0.6,
+      "#dfd1ae": 0.75,
+      "#a4a28e": 0.8999999999999999,
+      "#6d9e62": 1.05,
+      "#c08b71": 1.2,
+      "#ded0aa": 1.35
+    },
+    "originalSurfaceLifts": {
+      "park": 0.05,
+      "scrub": 0.05,
+      "meadow": 0.05,
+      "campus": 0.12,
+      "parking": 0.18,
+      "pitch": 0.24,
+      "track": 0.24,
+      "road": 0.5,
+      "walk": 0.53,
+      "shoulder": 0.465
+    },
+    "roadShoulderLift": 2.1,
+    "roadLift": 2.2,
+    "waterLift": 2.3,
+    "bridgeApproachMeters": 70,
+    "sameColorOverlap": "Identical color and identical ground plane; different landcover colors have distinct heights."
+  },
+  "lod": {
+    "smallRegionalBuildingSampling": "one in four by stable OSM ID",
+    "allFocusBuildingsRetained": true,
+    "footprintSimplificationMeters": {
+      "focused": 0.6,
+      "regional": 1.8
+    },
+    "roadSimplificationMeters": {
+      "focused": 1.5,
+      "regional": 6
+    },
+    "minorRegionalServiceAndTrailSampling": "one in three by stable OSM ID; all focus services and trails retained",
+    "buildingSurfaces": "Walls and one roof only; no invisible bottoms or duplicate top caps."
+  },
+  "counts": {
+    "buildings": 25612,
+    "detailedBuildings": 6793,
+    "omittedRegionalBuildings": 50989,
+    "roadsAndPaths": 26555,
+    "waterwaySegments": 524,
+    "landcoverPolygons": 8414,
+    "cliffFacets": 44,
+    "trees": 2166,
+    "coastlineWays": 21,
+    "meshes": 10,
+    "sourceElements": 145582,
+    "sourceTiles": 61
+  },
+  "palette": {
+    "ground": "#9fb77f",
+    "road": "#797d73",
+    "freeway": "#747c77",
+    "walk": "#e3d8ba",
+    "park": "#83a96d",
+    "scrub": "#b0b982",
+    "meadow": "#b4c285",
+    "campus": "#dfd1ae",
+    "parking": "#a4a28e",
+    "pitch": "#6d9e62",
+    "track": "#c08b71",
+    "water": "#82b6b9",
+    "wall": [
+      "#e2cdab",
+      "#d9c19e",
+      "#ecddbd",
+      "#d5c9a7",
+      "#e5cdb3"
+    ],
+    "roof": [
+      "#b77f61",
+      "#c58b68",
+      "#b49673",
+      "#cf9c79"
+    ],
+    "campusWall": "#e7d6b4",
+    "landmarkRoof": "#ca9970",
+    "leaf": [
+      "#628c54",
+      "#7e9e5d",
+      "#9aaf6a",
+      "#72956a"
+    ],
+    "trunk": "#91795c",
+    "window": "#769ca0",
+    "ocean": "#8fbfc5",
+    "surf": "#e3e6cd",
+    "sand": "#ded0aa",
+    "rock": [
+      "#b1a38a",
+      "#c4ac8b",
+      "#918f7a",
+      "#d0b995"
+    ],
+    "foam": "#f1eed9"
+  },
+  "styleParity": {
+    "source": "/data/san-diego/manifest.json",
+    "rule": "Existing sage terrain, scrub/nature reserves, meadow, park, retail/campus, parking, sports, road, warm walls, terracotta roofs and foliage reuse the original semantic palette. No extra residential/commercial ground washes.",
+    "buildingFoundations": "Level roofs clear the maximum footprint terrain height. Wall bottoms split at every terrain-plane boundary and extend 0.08 m below the local terrain, eliminating floating downhill walls and buried uphill roofs.",
+    "treeExclusions": "All mapped buildings and roads (including omitted regional LOD), water polygons/streams, parking, sports, tracks, playgrounds and other canopies, with canopy-radius clearance."
+  },
+  "torreyPinesRelief": {
+    "interpretation": "Intentionally enlarged, approximately 300 m coastal mountain; an artistic geographic illustration, not surveyed elevation or a DEM.",
+    "influence": {
+      "northSouthZ": [
+        3150,
+        5700
+      ],
+      "inlandFromCoastMeters": [
+        190,
+        1250
+      ],
+      "gridInterpolationHaloMeters": 185
+    },
+    "form": "An elongated crest, steep west-facing rock cliff, east-facing descent and two diagonal gullies, tapered at both ends. Shoreline and lagoon remain low.",
+    "serviceBuildingShoulder": {
+      "sourceIds": [
+        "way/588250241",
+        "way/588250242"
+      ],
+      "terrainVertices": 4,
+      "elevation": "A gently sloping shared-ground shoulder near 305 m avoids oversized service-building foundations."
+    },
+    "cliffColors": [
+      "#c4ac8b"
+    ],
+    "surfaceLift": 1.6,
+    "cameraElevationDegrees": 32.005383208083494
+  },
+  "assumptions": [
+    "Mapped coastline, waterways, roads, landcover and buildings derive from the checked-in ODbL OSM snapshot. Missing source footprints are not fabricated.",
+    "Regional building LOD retains all focus-area footprints and large buildings, plus one in four smaller buildings elsewhere. Trees are deterministic artistic planting, checked against all mapped buildings and roads, water polygons and streams, sports surfaces, parking, playgrounds and neighboring canopies.",
+    "Sage terrain uses artistic coastal-bluff and canyon relief, including the deliberately enlarged Torrey Pines ridge, not surveyed elevations. The original flat Torrey Highlands model is preserved byte-for-byte and the new model has an exact rectangular hole for it.",
+    "An unselectable 2.5 km peripheral terrain skirt (5 km to the west) and endpoint-extrapolated ocean prevent the framed region from looking like a cut-out tile. Those outer margins contain no invented streets or buildings and are excluded from overview fitting bounds.",
+    "Road and stream widths are exaggerated slightly for regional readability. Trails have 4–6 m widths, named Peñasquitos creek is 20 m wide, and building heights use explicit OSM values or 6.5/12 m defaults.",
+    "The Park Village waterfall is merged static scenery, with creek-scale angular boulders, a short continuous cascade, restrained foam and a small pool inspired by supplied photographs. It has no separate zoom state or interactive root.",
+    "Torrey Pines includes the actual mapped coast, beach, lagoon, reserve trails, low-poly bluff relief and supplemental broad-crowned pines."
+  ],
+  "compression": {
+    "extension": "EXT_meshopt_compression",
+    "positions": "lossless Float32",
+    "normals": "8-bit",
+    "colors": "8-bit"
+  },
+  "originalModel": {
+    "modelUrl": "/models/san-diego/torrey-highlands.glb",
+    "contentHash": "a7152380bc1a5e5e6ae90003507d12287cf32234b2f81fade26f51d835fce797",
+    "byteLength": 3606512
+  }
+}

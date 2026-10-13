@@ -14,7 +14,7 @@ The server-side portfolio guide uses the official `openai` and `@pinecone-databa
 - Do not edit generated map data or web exports when an authoring source or build script exists.
 - The FaceTime shell uses a lightweight native CSS backdrop blur; avoid reintroducing full-surface SVG displacement filters without memory and transition profiling.
 - The live avatar idle is `public/animations/idle.glb`; its manually approved face is embedded and Head-locked in the GLB rather than synthesized by the browser.
-- `package.json` and `package-lock.json` include the VRM runtime plus the official OpenAI and Pinecone server SDKs; `package.json` also exposes the temporary-corpus build and explicitly confirmed replacement-ingestion commands. `npm run data:san-diego` regenerates the Torrey Highlands scene from the tracked geographic snapshot and pinned ignored Map3D checkout; append `-- --refresh` to refresh its public OSM source.
+- `package.json` and `package-lock.json` include the VRM runtime plus the official OpenAI and Pinecone server SDKs; `package.json` also exposes the temporary-corpus build and explicitly confirmed replacement-ingestion commands. `npm run data:san-diego` regenerates the Torrey Highlands scene from the tracked geographic snapshot and pinned ignored Map3D checkout; append `-- --refresh` to refresh its public OSM source. `npm run data:san-diego-region` builds the wider region and coastal/canyon scenery from its separate tracked snapshot, preserving the original Torrey Highlands asset.
 - `TODO.md` tracks deferred project work, including the future view-aware ambient sound and background-music system.
 
 ## Direct subfolders

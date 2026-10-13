@@ -6,7 +6,7 @@ import {
   type MapView,
   type CityOverview,
 } from "../shared/core";
-import { getCameraView } from "@/agent/context/camera-views";
+import { getCameraView, type SanDiegoDistrictView } from "@/agent/context/camera-views";
 import type { ClickableLandmark } from "../manhattan/navigation";
 
 export interface HitTestingOptions {
@@ -17,6 +17,8 @@ export interface HitTestingOptions {
   raycastRoots: THREE.Object3D[];
   landmarkByRoot: Map<THREE.Object3D, ClickableLandmark>;
   manhattanMarkerDestinations: Map<THREE.Object3D, "washington" | "union">;
+  sanDiegoDistrictMarkers: Map<THREE.Object3D, SanDiegoDistrictView>;
+  sanDiegoDistrictBounds: Map<SanDiegoDistrictView, THREE.Box3>;
   getActiveView: () => MapView;
   isGlobeTransitioning: () => boolean;
   getNavigationArrow: () => THREE.Group | null;
@@ -77,7 +79,7 @@ export function createHitTesting(options: HitTestingOptions) {
   };
   const manhattanMarkerAtPointer = (event: { clientX: number; clientY: number }): MapView | null => {
     const markers = options.getDestinationMarkers();
-    if (!markers || options.getActiveView() !== "manhattan") return null;
+    if (!markers || options.getActiveView() !== "manhattan" || options.isGlobeTransitioning()) return null;
     updatePointerRay(event);
     for (const intersection of raycaster.intersectObject(markers, true)) {
       let object: THREE.Object3D | null = intersection.object;
@@ -90,7 +92,7 @@ export function createHitTesting(options: HitTestingOptions) {
     return null;
   };
   const parkDestinationAtPointer = (event: { clientX: number; clientY: number }): MapView | null => {
-    if (options.getActiveView() !== "manhattan") return null;
+    if (options.getActiveView() !== "manhattan" || options.isGlobeTransitioning()) return null;
     updatePointerRay(event);
     if (!raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) return null;
     const washingtonDistance = Math.hypot(pointerWorld.x - WASHINGTON_CENTER.x, pointerWorld.z - WASHINGTON_CENTER.z);
@@ -98,12 +100,33 @@ export function createHitTesting(options: HitTestingOptions) {
     if (washingtonDistance > PARK_ZOOM_HIT_RADIUS && unionDistance > PARK_ZOOM_HIT_RADIUS) return null;
     return washingtonDistance <= unionDistance ? "washington" : "union";
   };
+  const districtDestinationAtPointer = (event: { clientX: number; clientY: number }): SanDiegoDistrictView | null => {
+    if (options.getActiveView() !== "san-diego" || options.isGlobeTransitioning()) return null;
+    updatePointerRay(event);
+    const roots = [...options.sanDiegoDistrictMarkers.keys()].filter(isVisible);
+    for (const intersection of raycaster.intersectObjects(roots, true)) {
+      let object: THREE.Object3D | null = intersection.object;
+      while (object) {
+        const destination = options.sanDiegoDistrictMarkers.get(object);
+        if (destination) return destination;
+        object = object.parent;
+      }
+    }
+    if (!raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) return null;
+    // A district is geographic coverage, never a lifted or outlined landmark.
+    for (const [destination, bounds] of options.sanDiegoDistrictBounds) {
+      if (pointerWorld.x >= bounds.min.x && pointerWorld.x <= bounds.max.x
+        && pointerWorld.z >= bounds.min.z && pointerWorld.z <= bounds.max.z) return destination;
+    }
+    return null;
+  };
   return {
     globeDestinationAtPointer,
     landmarkAtPointer,
     navigationAtPointer,
     manhattanMarkerAtPointer,
     parkDestinationAtPointer,
+    districtDestinationAtPointer,
     pointerPlane,
     pointerWorld,
     raycaster,

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MapView } from "./core";
+import { isSanDiegoView } from "@/agent/context/camera-views";
 
 export interface MapRendererState {
   renderer: THREE.WebGLRenderer;
@@ -50,7 +51,7 @@ export function renderMapFrame(
     return;
   }
   renderer.render(mapScene, mapCamera);
-  if (activeView !== "san-diego") {
+  if (!isSanDiegoView(activeView)) {
     renderer.clearDepth();
     renderer.render(overlayScene, mapCamera);
   }

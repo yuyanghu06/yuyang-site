@@ -20,7 +20,8 @@
     "data:union-park": "node scripts/map-data/build-union-square-park.mjs",
     "data:hudson-waterfront": "node scripts/map-data/build-hudson-waterfront.mjs",
     "data:manhattan-parks": "node scripts/map-data/build-manhattan-parks.mjs",
-    "data:san-diego": "node scripts/map-data/build-san-diego.mjs"
+    "data:san-diego": "node scripts/map-data/build-san-diego.mjs",
+    "data:san-diego-region": "node scripts/map-data/build-san-diego-region.mjs"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^8.2.0",

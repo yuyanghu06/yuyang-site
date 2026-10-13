@@ -28,7 +28,7 @@ In short landscape, the dialogue renderer observes the visible latest card, mess
 
 ## San Diego extension
 
-The shared guide offers New York and San Diego from the same tour flow. San Diego uses authored placeholder captions for the Torrey Highlands overview, Westview High School, and the plaza containing Chef Zhu. The same segmented captions, Next/Back/Reply controls, avatar shell, and existing audio assets apply to both cities. `site-audio.ts` classifies the San Diego overview and selected landmarks using the existing map ambience transitions.
+The shared guide offers New York and San Diego from the same tour flow. The broad San Diego overview offers Torrey Highlands, Torrey Pines, and Park Village. Its route continues through the original Westview High School and Chef Zhu plaza stops before the coastal and canyon views. Park Village's waterfall is scenery in its ordinary view, with no separate camera. All San Diego phases share one control predicate so terminal captions expose exactly one Reply composer. New geographic captions describe the scenery without inventing personal memories; the school and plaza stories remain provisional. The same segmented captions, Next/Back/Reply controls, avatar shell, and existing audio assets apply to both cities. `site-audio.ts` classifies every San Diego geographic view and selected landmark using the existing map ambience transitions.
 
 ## Direct subfolders
 

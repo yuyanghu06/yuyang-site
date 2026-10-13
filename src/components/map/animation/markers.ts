@@ -65,7 +65,7 @@ export function animateDestinationMarkers(
 }
 
 export function animateNeighborhoodMarkers(
-  markersByView: Map<"washington" | "union" | "san-diego", THREE.Group[]>,
+  markersByView: Map<MapView, THREE.Group[]>,
   activeView: MapView,
   elapsed: number,
   cameraLocked: boolean,

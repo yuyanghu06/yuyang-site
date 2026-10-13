@@ -33,9 +33,13 @@ import { createHitTesting } from "../interaction/hit-testing";
 import { createInputController } from "../interaction/input-controller";
 import { createViewportLifecycle } from "./viewport-lifecycle";
 import { getLandmarkFitZoom } from "./landmark-framing";
+import { constrainCameraToCoverage, getCoverageDepthRange } from "./coverage-framing";
+import { getNextNavigationView } from "./navigation-route";
+import { createSanDiegoDistrictMarker, createSanDiegoLabel, constrainSanDiegoLabels } from "../san-diego/district-markers";
+import type { SanDiegoCamera, SanDiegoDistrict } from "../san-diego/load-scene";
 import { adjustFreeCamera, serializeFreeCamera, SAN_DIEGO_FREE_CAMERA_ENABLED, type FreeCameraGesture } from "./san-diego-free-camera";
 import { AGENT_COMMAND_EVENT, createMapViewSettledReporter, type AgentCommand } from "@/agent/contracts/types";
-import { getCameraView, getLandmarkCameraViewForRoot, type CameraViewId } from "@/agent/context/camera-views";
+import { getCameraView, getCityOverview, isSanDiegoView, getLandmarkCameraViewForRoot, type CameraViewId, type SanDiegoDistrictView } from "@/agent/context/camera-views";
 import { createMapAudioController } from "../../site-audio";
 
 export default function GlobalMap({ experienceStarted }: { experienceStarted: boolean }) {
@@ -48,7 +52,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
   const [cameraCopyStatus, setCameraCopyStatus] = useState("");
   const [cameraCopyFallback, setCameraCopyFallback] = useState("");
   const showFreeCamera = SAN_DIEGO_FREE_CAMERA_ENABLED
-    && (currentView === "san-diego" || currentView === "westview-high-school" || currentView === "torrey-highlands-plaza");
+    && isSanDiegoView(currentView);
   const copyCameraView = async () => {
     const snapshot = freeCameraActionsRef.current?.snapshot();
     if (!snapshot) return;
@@ -88,7 +92,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
 
     const scene = new THREE.Scene();
     const sanDiegoScene = new THREE.Scene();
-    sanDiegoScene.name = "San Diego — Torrey Highlands";
+    sanDiegoScene.name = "San Diego — coast and canyon districts";
     sanDiegoScene.background = new THREE.Color(0x9fb77f);
     sanDiegoScene.add(new THREE.HemisphereLight(0xfffcf2, 0x839975, 1.9));
     const sanDiegoSun = new THREE.DirectionalLight(0xfff0d9, 1.4);
@@ -97,10 +101,18 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     sanDiegoSun.shadow.mapSize.set(2048, 2048);
     Object.assign(sanDiegoSun.shadow.camera, { left: -1600, right: 1600, top: 1600, bottom: -1600, far: 5000 });
     sanDiegoSun.shadow.camera.updateProjectionMatrix();
-    sanDiegoSun.shadow.bias = -0.00015;
-    sanDiegoSun.shadow.radius = 6;
+    // The map is measured in meters. A six-texel PCF disk spans entire houses
+    // and samples their own sloping depth planes, producing receiver stripes.
+    sanDiegoSun.shadow.bias = -0.00035;
+    sanDiegoSun.shadow.normalBias = 0.8;
+    sanDiegoSun.shadow.radius = 0.5;
     sanDiegoScene.add(sanDiegoSun, sanDiegoSun.target);
-    let sanDiegoOverview = { target: [0, 28, 0] as Point3, height: 1700, radius: 1700, zoom: 0.32 };
+    let sanDiegoOverview: SanDiegoCamera = { target: [0, 0, 0], height: 12000, radius: 14000, zoom: 0.03 };
+    let sanDiegoCoverage: THREE.Box3 | null = null;
+    const sanDiegoDistricts = new Map<SanDiegoDistrictView, SanDiegoDistrict>();
+    const sanDiegoDistrictMarkers = new Map<THREE.Object3D, SanDiegoDistrictView>();
+    const sanDiegoDistrictBounds = new Map<SanDiegoDistrictView, THREE.Box3>();
+    const sanDiegoAnnotations: { root: THREE.Sprite; view: SanDiegoDistrictView; anchor: THREE.Vector3 }[] = [];
     let sanDiegoReady = false;
     let sanDiegoLoading: Promise<boolean> | null = null;
     let ensureSanDiego: () => Promise<boolean> = () => Promise.resolve(false);
@@ -265,17 +277,36 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const blockedZoomOrigin = cameraTarget.clone();
     const blockedZoomFocus = cameraTarget.clone();
     let blockedZoomOriginZoom = camera.zoom;
+    const authoredLandmarkTarget = new THREE.Vector3();
+    const displayedCameraPose = () => ({ target: cameraTarget, azimuth: cameraAzimuth, height: cameraHeight, radius: cameraRadius, zoom: camera.zoom });
+    const constrainDesiredCamera = () => {
+      if (!isSanDiegoView(activeStudy) || !sanDiegoCoverage) return;
+      const focus = activeStudy === "park-village" ? sanDiegoAnnotations.find(({ view }) => view === "park-village")?.anchor : undefined;
+      const pose = constrainCameraToCoverage({ target: desiredCameraTarget, azimuth: desiredCameraAzimuth,
+        height: desiredCameraHeight, radius: desiredCameraRadius, zoom: desiredCameraZoom }, camera, sanDiegoCoverage, focus);
+      desiredCameraTarget.copy(pose.target);
+      desiredCameraZoom = pose.zoom;
+    };
     const updateCamera = () => {
+      if (isSanDiegoView(activeStudy) && sanDiegoCoverage) {
+        // Enforce the displayed frame too: interpolated poses and the globe's
+        // temporary 0.91 exit zoom must never reveal an empty source edge.
+        const pose = constrainCameraToCoverage(displayedCameraPose(), camera, sanDiegoCoverage);
+        cameraTarget.copy(pose.target);
+        camera.zoom = pose.zoom;
+        Object.assign(camera, getCoverageDepthRange(pose, camera, sanDiegoCoverage));
+        camera.updateProjectionMatrix();
+      }
       camera.position.set(
         cameraTarget.x + Math.sin(cameraAzimuth) * cameraRadius,
         cameraHeight,
         cameraTarget.z + Math.cos(cameraAzimuth) * cameraRadius,
       );
       camera.lookAt(cameraTarget);
+      camera.updateMatrixWorld(true);
     };
-    const displayedCameraPose = () => ({ target: cameraTarget, azimuth: cameraAzimuth, height: cameraHeight, radius: cameraRadius, zoom: camera.zoom });
     const adjustSanDiegoCamera = (gesture: FreeCameraGesture) => {
-      if (!SAN_DIEGO_FREE_CAMERA_ENABLED || activeStudy !== "san-diego" || globeTransitionStartedAt) return;
+      if (!SAN_DIEGO_FREE_CAMERA_ENABLED || !isSanDiegoView(activeStudy) || globeTransitionStartedAt) return;
       const pose = adjustFreeCamera(displayedCameraPose(), gesture, camera, { width: mount.clientWidth, height: mount.clientHeight });
       cameraTarget.copy(pose.target);
       desiredCameraTarget.copy(pose.target);
@@ -296,28 +327,39 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let manhattanDestinationMarkers: THREE.Group | null = null;
     let washingtonDestinationMarker: THREE.Group | null = null;
     let unionDestinationMarker: THREE.Group | null = null;
-    const neighborhoodBuildingMarkers = new Map<"washington" | "union" | "san-diego", THREE.Group[]>([
+    const neighborhoodBuildingMarkers = new Map<MapView, THREE.Group[]>([
       ["washington", []],
       ["union", []],
       ["san-diego", []],
+      ["torrey-highlands", []],
     ]);
     let manhattanMarkerExitStartedAt = 0;
     let manhattanMarkerEnterStartedAt = 0;
     const manhattanMarkerDestinations = new Map<THREE.Object3D, "washington" | "union">();
     let navigationArrowSpringStartedAt = Number.POSITIVE_INFINITY;
     let navigationArrowSpringComplete = false;
+    const getSanDiegoCamera = (view: MapView) => sanDiegoDistricts.get(view as SanDiegoDistrictView)?.camera ?? sanDiegoOverview;
+    const getSanDiegoTarget = (view: MapView) => {
+      const target = new THREE.Vector3(...getSanDiegoCamera(view).target);
+      if (view === "san-diego" && mount.clientWidth < mount.clientHeight) {
+        const highlands = sanDiegoDistricts.get("torrey-highlands");
+        const parkVillage = sanDiegoDistricts.get("park-village");
+        if (highlands && parkVillage) target.x = (highlands.markerPosition[0] + parkVillage.markerPosition[0]) / 2;
+      }
+      return target;
+    };
     switchStudyRef.current = (next, updateUrl = true) => {
-      if (next === "san-diego" && !sanDiegoReady) {
+      if (isSanDiegoView(next) && !sanDiegoReady) {
         void ensureSanDiego().then((ready) => { if (ready && !disposed) switchStudyRef.current(next, updateUrl); });
         return;
       }
       const previousStudy = activeStudy;
       activeStudy = next;
       sanDiegoManuallyAdjusted = false;
-      camera.far = next === "san-diego" ? 12000 : 3500;
+      if (!isSanDiegoView(next)) { camera.near = 10; camera.far = 3500; }
       camera.updateProjectionMatrix();
-      scene.visible = next !== "san-diego";
-      sanDiegoScene.visible = next === "san-diego";
+      scene.visible = !isSanDiegoView(next);
+      sanDiegoScene.visible = isSanDiegoView(next);
       clickableLandmarks.forEach((landmark) => { landmark.selected = false; landmark.hovered = false; });
       renderer.shadowMap.needsUpdate = true;
       setCurrentView(next);
@@ -337,8 +379,9 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         return;
       }
       const isManhattan = next === "manhattan";
-      const isSanDiego = next === "san-diego";
-      const nextCenter = isSanDiego ? new THREE.Vector3(...sanDiegoOverview.target) : next === "union"
+      const isSanDiego = isSanDiegoView(next);
+      const sanDiegoCamera = getSanDiegoCamera(next);
+      const nextCenter = isSanDiego ? getSanDiegoTarget(next) : next === "union"
         ? UNION_CENTER
         : next === "washington" ? WASHINGTON_CENTER : MANHATTAN_CENTER;
       clickableLandmarks.forEach((landmark) => {
@@ -348,10 +391,23 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         landmark.glow.visible = cameraView?.kind === "landmark" && cameraView.neighborhood === next;
       });
       desiredCameraTarget.copy(nextCenter);
-      desiredCameraAzimuth = 0;
-      desiredCameraHeight = isSanDiego ? sanDiegoOverview.height : isManhattan ? MANHATTAN_CAMERA_HEIGHT : 560;
-      desiredCameraRadius = isSanDiego ? sanDiegoOverview.radius : isManhattan ? MANHATTAN_CAMERA_RADIUS : 630;
-      desiredCameraZoom = isSanDiego ? sanDiegoOverview.zoom : isManhattan ? 0.3 : 1;
+      desiredCameraAzimuth = isSanDiego ? sanDiegoCamera.azimuth ?? 0 : 0;
+      desiredCameraHeight = isSanDiego ? sanDiegoCamera.height : isManhattan ? MANHATTAN_CAMERA_HEIGHT : 560;
+      desiredCameraRadius = isSanDiego ? sanDiegoCamera.radius : isManhattan ? MANHATTAN_CAMERA_RADIUS : 630;
+      desiredCameraZoom = isSanDiego ? sanDiegoCamera.zoom : isManhattan ? 0.3 : 1;
+      constrainDesiredCamera();
+      if (isSanDiego) {
+        const districtBounds = sanDiegoDistrictBounds.get(next as SanDiegoDistrictView);
+        const extent = next === "torrey-highlands" ? 1600 : districtBounds
+          ? Math.max(1600, (districtBounds.max.x - districtBounds.min.x) / 2, (districtBounds.max.z - districtBounds.min.z) / 2)
+          : 1600;
+        sanDiegoSun.target.position.copy(nextCenter);
+        sanDiegoSun.position.copy(nextCenter).add(new THREE.Vector3(-900, 1800, 800).multiplyScalar(extent / 1600));
+        sanDiegoSun.castShadow = next !== "san-diego";
+        sanDiegoSun.shadow.normalBias = 0.8 * extent / 1600;
+        Object.assign(sanDiegoSun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, far: 5000 * extent / 1600 });
+        sanDiegoSun.shadow.camera.updateProjectionMatrix();
+      }
       scene.fog = isManhattan ? null : new THREE.Fog(0x354345, 920, 1700);
       cameraLocked = false;
       cameraTransitioning = true;
@@ -383,6 +439,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       neighborhoodBuildingMarkers.forEach((markers, view) => {
         markers.forEach((marker) => { marker.visible = next === view; });
       });
+      sanDiegoAnnotations.forEach(({ root, view }) => { root.visible = next === view; });
       if (!isManhattan && !isSanDiego && !neighborhoodBirdsLoaded) {
         skyTravelers.push(...createNeighborhoodBirdTravelers(scene));
         neighborhoodBirdsLoaded = true;
@@ -506,15 +563,15 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       return landmark;
     };
     const addNeighborhoodBuildingMarker = (
-      view: "washington" | "union" | "san-diego",
+      view: "washington" | "union" | "torrey-highlands",
       landmark: ClickableLandmark,
     ) => {
       landmark.root.updateWorldMatrix(true, true);
       const bounds = new THREE.Box3().setFromObject(landmark.root);
       const center = bounds.getCenter(new THREE.Vector3());
       const marker = createManhattanDestinationMarker(
-        view,
-        view === "san-diego" ? 0.65 : 0.25,
+        view === "torrey-highlands" ? "san-diego" : view,
+        view === "torrey-highlands" ? 0.65 : 0.25,
       );
       marker.position.set(center.x, bounds.max.y - 4, center.z);
       marker.userData.baseY = marker.position.y;
@@ -522,11 +579,12 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       neighborhoodBuildingMarkers.get(view)?.push(marker);
       landmarkByRoot.set(marker, landmark);
       raycastRoots.push(marker);
-      (view === "san-diego" ? sanDiegoScene : scene).add(marker);
+      (isSanDiegoView(view) ? sanDiegoScene : scene).add(marker);
     };
     ensureSanDiego = () => {
       if (sanDiegoReady) return Promise.resolve(true);
       if (sanDiegoLoading) return sanDiegoLoading;
+      let mountedGroup: THREE.Group | null = null;
       setStatus("Loading San Diego…");
       sanDiegoLoading = import("../san-diego/load-scene")
         .then(({ loadSanDiegoScene }) => loadSanDiegoScene({ signal: abortController.signal }))
@@ -539,17 +597,61 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
             disposeSceneObjects([loaded.group]);
             throw new Error("San Diego is missing its merged, registered landmark roots.");
           }
+          mountedGroup = loaded.group;
           sanDiegoScene.add(loaded.group);
           sanDiegoOverview = loaded.overview;
+          sanDiegoCoverage = new THREE.Box3(new THREE.Vector3(...loaded.coverageBounds.min), new THREE.Vector3(...loaded.coverageBounds.max));
+          for (const district of loaded.districts) {
+            sanDiegoDistricts.set(district.id, district);
+            sanDiegoDistrictBounds.set(district.id, new THREE.Box3(new THREE.Vector3(...district.bounds.min), new THREE.Vector3(...district.bounds.max)));
+            const marker = createSanDiegoDistrictMarker(district.label);
+            marker.position.set(...district.markerPosition);
+            marker.userData.baseY = marker.position.y;
+            marker.visible = false;
+            sanDiegoDistrictMarkers.set(marker, district.id);
+            neighborhoodBuildingMarkers.get("san-diego")?.push(marker);
+            sanDiegoScene.add(marker);
+          }
+          for (const annotation of loaded.annotations) {
+            const root = createSanDiegoLabel(annotation.label);
+            root.position.set(...annotation.position);
+            root.center.set(0.5, -0.6);
+            root.visible = false;
+            root.raycast = () => undefined;
+            sanDiegoAnnotations.push({ root, view: annotation.view, anchor: root.position.clone() });
+            sanDiegoScene.add(root);
+          }
           for (const entry of loaded.landmarks) {
             const landmark = registerClickableLandmark(entry.root, loaded.group);
-            addNeighborhoodBuildingMarker("san-diego", landmark);
+            addNeighborhoodBuildingMarker("torrey-highlands", landmark);
           }
           sanDiegoReady = true;
           renderer.shadowMap.needsUpdate = true;
           setStatus("");
           return true;
         }).catch((error) => {
+          if (mountedGroup) {
+            // A registration/label failure must leave a clean retry, just like a GLB failure.
+            const roots = [mountedGroup, ...(neighborhoodBuildingMarkers.get("san-diego") ?? []),
+              ...(neighborhoodBuildingMarkers.get("torrey-highlands") ?? []), ...sanDiegoAnnotations.map(({ root }) => root)];
+            roots.forEach((root) => root.removeFromParent());
+            disposeSceneObjects(roots);
+            for (let index = raycastRoots.length - 1; index >= 0; index--) {
+              const landmark = landmarkByRoot.get(raycastRoots[index]);
+              if (landmark && isSanDiegoView(landmark.cameraViewId)) raycastRoots.splice(index, 1);
+            }
+            landmarkByRoot.forEach((landmark, root) => { if (isSanDiegoView(landmark.cameraViewId)) landmarkByRoot.delete(root); });
+            for (let index = clickableLandmarks.length - 1; index >= 0; index--) {
+              if (isSanDiegoView(clickableLandmarks[index].cameraViewId)) clickableLandmarks.splice(index, 1);
+            }
+            neighborhoodBuildingMarkers.set("san-diego", []);
+            neighborhoodBuildingMarkers.set("torrey-highlands", []);
+            sanDiegoDistrictMarkers.clear();
+            sanDiegoDistrictBounds.clear();
+            sanDiegoDistricts.clear();
+            sanDiegoAnnotations.length = 0;
+            sanDiegoCoverage = null;
+          }
           if (!disposed && !isAbortError(error)) {
             console.error("[San Diego] Scene loading failed", error);
             setStatus("San Diego could not load. Select its globe marker to try again.");
@@ -609,7 +711,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       yieldToMainThread,
       logLoad,
       loadLogPrefix,
-      setStatus: (message) => { if (activeStudy !== "san-diego" && globeTransitionCity !== "san-diego") setStatus(message); },
+      setStatus: (message) => { if (!isSanDiegoView(activeStudy) && globeTransitionCity !== "san-diego") setStatus(message); },
       queueSpringArrival,
       registerClickableLandmark,
       addNeighborhoodBuildingMarker,
@@ -630,11 +732,27 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       camera.top = height / 2;
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
-      if (activeStudy === "san-diego" && cameraLocked && !sanDiegoManuallyAdjusted) {
-        const landmark = clickableLandmarks.find((candidate) => candidate.selected);
-        const view = landmark && getCameraView(landmark.cameraViewId);
-        if (landmark && view?.kind === "landmark") {
-          desiredCameraZoom = fittedLandmarkZoom(landmark, view.zoom);
+      if (isSanDiegoView(activeStudy) && !sanDiegoManuallyAdjusted) {
+        if (cameraLocked) {
+          const landmark = clickableLandmarks.find((candidate) => candidate.selected);
+          const view = landmark && getCameraView(landmark.cameraViewId);
+          if (landmark && view?.kind === "landmark") {
+            desiredCameraTarget.copy(authoredLandmarkTarget);
+            desiredCameraZoom = fittedLandmarkZoom(landmark, view.zoom);
+          }
+        } else {
+          desiredCameraTarget.copy(getSanDiegoTarget(activeStudy));
+          desiredCameraZoom = getSanDiegoCamera(activeStudy).zoom;
+        }
+        constrainDesiredCamera();
+        if (sanDiegoReady) {
+          // A settled resize adopts its safe framing before the next render;
+          // an in-flight resize keeps its motion while constraining this frame.
+          if (!cameraTransitioning && !globeTransitionStartedAt) {
+            cameraTarget.copy(desiredCameraTarget);
+            camera.zoom = desiredCameraZoom;
+          }
+          updateCamera();
           cameraTransitioning = true;
         }
       }
@@ -689,6 +807,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       navigationAtPointer,
       manhattanMarkerAtPointer,
       parkDestinationAtPointer,
+      districtDestinationAtPointer,
       pointerPlane,
       pointerWorld,
       raycaster,
@@ -701,6 +820,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       raycastRoots,
       landmarkByRoot,
       manhattanMarkerDestinations,
+      sanDiegoDistrictMarkers,
+      sanDiegoDistrictBounds,
       getActiveView: () => activeStudy,
       isGlobeTransitioning: () => globeTransitionStartedAt > 0,
       getNavigationArrow: () => navigationArrow,
@@ -744,32 +865,20 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       if (updateUrl) window.history.pushState({ study: "globe" }, "", "/");
       renderer.domElement.style.cursor = "default";
     };
-    const cityForView = (view: MapView): CityOverview => view === "san-diego" ? "san-diego" : "manhattan";
     const advancePendingNavigation = () => {
       if (!pendingAgentDestination || globeTransitionStartedAt || cameraTransitioning) return;
-      const cameraView = getCameraView(pendingAgentDestination);
-      if (!cameraView) { pendingAgentDestination = null; return; }
-      const geographic = cameraView.kind === "landmark" ? cameraView.neighborhood : cameraView.id;
-      if (activeStudy === "globe") {
-        if (geographic === "globe") { pendingAgentDestination = null; return; }
-        enterCityFromGlobe(cityForView(geographic), false);
-        return;
-      }
-      if (geographic === "globe" || cityForView(geographic) !== cityForView(activeStudy)) {
-        const overview = cityForView(activeStudy);
-        if (cameraLocked || activeStudy !== overview) switchStudyRef.current(overview, false);
-        else enterGlobeFromCity(false);
-        return;
-      }
-      if (activeStudy !== geographic) { switchStudyRef.current(geographic, false); return; }
-      if (cameraView.kind === "landmark") {
+      const current = clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy;
+      const next = getNextNavigationView(current, pendingAgentDestination);
+      if (!next) { pendingAgentDestination = null; return; }
+      if (activeStudy === "globe") { enterCityFromGlobe(getCityOverview(next), false); return; }
+      if (next === "globe") { enterGlobeFromCity(false); return; }
+      const cameraView = getCameraView(next);
+      if (cameraView?.kind === "landmark") {
         const landmark = clickableLandmarks.find((candidate) => candidate.cameraViewId === cameraView.id);
-        if (!landmark) return; // The lazy scene must register its merged landmark before settling.
-        pendingAgentDestination = null;
-        selectLandmark(landmark, false);
-      } else {
-        pendingAgentDestination = null;
-        if (cameraLocked || sanDiegoManuallyAdjusted) switchStudyRef.current(geographic, false);
+        if (landmark) selectLandmark(landmark, false);
+      } else if (cameraView?.kind === "geographic") {
+        switchStudyRef.current(cameraView.id, false);
+        if (next === pendingAgentDestination) pendingAgentDestination = null;
       }
     };
     navigateAgentCamera = (destination, updateUrl = true) => {
@@ -806,9 +915,11 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         desiredCameraHeight = desiredCameraTarget.y
           + Math.tan(originalElevation + cameraView.elevationAngleOffset) * desiredCameraRadius;
       }
-      desiredCameraZoom = activeStudy === "san-diego"
+      desiredCameraZoom = isSanDiegoView(activeStudy)
         ? fittedLandmarkZoom(landmark, cameraView.zoom)
         : cameraView.zoom;
+      authoredLandmarkTarget.copy(desiredCameraTarget);
+      constrainDesiredCamera();
       cameraLocked = true;
       cameraTransitioning = true;
       blockedZoomStartedAt = 0;
@@ -816,37 +927,21 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     };
     const clearLandmarkSelection = () => {
       pendingAgentDestination = null;
-      sanDiegoManuallyAdjusted = false;
-      clickableLandmarks.forEach((landmark) => {
-        landmark.selected = false;
-        landmark.hovered = false;
-      });
-      desiredCameraTarget.copy(activeStudy === "san-diego"
-        ? new THREE.Vector3(...sanDiegoOverview.target)
-        : activeStudy === "union" ? UNION_CENTER : WASHINGTON_CENTER);
-      desiredCameraAzimuth = 0;
-      desiredCameraHeight = activeStudy === "san-diego" ? sanDiegoOverview.height : 560;
-      desiredCameraRadius = activeStudy === "san-diego" ? sanDiegoOverview.radius : 630;
-      desiredCameraZoom = activeStudy === "san-diego" ? sanDiegoOverview.zoom : 1;
-      window.history.pushState({ study: activeStudy }, "", "/");
-      cameraLocked = false;
-      cameraTransitioning = true;
-      blockedZoomStartedAt = 0;
+      switchStudyRef.current(activeStudy);
       renderer.domElement.style.cursor = "default";
-      setCurrentView(activeStudy);
     };
     freeCameraActionsRef.current = {
       reset: () => {
-        if (activeStudy !== "san-diego" || globeTransitionStartedAt) return;
+        if (!isSanDiegoView(activeStudy) || globeTransitionStartedAt) return;
         pendingAgentDestination = null;
         const selected = clickableLandmarks.find((landmark) => landmark.selected);
         if (selected) selectLandmark(selected, false);
-        else switchStudyRef.current("san-diego", false);
+        else switchStudyRef.current(activeStudy, false);
         setCameraCopyStatus("");
         setCameraCopyFallback("");
       },
-      snapshot: () => activeStudy === "san-diego"
-        ? serializeFreeCamera(clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? "san-diego", displayedCameraPose())
+      snapshot: () => isSanDiegoView(activeStudy)
+        ? serializeFreeCamera(clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy, displayedCameraPose())
         : null,
     };
 
@@ -858,9 +953,10 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       navigationAtPointer,
       manhattanMarkerAtPointer,
       parkDestinationAtPointer,
+      districtDestinationAtPointer,
       getActiveView: () => activeStudy,
       getCameraLocked: () => cameraLocked,
-      isFreeCameraEnabled: () => SAN_DIEGO_FREE_CAMERA_ENABLED && activeStudy === "san-diego",
+      isFreeCameraEnabled: () => SAN_DIEGO_FREE_CAMERA_ENABLED && isSanDiegoView(activeStudy),
       orbitFreeCamera: (deltaX, deltaY) => adjustSanDiegoCamera({ kind: "orbit", deltaX, deltaY }),
       panFreeCamera: (deltaX, deltaY) => adjustSanDiegoCamera({ kind: "pan", deltaX, deltaY }),
       zoomFreeCamera: (delta) => adjustSanDiegoCamera({ kind: "zoom", delta }),
@@ -885,7 +981,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         desiredCameraAzimuth = cameraAzimuth;
         updateCamera();
       },
-      switchView: (view) => switchStudyRef.current(view),
+      switchView: (view) => navigateAgentCamera(view),
       selectLandmark,
       clearLandmarkSelection,
       triggerBlockedZoom: (event) => {
@@ -958,6 +1054,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           const zoomOutProgress = THREE.MathUtils.smoothstep(progress, 0, 0.3);
           camera.zoom = THREE.MathUtils.lerp(reverseTransitionStartZoom, reverseTransitionStartZoom * 0.91, zoomOutProgress);
           camera.updateProjectionMatrix();
+          updateCamera();
         }
         if (globeTransitionDirection === "in" && !globeTransitionLanded) {
           globe.quaternion.copy(globeTransitionStartQuaternion).slerp(globeTransitionTargetQuaternion, approachEase);
@@ -1031,7 +1128,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         cameraTransitioning,
         globeTransitioning: globeTransitionStartedAt > 0,
       });
-      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination && (activeStudy !== "san-diego" || sanDiegoReady) ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
+      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination && (!isSanDiegoView(activeStudy) || sanDiegoReady) ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
       if (blockedZoomStartedAt) {
         const progress = Math.min(1, (now - blockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
         const pulse = Math.sin(progress * Math.PI);
@@ -1072,10 +1169,15 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         cameraLocked,
         interactionEase,
       );
+      if (isSanDiegoView(activeStudy)) {
+        updateCamera();
+        constrainSanDiegoLabels(camera, renderer.domElement.clientWidth, renderer.domElement.clientHeight,
+          sanDiegoDistrictMarkers, sanDiegoAnnotations, activeStudy, neighborhoodBuildingMarkers.get("torrey-highlands"));
+      }
       ambientAnimations.forEach((animation) => animation.update(elapsed, now));
       animateArrivals(arrivingTiles, now, renderer);
       const renderStarted = performance.now();
-      renderMapFrame(renderer, activeStudy, globeScene, globeCamera, activeStudy === "san-diego" ? sanDiegoScene : scene, camera, skyOverlayScene);
+      renderMapFrame(renderer, activeStudy, globeScene, globeCamera, isSanDiegoView(activeStudy) ? sanDiegoScene : scene, camera, skyOverlayScene);
       recordRenderCost(performance.now() - renderStarted);
     }
     startAnimation();
@@ -1131,7 +1233,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         </a>
         {" · "}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-          {currentView === "san-diego" || currentView === "westview-high-school" || currentView === "torrey-highlands-plaza"
+          {isSanDiegoView(currentView)
             ? "Map3D · © OpenStreetMap contributors"
             : "NYC Open Data · © OpenStreetMap contributors"}
         </a>

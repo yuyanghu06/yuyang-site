@@ -626,6 +626,25 @@
 }
 
 @media (max-width: 760px), (max-width: 900px) and (max-height: 500px) {
+  .agent-chat__caption-actions:has(> .agent-chat__choices[aria-label="Choose a San Diego neighborhood"]) {
+    flex-wrap: wrap;
+    min-width: 0;
+    row-gap: 0.55rem;
+  }
+
+  .agent-chat__choices[aria-label="Choose a San Diego neighborhood"] {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .agent-chat__choices[aria-label="Choose a San Diego neighborhood"] button {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
   .avatar-call--expanded .agent-chat {
     top: 3.25rem;
     right: 0.75rem;

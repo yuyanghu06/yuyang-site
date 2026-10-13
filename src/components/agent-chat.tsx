@@ -22,7 +22,7 @@ import {
   washingtonSquareDialogue,
   sanDiegoCompleteDialogue,
 } from "./dialogue";
-import { getPreviousTourStop, getSanDiegoStop, LANDMARK_DIALOGUES, SAN_DIEGO_STOPS, type IntroPhase } from "./dialogue/tour-stops";
+import { getPreviousTourStop, getSanDiegoStop, isSanDiegoTourPhase, LANDMARK_DIALOGUES, SAN_DIEGO_STOPS, type IntroPhase } from "./dialogue/tour-stops";
 import { DIALOGUE_LINK_PATTERN, splitCaptionText } from "./dialogue/caption-text";
 import { startCaptionReveal, type CaptionRevealHandle } from "./caption-reveal";
 import { AnimatedAgentStatus } from "./agent-status";
@@ -805,10 +805,24 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && (introPhase === "san_diego_next" || introPhase === "westview_next" || introPhase === "plaza_next") && !pending && presentationAction === null && !composerOpen && (
+            {index === assistantMessages.length - 1 && introPhase === "san_diego_next" && !pending && presentationAction === null && !composerOpen && (
               <div className="agent-chat__caption-actions">
-                <div className="agent-chat__choices" aria-label="Continue the San Diego tour">
+                <div className="agent-chat__choices agent-chat__choices--white" aria-label="Choose a San Diego neighborhood" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("torrey-highlands"))}>Torrey Highlands</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("torrey-pines"))}>Torrey Pines</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("park-village"))}>Park Village</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(returnToPreviousTourStop)}>Back</button>
+                </div>
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
+              </div>
+            )}
+            {index === assistantMessages.length - 1 && (isSanDiegoTourPhase(introPhase) && introPhase !== "san_diego_next") && !pending && presentationAction === null && !composerOpen && (
+              <div className="agent-chat__caption-actions">
+                <div className="agent-chat__choices" aria-label="Continue the San Diego tour" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
                   <button type="button" onClick={() => runAfterDockedCaptionFade(continueSanDiegoTour)}>Next</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("san-diego"))}>San Diego</button>
                   <button type="button" onClick={() => runAfterDockedCaptionFade(returnToPreviousTourStop)}>Back</button>
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
@@ -889,7 +903,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "san_diego_next" && introPhase !== "westview_next" && introPhase !== "plaza_next" && introPhase !== "san_diego_complete" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
+            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && !isSanDiegoTourPhase(introPhase) && introPhase !== "san_diego_complete" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
               composerOpen ? (
                 <form className="agent-chat__form agent-chat__form--inline" onSubmit={submit} ref={formRef}>
                   <div className="agent-chat__input-row">
