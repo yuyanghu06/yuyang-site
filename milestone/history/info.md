@@ -576,3 +576,32 @@ Use these records only when historical context is needed; do not load the entire
 - Other timestamped Markdown files are earlier append-only session handoffs.
 - `2026-08-30_15-41-32-shift-memory-and-pinecone-skill.md` records the canonical Shift/microagi funding update, 166-record Pinecone replacement, live retrieval checks, and reusable repo skill.
 - `2026-09-01_14-07-17-dialogue-chunk-reply.md` records Reply availability on every automatically segmented assistant caption, including intermediate Next chunks.
+
+- `2026-10-13_14-23-05-san-diego-framing-track-and-input.md` records the San Diego label, silent entry, overview yaw and northward framing, Mesa Verde track, preserved geographic boundaries, and targeted validation.
+
+- `2026-10-13_14-27-20-mesa-verde-deer-canyon-markers.md` records the two new San Diego school markers and their building-derived placement.
+
+- `2026-10-13_14-34-43-san-diego-geographic-coverage.md` records expanded San Diego source/model coverage, unchanged camera and original landmarks, source provenance/coverage guards, and independent desktop/mobile full-yaw verification.
+
+- `2026-10-13_14-39-07-selectable-schools-and-luna-model.md` records selectable Mesa Verde/Deer Canyon, merged athletics geometry, guided captions, and the verified GPT-6 Luna default.
+
+- `2026-10-13_14-43-12-mesa-verde-deer-canyon-detailing.md` records merged Mesa Verde/Deer Canyon architecture and campus detailing, supported structures, exact source/athletics preservation and independent validation.
+
+- `2026-10-13_14-56-51-san-diego-school-population.md` records school-focused San Diego people/ordinary-car population, dedicated spawn scripts, exact NYC asset preservation, complete motion/ground/resource checks and desktop/phone review.
+
+- `2026-10-13_15-12-54-restore-original-dev-checkout.md` records migration of all development work into the original `backend` folder, retirement of the extra worktree, byte verification, and the restarted preview.
+
+- `2026-10-13_15-29-57-warp-preview-handoff.md` records the Warp current-directory check and return of preview ownership to the user.
+
+- `2026-10-13_21-22-06-san-diego-completion-copy.md` records the hometown completion wording and two destination choices.
+
+- `2026-10-13_21-25-45-san-diego-school-plaza-overview-audio.md` records the San Diego school talking verification, Vons mall loop, crossfaded birds overview loop, level matching, and audio-controller checks.
+
+- `2026-10-13_21-33-51-san-diego-optimization-plan.md` records the San Diego optimization scope, bottleneck evidence, assignments, and acceptance criteria.
+
+- `2026-10-13_21-40-05-san-diego-audio-loading-optimization.md` records deferred San Diego audio loading and its controller checks.
+
+- `2026-10-13_21-42-31-san-diego-spatial-batching-evaluation.md` records exact spatial-batching tests, measured draw overhead, and restoration of the original assets.
+
+- `2026-10-13_21-51-01-san-diego-runtime-optimization.md` records final static/glow/frame/shadow/lifecycle implementation and harness checks.
+- `2026-10-13_21-51-01-san-diego-optimization-final-review.md` records independent acceptance, production/browser evidence, rejected batching, and benchmark limits.

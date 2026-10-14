@@ -1,0 +1,10 @@
+# Selectable schools and Luna model
+
+- Role: primary agent; direct implementation and verification as requested.
+- Scope: give Mesa Verde and Deer Canyon the existing selectable landmark treatment, then switch the site’s OpenAI call default to the latest Luna model.
+- Starting state: two interactive San Diego roots and two informational pins, prior framing/track/rotation edits retained. Other sessions concurrently expanded the source coverage and added school details; their work is preserved.
+- Work: generate one merged root per new school, move Mesa Verde’s athletics surfaces into its root, avoid stacked glow using field/track holes, remove new school buildings from the background batch, expose four roots through the loader/runtime, register cameras and navigation schema, add provisional captions and Next/Back phases, update attribution/history paths and local guides. Default model now `gpt-6-luna`, with the existing explicit environment override retained.
+- Verification: targeted ESLint, full TypeScript, whitespace checks; GLB root/single-primitive/finite-position/glow/lift/grounding checks; four viewport bounds fits for all four landmarks; registry/schema equality; Mesa Verde track inside its root; five-stop Next/Back links; Chromium click/selected-history/Escape checks and desktop/phone screenshots; no browser page errors. Official model documentation: https://developers.openai.com/api/docs/models/gpt-6-luna . Existing account retrieves GPT-6 Luna and produces a direct response; live site API hometown and school-navigation requests finish successfully.
+- Current output: 8 meshes, 4 selectable roots, 7506908 bytes; model SHA256 `eca6e8141563ba184bd4f45c5e5712a1ac0af367f181eb2774cf6ead134e295d`.
+- Result: both requested schools are selectable and framed consistently; the site defaults to the requested Luna model. Earlier informational marker metadata is superseded by the merged-root contract. No build/commit/push/deployment performed during iteration.
+- Remaining: physical touch review and replacement of placeholder stories. Continue on `backend-dev`; preserve concurrent geographic, school-detail, and ambient edits.
