@@ -54,11 +54,36 @@ export function splitGridLine(a, b, grid) {
   for (let i = 1; i < boundaries.length; i++) {
     const t0 = boundaries[i - 1], t1 = boundaries[i], middle = (t0 + t1) / 2, p = a.map((v, j) => v + delta[j] * middle);
     const ix = gridIndex(grid.xs, p[0]), iz = gridIndex(grid.zs, p[1]), x = grid.xs[ix], z = grid.zs[iz], width = grid.xs[ix + 1] - x, depth = grid.zs[iz + 1] - z;
+    const refined = grid.cellTriangles?.(ix, iz);
+    if (refined) {
+      for (const triangle of refined) for (let j = 0; j < 3; j++) {
+        const first = triangle[j], last = triangle[(j + 1) % 3], edge = last.map((v, k) => v - first[k]);
+        const denominator = delta[0] * edge[1] - delta[1] * edge[0];
+        if (Math.abs(denominator) < 1e-9) continue;
+        const offset = first.map((v, k) => v - a[k]);
+        const t = (offset[0] * edge[1] - offset[1] * edge[0]) / denominator, u = (offset[0] * delta[1] - offset[1] * delta[0]) / denominator;
+        if (t > t0 + 1e-10 && t < t1 - 1e-10 && u >= -1e-10 && u <= 1 + 1e-10 && !times.some((v) => Math.abs(v - t) < 1e-10)) times.push(t);
+      }
+      continue;
+    }
     const side = (t) => (a[0] + delta[0] * t - x) / width + (a[1] + delta[1] * t - z) / depth - 1;
     const first = side(t0), last = side(t1);
     if (first * last < -1e-12) times.push(t0 + (t1 - t0) * first / (first - last));
   }
   return [...new Set(times)].sort((u, v) => u - v).map((t) => a.map((v, i) => v + delta[i] * t));
+}
+export function clipTriangle(ring, triangle) {
+  for (let i = 0; i < 3; i++) {
+    const a = triangle[i], b = triangle[(i + 1) % 3], output = [];
+    const side = (p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    for (let j = 0; j < ring.length; j++) {
+      const p = ring[j], q = ring[(j + 1) % ring.length], pv = side(p), qv = side(q), pin = pv >= -1e-8, qin = qv >= -1e-8;
+      if (pin) output.push(p);
+      if (pin !== qin) { const t = pv / (pv - qv); output.push(p.map((v, k) => v + (q[k] - v) * t)); }
+    }
+    ring = output;
+  }
+  return ring;
 }
 export function clipRing(input, limits) {
   let ring = input;
@@ -170,6 +195,16 @@ export function createGeometryKit(elevation, limits, terrainGrid = null, surface
       for (let iz = gridIndex(gridZ, Math.min(...stripZ)); iz <= gridIndex(gridZ, Math.max(...stripZ)); iz++) {
         const z = gridZ[iz], z2 = gridZ[iz + 1], cell = clipRing(strip, { minX: x, maxX: x2, minZ: z, maxZ: z2 });
         if (cell.length < 3) continue;
+        const refined = terrainGrid.cellTriangles?.(ix, iz);
+        if (refined) {
+          const xs = cell.map((p) => p[0]), zs = cell.map((p) => p[1]), minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+          for (const plane of refined) {
+            if (plane.bounds && (plane.bounds.minX > maxX || plane.bounds.maxX < minX || plane.bounds.minZ > maxZ || plane.bounds.maxZ < minZ)) continue;
+            const polygon = clipTriangle(cell, plane);
+            for (let i = 1; i + 1 < polygon.length; i++) for (const p of [polygon[0], polygon[i], polygon[i + 1]]) vertices.push(p[0], surfaceY(p, lift, batch, color), p[1]);
+          }
+          continue;
+        }
         // Both halves use the ground grid's (x + step,z) -> (x,z + step)
         // diagonal. Every final triangle therefore shares its exact plane.
         for (const sign of [-1, 1]) {
@@ -215,15 +250,25 @@ export function createGeometryKit(elevation, limits, terrainGrid = null, surface
     geometry.dispose(); triangles.dispose();
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3)); add(g, color, batch);
   }
-  function ribbon(points, width, color, lift = 0.5, batch = "Regional roads", fixedY = null) {
+  function ribbon(points, width, color, lift = 0.5, batch = "Regional roads", fixedY = null, joined = false) {
     const vertices = [];
+    const offsets = joined ? points.map((p, i) => {
+      const before = points[Math.max(0, i - 1)], after = points[Math.min(points.length - 1, i + 1)];
+      const normal = (a, b) => { const d = distance(a, b) || 1; return [-(b[1] - a[1]) / d, (b[0] - a[0]) / d]; };
+      const previous = i ? normal(before, p) : normal(p, after), next = i + 1 < points.length ? normal(p, after) : previous;
+      const sum = previous.map((v, k) => v + next[k]), length = Math.hypot(...sum);
+      if (length < 0.001) return next.map((v) => v * width / 2);
+      const direction = sum.map((v) => v / length), denominator = Math.max(0.001, direction[0] * next[0] + direction[1] * next[1]);
+      return direction.map((v) => v * Math.min(width, width / 2 / denominator));
+    }) : null;
     for (let i = 1; i < points.length; i++) {
       const a = points[i - 1], b = points[i], length = distance(a, b); if (length < 0.01) continue;
       const steps = 1;
       for (let j = 0; j < steps; j++) {
         const first = a.map((n, k) => n + (b[k] - n) * j / steps), last = a.map((n, k) => n + (b[k] - n) * (j + 1) / steps);
         const ox = -(b[1] - a[1]) / length * width / 2, oz = (b[0] - a[0]) / length * width / 2;
-        const ring = clipRing([[first[0] + ox, first[1] + oz], [first[0] - ox, first[1] - oz], [last[0] - ox, last[1] - oz], [last[0] + ox, last[1] + oz]], limits);
+        const firstOffset = offsets?.[i - 1] ?? [ox, oz], lastOffset = offsets?.[i] ?? [ox, oz];
+        const ring = clipRing([[first[0] + firstOffset[0], first[1] + firstOffset[1]], [first[0] - firstOffset[0], first[1] - firstOffset[1]], [last[0] - lastOffset[0], last[1] - lastOffset[1]], [last[0] + lastOffset[0], last[1] + lastOffset[1]]], limits);
         for (let k = 1; k + 1 < ring.length; k++) surfaceTriangle(ring[0], ring[k], ring[k + 1], lift, fixedY, vertices, batch, color);
       }
     }

@@ -8,6 +8,8 @@ import { ALL_EXTENSIONS, EXTMeshoptCompression } from "@gltf-transform/extension
 import { dedup, prune, quantize, reorder, weld } from "@gltf-transform/functions";
 import { MeshoptEncoder } from "meshoptimizer";
 import { loadRegionSource, REGION, SNAPSHOT } from "./san-diego-region-source.mjs";
+import { createLocalTerrain, torreyRidge as ridgeForm } from "./san-diego-region-terrain.mjs";
+import { createTorreyRoadProfiles, createTorreyTrailProfiles, torreyRoadWidth } from "./san-diego-region-roads.mjs";
 import { ORIGIN, M_LAT, M_LON, OLD, point, rounded, clean, center, distance, inside, inOld, segmentDistance, simplify, clipRing, gridIndex, splitGridLine, createCoastalGeography, createGeometryKit } from "./san-diego-region-geometry.mjs";
 
 const DATA = "public/data/san-diego";
@@ -31,26 +33,16 @@ for (const f of creekWays) for (let i = 1; i < f.geometry.length; i++) {
   }
 }
 const smooth = (v) => { const t = Math.max(0, Math.min(1, v)); return t * t * (3 - 2 * t); };
-// An intentionally enlarged coastal ridge makes the reserve read as a mountain
-// at district scale. Its compact support leaves the lagoon, beach, settlements
-// and all other districts at their existing elevations. This is not DEM data.
-function torreyRidge(x, z) {
-  const inland = x - coastX(z);
-  if (z <= 3150 || z >= 5700 || inland <= 190 || inland >= 1250) return 0;
-  const ends = smooth((z - 3150) / 450) * smooth((5700 - z) / 650);
-  const crest = 1 - 0.065 * ((inland - 555) / 160) ** 2;
-  const cross = inland < 450 ? (1 - 0.065 * (105 / 160) ** 2) * smooth((inland - 190) / 260) : inland <= 680 ? crest : (1 - 0.065 * (125 / 160) ** 2) * (1 - smooth((inland - 680) / 570));
-  // Two shallow diagonal cuts distinguish the ridge's descending shoulders.
-  const gullies = 1 - 0.2 * Math.exp(-(((z - 3730 - inland * 0.17) / 100) ** 2)) - 0.16 * Math.exp(-(((z - 4880 + inland * 0.12) / 115) ** 2));
-  return Math.max(0, cross) * ends * gullies;
-}
+// Authored, localized mountain relief; this is an illustration, not DEM data.
+const torreyRidge = (x, z) => ridgeForm(x, z, coastX);
+const torreyRoads = createTorreyRoadProfiles(ways);
 function authoredHeight(x, z) {
   const inland = x - coastX(z); if (inland < 15 || !isLand([x, z])) return -2;
   const hill = (hx, hz, radius, height) => height * Math.exp(-((x - hx) ** 2 + (z - hz) ** 2) / radius ** 2);
   let y = 24 + hill(-1700, -700, 2200, 90) + hill(3400, -2500, 1600, 150) + hill(-6300, 500, 2800, 70) + hill(-500, 6500, 3300, 85);
   // Coastal cliffs and canyon relief are artistic topography, not surveyed DEM.
   if (z > 2700 && z < 7800) y += 52 * Math.exp(-(((inland - 350) / 600) ** 2));
-  const ridge = torreyRidge(x, z), summit = 310 + 9 * Math.cos((z - 4310) / 490);
+  const ridge = torreyRidge(x, z), summit = 135 + 8 * Math.cos((z - 4310) / 490);
   y += Math.max(0, summit - y) * ridge;
   let creekDistance = Infinity;
   for (const [a, b] of creekGrid.get(`${Math.floor(x / 500)},${Math.floor(z / 500)}`) ?? []) creekDistance = Math.min(creekDistance, segmentDistance([x, z], a, b));
@@ -64,19 +56,103 @@ const coordinates = (min, max, extras) => [...new Set([...Array.from({ length: M
 // The immutable patch's exact perimeter is a grid boundary, so no triangle can
 // interpolate a raised outside corner onto its flat ground edge.
 const terrainGrid = { originX: padded.minX, originZ: padded.minZ, step: 130, xs: coordinates(padded.minX, padded.maxX, [OLD.minX, OLD.maxX]), zs: coordinates(padded.minZ, padded.maxZ, [OLD.minZ, OLD.maxZ]) }, heights = new Map(), seamBlends = new Map();
-// The two small reserve service buildings share one terrain cell on the western
-// face. A gently sloping shoulder beneath that cell avoids tall foundations;
-// changing the shared field also moves every trail and surface with the ground.
-const ridgeShoulderSources = [588250241, 588250242], ridgeShoulderVertices = new Set();
-for (const id of ridgeShoulderSources) {
-  const ring = byId.get(id)?.geometry.map(point); if (!ring) continue;
-  for (let ix = gridIndex(terrainGrid.xs, Math.min(...ring.map((p) => p[0]))); ix <= gridIndex(terrainGrid.xs, Math.max(...ring.map((p) => p[0]))) + 1; ix++) for (let iz = gridIndex(terrainGrid.zs, Math.min(...ring.map((p) => p[1]))); iz <= gridIndex(terrainGrid.zs, Math.max(...ring.map((p) => p[1]))) + 1; iz++) ridgeShoulderVertices.add(`${ix},${iz}`);
+// A compact oval shoulder blends into the surrounding crest. Its height comes
+// from that crest instead of forcing a rectangular set of grid corners to 305m.
+const ridgeShoulderSources = [588250241, 588250242], shoulderCenter = [-9687, 4281];
+const shoulderHeight = torreyRoads.grade(...shoulderCenter, authoredHeight(...shoulderCenter));
+const toiletCenter = center(clean(byId.get(348479240).geometry.map(point)));
+const reserveShoulders = [
+  { sourceIds: ridgeShoulderSources, center: shoulderCenter, height: shoulderHeight, coreRadius: 85, blendRadius: 235 },
+  { sourceIds: [348479240], center: toiletCenter, height: torreyRoads.grade(...toiletCenter, authoredHeight(...toiletCenter)), coreRadius: 80, blendRadius: 170 },
+];
+function shoulderHeightAt(x, z) {
+  let height = authoredHeight(x, z);
+  for (const pad of reserveShoulders) {
+    const radius = Math.hypot((x - pad.center[0]) / 1.05, z - pad.center[1]);
+    const blend = 1 - smooth((radius - pad.coreRadius) / (pad.blendRadius - pad.coreRadius));
+    const shoulder = pad.height + (x - pad.center[0]) * 0.018 + (z - pad.center[1]) * 0.012;
+    height += (shoulder - height) * blend;
+  }
+  return height;
+}
+// Outlying campus footprints crossed the road grading bank. Local shallow
+// shoulders carry those buildings without tall foundation walls.
+const roadsideBuildingSources = [31801497, 31807666, 31816446, 31817270, 31819397, 31840352, 31842309, 31843592, 31844113, 31844645, 903058683, 903058685, 951599648, 1339936974, 31808711, 31806917, 31842503, 1339936971, 783749757, 31844079, 31840182];
+const outlierRings = roadsideBuildingSources.map((id) => clean(byId.get(id).geometry.map(point)));
+const roadsideBuildingPads = ways.filter((f) => f.tags.building && f.tags.building !== "no").flatMap((f) => {
+  const ring = clean(f.geometry.map(point)), c = center(ring);
+  if (c[0] < -8950 || c[0] > -8165 || c[1] < 5300 || c[1] > 6900) return [];
+  if (!outlierRings.some((other) => ring.some((p) => other.some((q) => distance(p, q) < 100)))) return [];
+  const original = interpolateGrid(...c, (ix, iz) => authoredHeight(terrainGrid.xs[ix], terrainGrid.zs[iz]));
+  const height = [616941210, 783749760].includes(f.id) ? torreyRoads.nearest(...c).height : c[0] > -8300 || c[1] > 6500 ? original : torreyRoads.grade(...c, shoulderHeightAt(...c));
+  const xs = ring.map((p) => p[0]), zs = ring.map((p) => p[1]);
+  return [{ sourceId: `way/${f.id}`, ring, center: c, height, bounds: { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) } }];
+});
+// Adjacent footprint parts share a shoulder plane so their close edges cannot
+// create conflicting, narrow terraces in the common terrain triangulation.
+const padGroups = roadsideBuildingPads.map((_, i) => i);
+const groupRoot = (i) => { while (padGroups[i] !== i) i = padGroups[i]; return i; };
+for (let i = 0; i < roadsideBuildingPads.length; i++) for (let j = i + 1; j < roadsideBuildingPads.length; j++) {
+  const a = roadsideBuildingPads[i], b = roadsideBuildingPads[j];
+  const gap = Math.hypot(Math.max(a.bounds.minX - b.bounds.maxX, b.bounds.minX - a.bounds.maxX, 0), Math.max(a.bounds.minZ - b.bounds.maxZ, b.bounds.minZ - a.bounds.maxZ, 0));
+  if (gap < 10 && a.center[1] < 6500 && b.center[1] < 6500) padGroups[groupRoot(j)] = groupRoot(i);
+}
+for (const root of new Set(padGroups.map((_, i) => groupRoot(i)))) {
+  const group = roadsideBuildingPads.filter((_, i) => groupRoot(i) === root), anchor = group.reduce((a, b) => a.height > b.height ? a : b);
+  let anchorHeight = anchor.height;
+  for (const pad of group) for (const p of pad.ring) {
+    const road = torreyRoads.nearest(...p);
+    if (road?.distance < 45 && anchor.center[1] < 6500) anchorHeight = Math.max(anchorHeight, road.height + (p[1] - anchor.center[1]) * 0.015);
+  }
+  for (const pad of group) pad.height = anchorHeight + (pad.center[0] - anchor.center[0]) * 0.015 - (pad.center[1] - anchor.center[1]) * 0.015;
+}
+// This sidewalk bend sits just outside the paved core. Protect the shared
+// terrain vertices around it without changing distant building shoulders.
+const footwayShoulderGuard = { sourceId: "way/777620904", center: point(byId.get(777620904).geometry[7]), coreRadius: 40, blendRadius: 100, extraGuard: 8 };
+function roadsideBuildingHeight(x, z, current, roadDistance) {
+  let nearest = Infinity, total = 0, target = 0;
+  for (const pad of roadsideBuildingPads) {
+    if (x < pad.bounds.minX - 80 || x > pad.bounds.maxX + 80 || z < pad.bounds.minZ - 80 || z > pad.bounds.maxZ + 80) continue;
+    const d = inside([x, z], pad.ring) ? 0 : Math.min(...pad.ring.map((p, i) => segmentDistance([x, z], p, pad.ring[(i + 1) % pad.ring.length])));
+    if (d > 80) continue;
+    nearest = Math.min(nearest, d);
+    const weight = (1 - smooth(d / 80)) / (d + 0.1) ** 4;
+    const height = pad.height + (x - pad.center[0]) * 0.015 - (z - pad.center[1]) * 0.015;
+    total += weight; target += height * weight;
+  }
+  if (!total) return current;
+  const guard = 24 + footwayShoulderGuard.extraGuard * (1 - smooth((distance([x, z], footwayShoulderGuard.center) - footwayShoulderGuard.coreRadius) / (footwayShoulderGuard.blendRadius - footwayShoulderGuard.coreRadius)));
+  const weight = (1 - smooth((nearest - 16) / 64)) * smooth((roadDistance - guard) / 12) * smooth((-7955.027389990071 - x) / 50);
+  return current + (target / total - current) * weight;
+}
+const torreyTrails = createTorreyTrailProfiles(ways, (x, z) => torreyRoads.grade(x, z, shoulderHeightAt(x, z)));
+function localHeight(x, z) {
+  const paved = torreyRoads.grade(x, z, shoulderHeightAt(x, z));
+  const trail = torreyTrails.grade(x, z, paved), distanceToRoad = torreyRoads.nearest(x, z)?.distance ?? Infinity;
+  let graded = paved + (trail - paved) * smooth((distanceToRoad - 24) / 26);
+  graded = roadsideBuildingHeight(x, z, graded, distanceToRoad);
+  if (z < 2994.752000000173 && x >= -10685.027389990071 && x <= -8215.027389990071) {
+    const original = interpolateGrid(x, z, (ix, iz) => authoredHeight(terrainGrid.xs[ix], terrainGrid.zs[iz]));
+    const blend = (1 - smooth((z - 2864.752000000173) / 130)) * smooth((distanceToRoad - 150) / 70);
+    graded += (original - graded) * blend;
+  }
+  if (z > 6634.752000000173 && x >= -10685.027389990071 && x <= -7955.027389990071) {
+    const original = interpolateGrid(x, z, (ix, iz) => authoredHeight(terrainGrid.xs[ix], terrainGrid.zs[iz]));
+    graded += (original - graded) * smooth((z - 6634.752000000173) / 130);
+  }
+  // Keep the old coarse planes at the northern exterior. Resampling the
+  // nonlinear coast height in that transition would raise the approach.
+  if (z < 2600 && x >= -10685.027389990071 && x <= -8215.027389990071) {
+    const original = interpolateGrid(x, z, (ix, iz) => authoredHeight(terrainGrid.xs[ix], terrainGrid.zs[iz]));
+    return original + (graded - original) * smooth((z - 2344.752000000173) / (2600 - 2344.752000000173));
+  }
+  return graded;
 }
 function gridHeight(ix, iz) {
   const key = `${ix},${iz}`;
   if (!heights.has(key)) {
     const x = terrainGrid.xs[ix], z = terrainGrid.zs[iz];
-    heights.set(key, ridgeShoulderVertices.has(key) ? 305 + (x + 9710) * 0.025 + (z - 4230) * 0.012 : authoredHeight(x, z));
+    heights.set(key, localHeight(x, z));
   }
   return heights.get(key);
 }
@@ -85,7 +161,52 @@ function interpolateGrid(x, z, valueAt) {
   const a = valueAt(ix, iz), b = valueAt(ix + 1, iz), c = valueAt(ix, iz + 1), d = valueAt(ix + 1, iz + 1);
   return u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
 }
-const elevation = (x, z) => interpolateGrid(x, z, gridHeight);
+const buildingDivisions = (x, z) => roadsideBuildingPads.some(({ bounds: b }) => x >= b.minX - 130 && x <= b.maxX + 130 && z >= b.minZ - 130 && z <= b.maxZ + 130) ? 16 : 2;
+// Freeze the accepted shared planes before refining only the parking frontage.
+// New samples outside the local grading mask stay on those exact planes.
+const baseDivisions = (x, z) => Math.max(torreyRoads.divisions(x, z), torreyTrails.divisions(x, z), buildingDivisions(x, z));
+const previousGrid = { ...terrainGrid };
+const previousTerrain = createLocalTerrain(previousGrid, { minX: -10480, maxX: -8190, minZ: 2400, maxZ: 6650 }, localHeight, baseDivisions);
+const parkingRing = clean(byId.get(95479140).geometry.map(point));
+const parkingAisleIds = [95479108, 95479114, 95479117, 95479118, 95479122, 95479145, 95479149, 95479152, 579001743];
+const parkingFrontageIds = [660409108, 660409107, 201067341, 201067342, 201067343, 436308923, 436308926, 436308930, 436308931, 1090582161];
+const parkingFrontageSegments = parkingFrontageIds.flatMap((id) => { const p = byId.get(id).geometry.map(point); return p.slice(1).map((b, i) => [p[i], b]); });
+const parkingWaterRings = source.elements.filter((f) => f.tags?.natural === "water" || f.tags?.water || f.tags?.waterway === "riverbank").flatMap((f) => f.type === "way" ? [f.geometry.map(point)] : f.type === "relation" ? stitch(f.members.filter((m) => m.role !== "inner")) : []).filter((ring) => ring.some(([x, z]) => x > -10500 && x < -9500 && z > 2300 && z < 3250));
+const parkingDistance = (x, z) => inside([x, z], parkingRing) ? 0 : Math.min(...parkingRing.map((p, i) => segmentDistance([x, z], p, parkingRing[(i + 1) % parkingRing.length])));
+const parkingPlane = (x, z) => 11.5 + (x + 10075) * 0.02 - (z - 2765) * 0.002;
+const parkingBounds = { minX: -10315, maxX: -9535, minZ: 2395, maxZ: 3070 };
+function parkingHeight(x, z) {
+  const original = previousTerrain.elevation(x, z) ?? localHeight(x, z);
+  if (x < parkingBounds.minX || x > parkingBounds.maxX || z < parkingBounds.minZ || z > parkingBounds.maxZ) return original;
+  const d = parkingDistance(x, z), pavedDistance = torreyRoads.nearest(x, z)?.distance ?? Infinity;
+  const frontageDistance = Math.min(...parkingFrontageSegments.map(([a, b]) => segmentDistance([x, z], a, b)));
+  const waterDistance = Math.min(...parkingWaterRings.map((ring) => inside([x, z], ring) ? 0 : Math.min(...ring.map((p, i) => segmentDistance([x, z], p, ring[(i + 1) % ring.length])))));
+  const plane = parkingPlane(x, z), pad = 1 - smooth((d - 20) / 75);
+  const frontage = (1 - smooth((frontageDistance - 24) / 70)) * (1 - smooth((d - 200) / 180));
+  const target = plane + Math.max(0, d - 12) * 0.13;
+  const graded = original + (Math.min(original, target) - original) * frontage;
+  const result = graded + (target - graded) * pad;
+  const guard = smooth((pavedDistance - 16) / 8) * smooth((waterDistance - 3) / 3);
+  const boundary = Math.min(x - parkingBounds.minX, parkingBounds.maxX - x, z - parkingBounds.minZ, parkingBounds.maxZ - z);
+  return original + (result - original) * guard * smooth(boundary / 20);
+}
+const parkingDivisions = (x, z) => parkingDistance(x, z) < 90 ? 32 : x > parkingBounds.minX - 130 && x < parkingBounds.maxX + 130 && z > parkingBounds.minZ - 130 && z < parkingBounds.maxZ + 130 ? 16 : 2;
+const localTerrain = createLocalTerrain(terrainGrid, { minX: -10480, maxX: -8190, minZ: 2400, maxZ: 6650 }, parkingHeight, (x, z) => Math.max(baseDivisions(x, z), parkingDivisions(x, z)));
+const priorCells = new Map(previousTerrain.refinement.cells.map((cell) => [cell.indices.join(","), cell.triangles]));
+const parkingChangedCells = localTerrain.refinement.cells.filter((cell) => {
+  const prior = priorCells.get(cell.indices.join(","));
+  return prior.length !== cell.triangles.length || cell.triangles.some((triangle, i) => triangle.some((p, j) => p.some((v, k) => Math.abs(v - prior[i][j][k]) > 1e-8)));
+});
+const parkingMeshBounds = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+for (const cell of parkingChangedCells) for (const triangle of cell.triangles) for (const [x, , z] of triangle) {
+  parkingMeshBounds.minX = Math.min(parkingMeshBounds.minX, x); parkingMeshBounds.maxX = Math.max(parkingMeshBounds.maxX, x);
+  parkingMeshBounds.minZ = Math.min(parkingMeshBounds.minZ, z); parkingMeshBounds.maxZ = Math.max(parkingMeshBounds.maxZ, z);
+}
+const elevation = (x, z) => localTerrain.elevation(x, z) ?? interpolateGrid(x, z, gridHeight);
+const cellTriangles = (ix, iz) => localTerrain.trianglesAt(ix, iz) ?? [
+  [[terrainGrid.xs[ix], terrainGrid.zs[iz]], [terrainGrid.xs[ix + 1], terrainGrid.zs[iz]], [terrainGrid.xs[ix], terrainGrid.zs[iz + 1]]],
+  [[terrainGrid.xs[ix + 1], terrainGrid.zs[iz]], [terrainGrid.xs[ix + 1], terrainGrid.zs[iz + 1]], [terrainGrid.xs[ix], terrainGrid.zs[iz + 1]]],
+];
 function seamBlend(ix, iz) {
   const key = `${ix},${iz}`;
   if (!seamBlends.has(key)) { const x = terrainGrid.xs[ix], z = terrainGrid.zs[iz], d = Math.hypot(Math.max(OLD.minX - x, 0, x - OLD.maxX), Math.max(OLD.minZ - z, 0, z - OLD.maxZ)); seamBlends.set(key, smooth(d / 260)); }
@@ -102,7 +223,7 @@ function surfaceElevation(x, z, lift, batch, color) {
 }
 const kit = createGeometryKit(elevation, padded, terrainGrid, surfaceElevation, clipLand), { add, flat, ribbon, rock } = kit;
 const counts = { buildings: 0, detailedBuildings: 0, omittedRegionalBuildings: 0, roadsAndPaths: 0, waterwaySegments: 0, landcoverPolygons: 0, cliffFacets: 0, trees: 0, coastlineWays: coastWays.length };
-const layout = { buildings: [], trees: [], terrainGrid, treeExclusionSourceIds: [], waterwaySourceIds: [], coastlineSourceIds: coastWays.map((f) => `way/${f.id}`), namedFeatures: [] };
+const layout = { buildings: [], trees: [], parking: { sourceId: "way/95479140", ring: parkingRing, aisleSourceIds: parkingAisleIds.map((id) => `way/${id}`), frontageSourceIds: parkingFrontageIds.map((id) => `way/${id}`), influenceBounds: parkingBounds, meshInfluenceBounds: parkingMeshBounds, propInfluenceBounds: Object.fromEntries(Object.entries(parkingMeshBounds).map(([key, value]) => [key, value + (key.startsWith("min") ? -50 : 50)])), changedCellCount: parkingChangedCells.length, padSpacingMeters: 4.0625, frontageSpacingMeters: 8.125, plane: { origin: [-10075, 11.5, 2765], gradientX: 0.02, gradientZ: -0.002 } }, roadProfiles: torreyRoads.profiles, trailProfiles: torreyTrails.profiles, roadsideBuildingShoulders: roadsideBuildingPads.map(({ sourceId, center, height }) => ({ sourceId, center, height })), roadWidths: [], terrainGrid, treeExclusionSourceIds: [], waterwaySourceIds: [], coastlineSourceIds: coastWays.map((f) => `way/${f.id}`), namedFeatures: [] };
 let seed = 20261013;
 const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
 const tp = { minX: -10800, maxX: -7700, minZ: 2100, maxZ: 7000 };
@@ -113,10 +234,9 @@ const focused = (p) => inRect(p, tp) || inRect(p, pv);
 // Every terrain triangle clips against the coherent mainland and tidal-island
 // rings. Multiple shoreline crossings in a latitude band remain distinct.
 for (let iz = 0; iz + 1 < terrainGrid.zs.length; iz++) {
-  const z = terrainGrid.zs[iz], z2 = terrainGrid.zs[iz + 1];
   for (let ix = 0; ix + 1 < terrainGrid.xs.length; ix++) {
-    const x = terrainGrid.xs[ix], x2 = terrainGrid.xs[ix + 1], vertices = [];
-    for (const triangle of [[[x, z], [x2, z], [x, z2]], [[x2, z], [x2, z2], [x, z2]]]) {
+    const vertices = [];
+    for (const triangle of cellTriangles(ix, iz)) {
       for (const polygon of clipLand(triangle)) for (let k = 1; k + 1 < polygon.length; k++) for (const p of [polygon[0], polygon[k], polygon[k + 1]]) vertices.push(p[0], elevation(...p) - 0.03, p[1]);
     }
     if (vertices.length) { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3)); add(g, palette.ground); }
@@ -171,18 +291,14 @@ for (const p of polygons) {
   if (t.name) layout.namedFeatures.push({ sourceId: `${p.feature.type}/${p.feature.id}`, name: t.name });
 }
 for (const p of waters) { flat(p.ring, palette.water, 2.3, "Lagoons and creeks", p.holes); counts.landcoverPolygons++; }
-// Exposed western cliff facets use the existing warm rock colors, on the same
-// terrain planes as vegetation and trails; they are not separate raised rocks.
-for (let iz = 0; iz + 1 < terrainGrid.zs.length; iz++) {
-  const z = terrainGrid.zs[iz], z2 = terrainGrid.zs[iz + 1]; if (z2 < 3450 || z > 5350) continue;
-  for (let ix = 0; ix + 1 < terrainGrid.xs.length; ix++) {
-    const x = terrainGrid.xs[ix], x2 = terrainGrid.xs[ix + 1];
-    for (const triangle of [[[x, z], [x2, z], [x, z2]], [[x2, z], [x2, z2], [x, z2]]]) {
-      const c = center(triangle), inland = c[0] - coastX(c[1]);
-      if (inland < 210 || inland > 435 || torreyRidge(...c) < 0.12) continue;
-      flat(triangle, palette.rock[1], 1.6, "Mapped landcover"); counts.cliffFacets++;
-    }
-  }
+// Whole steep terrain facets share one sandstone color. Classifying the actual
+// refined face slopes keeps narrow green wedges out of the exposed cliff.
+for (const cell of localTerrain.refinement.cells) for (const xyz of cell.triangles) {
+  const triangle = xyz.map(([x, , z]) => [x, z]), c = center(triangle), inland = c[0] - coastX(c[1]);
+  const [a, b, d] = xyz, dx = b[0] - a[0], dz = b[2] - a[2], ex = d[0] - a[0], ez = d[2] - a[2];
+  const gradientX = ((b[1] - a[1]) * ez - (d[1] - a[1]) * dz) / (dx * ez - ex * dz);
+  if (inland < 165 || inland > 670 || torreyRidge(...c) < 0.035 || gradientX < 0.28) continue;
+  flat(triangle, palette.rock[1], 1.6, "Mapped landcover"); counts.cliffFacets++;
 }
 // At this regional scale mapped marsh drains and creeks need a legible minimum width.
 for (const f of ways.filter((f) => f.tags.waterway && !["dam", "weir"].includes(f.tags.waterway))) {
@@ -209,16 +325,18 @@ const walking = new Set(["path", "footway", "track", "steps", "cycleway", "pedes
 for (const f of ways.filter((f) => f.tags.highway && !["proposed", "construction"].includes(f.tags.highway))) {
   const rawPoints = f.geometry.map(point); if (!rawPoints.some((p) => inBounds(p)) || rawPoints.every((p) => inOld(p))) continue;
   const foot = walking.has(f.tags.highway), freeway = f.tags.highway.startsWith("motorway");
-  const detailed = rawPoints.some(focused), points = simplify(rawPoints, detailed ? 1.5 : 6);
+  const detailed = rawPoints.some(focused), localRoad = rawPoints.every(([x, z]) => x >= tp.minX + 30 && x <= tp.maxX - 30 && z >= tp.minZ + 30 && z <= tp.maxZ - 30), points = localRoad ? rawPoints : simplify(rawPoints, detailed ? 1.5 : 6);
   const width = Math.max(foot ? (detailed ? 4 : 6) : 7, Math.min(30, Number.parseFloat(f.tags.width) || (freeway ? 16 : ["primary", "secondary", "trunk"].includes(f.tags.highway) ? 13 : 7)));
   // Planting exclusions retain every mapped road, including omitted coarse LOD.
   for (let i = 1; i < rawPoints.length; i++) { const r = { a: rawPoints[i - 1], b: rawPoints[i], width }; index(roadGrid, r, [r.a, r.b], width + 24); }
   if (foot && !detailed && f.id % 3) continue;
   if (f.tags.highway === "service" && !detailed && f.id % 3) continue;
-  const approaches = !foot && f.tags.bridge !== "yes" ? bridgeEnds.filter((b) => distance(b, rawPoints[0]) < 0.1 || distance(b, rawPoints.at(-1)) < 0.1) : [];
+  const approaches = (!foot || localRoad) && f.tags.bridge !== "yes" ? bridgeEnds.filter((b) => localRoad ? rawPoints.some((p) => distance(b, p) < 100) : distance(b, rawPoints[0]) < 0.1 || distance(b, rawPoints.at(-1)) < 0.1) : [];
   const bridgeLift = (x, z) => f.tags.bridge === "yes" ? 2.5 : Math.max(0, ...approaches.map((p) => 2.5 * Math.max(0, 1 - distance([x, z], p) / 70)));
-  if (!foot) ribbon(points, width + (freeway ? 5 : 3), palette.walk, (x, z) => 2.1 + bridgeLift(x, z));
-  ribbon(points, width, foot ? palette.walk : freeway ? palette.freeway : palette.road, (x, z) => 2.2 + bridgeLift(x, z));
+  const pavedWidth = localRoad ? torreyRoadWidth(f, width) : width;
+  if (!foot) ribbon(points, pavedWidth + (localRoad ? 1.2 : freeway ? 5 : 3), palette.walk, (x, z) => 2.1 + bridgeLift(x, z), "Regional roads", null, localRoad);
+  ribbon(points, pavedWidth, foot ? palette.walk : freeway ? palette.freeway : palette.road, (x, z) => 2.2 + bridgeLift(x, z), "Regional roads", null, localRoad);
+  if (localRoad) layout.roadWidths.push({ sourceId: `way/${f.id}`, width: pavedWidth, shoulderWidth: foot ? 0 : 1.2, sourceWidth: f.tags.width ?? null, sourceLanes: f.tags.lanes ?? null, centerline: rawPoints, highway: f.tags.highway, name: f.tags.name ?? null, joined: true });
   counts.roadsAndPaths++;
 }
 // All focus footprints are retained. Elsewhere one of every four small mapped
@@ -235,6 +353,7 @@ for (const f of ways.filter((f) => f.tags.building && f.tags.building !== "no"))
   const xs = ring.map((p) => p[0]), zs = ring.map((p) => p[1]);
   for (let ix = gridIndex(terrainGrid.xs, Math.min(...xs)); ix <= gridIndex(terrainGrid.xs, Math.max(...xs)) + 1; ix++) for (let iz = gridIndex(terrainGrid.zs, Math.min(...zs)); iz <= gridIndex(terrainGrid.zs, Math.max(...zs)) + 1; iz++) {
     const p = [terrainGrid.xs[ix], terrainGrid.zs[iz]]; if (inside(p, ring)) groundHeights.push(elevation(...p));
+    for (const triangle of localTerrain.trianglesAt(ix, iz) ?? []) for (const q of triangle) if (inside(q, ring)) groundHeights.push(elevation(...q));
   }
   const minGround = Math.min(...groundHeights), maxGround = Math.max(...groundHeights), base = maxGround + 0.4, vertices = [];
   for (let i = 0; i < wallRing.length; i++) {
@@ -346,12 +465,14 @@ const manifest = {
   overview: { target: rounded([(limits.minX + limits.maxX) / 2, 0, (limits.minZ + limits.maxZ) / 2]), azimuth: 0, height: 11500, radius: 13500, zoom: 0.042 }, districts,
   annotations: [{ label: "Peñasquitos Waterfall", view: "park-village", position: rounded([wx, wy + 80, wz]), sourceId: "node/1863363847" }],
   waterfall: { sourceId: "node/1863363847", sourceName: waterfall.tags.name, longitudeLatitude: [waterfall.lon, waterfall.lat], position: rounded([wx, wy, wz]), rootName: waterfallBatch, cameraViewId: null, bounds: { min: rounded(waterfallBounds.min.toArray()), max: rounded(waterfallBounds.max.toArray()) }, size: rounded(waterfallBounds.getSize(new THREE.Vector3()).toArray()), interpretation: "Photo-inspired, non-interactive low-poly canyon landmark, a small formation along the mapped creek, with low 2–4.25 m rock outcrops, a connected 2.7 m stepped cascade and a small pool. Rock radii are 55% of the previous version, with the same centers and 0.8 m terrain embed. Not a surveyed waterfall model.", supportingSourceUrl: "https://www.sandiego.gov/event/waterfall-rehabilitation-project-0" },
-  surfaceRendering: { terrainGridMeters: terrainGrid.step, insertedGridLines: { x: [OLD.minX, OLD.maxX], z: [OLD.minZ, OLD.maxZ] }, method: "Landcover, roads, trails, beaches and streams are clipped at the same terrain-grid cells and diagonal as the base surface; all use its exact piecewise-planar interpolation.", shoreline: "Base terrain and landcover clip against the connected mainland coastline and five closed tidal-island rings, preserving multiple bank crossings through the San Dieguito estuary. Ocean and beach follow the coherent chain rather than latitude-sorted vertices.", oldPatchSeam: "The original perimeter is an explicit grid boundary at ground Y=-0.03. Semantic surface lifts blend to the original flat neighborhood heights over 260 m.", semanticLandcoverLifts: Object.fromEntries(surfaceColors.map((color) => [color, surfaceLift(color)])), originalSurfaceLifts: { park: 0.05, scrub: 0.05, meadow: 0.05, campus: 0.12, parking: 0.18, pitch: 0.24, track: 0.24, road: 0.5, walk: 0.53, shoulder: 0.465 }, roadShoulderLift: 2.1, roadLift: 2.2, waterLift: 2.3, bridgeApproachMeters: 70, sameColorOverlap: "Identical color and identical ground plane; different landcover colors have distinct heights." },
+  surfaceRendering: { terrainGridMeters: terrainGrid.step, insertedGridLines: { x: [OLD.minX, OLD.maxX], z: [OLD.minZ, OLD.maxZ] }, method: "Landcover, roads, trails, beaches and streams share the base terrain triangle planes. Torrey Pines uses local conforming 65 m refinement, approximately 8.125 m subdivisions near reserve roads/named trails, and alternate diagonals; the rest retains its original 130 m grid. All draping, foundation splitting and elevation queries use that same triangulation.", shoreline: "Base terrain and landcover clip against the connected mainland coastline and five closed tidal-island rings, preserving multiple bank crossings through the San Dieguito estuary. Ocean and beach follow the coherent chain rather than latitude-sorted vertices.", oldPatchSeam: "The original perimeter is an explicit grid boundary at ground Y=-0.03. Semantic surface lifts blend to the original flat neighborhood heights over 260 m.", semanticLandcoverLifts: Object.fromEntries(surfaceColors.map((color) => [color, surfaceLift(color)])), originalSurfaceLifts: { park: 0.05, scrub: 0.05, meadow: 0.05, campus: 0.12, parking: 0.18, pitch: 0.24, track: 0.24, road: 0.5, walk: 0.53, shoulder: 0.465 }, roadShoulderLift: 2.1, roadLift: 2.2, waterLift: 2.3, bridgeApproachMeters: 70, sameColorOverlap: "Identical color and identical ground plane; different landcover colors have distinct heights." },
   lod: { smallRegionalBuildingSampling: "one in four by stable OSM ID", allFocusBuildingsRetained: true, footprintSimplificationMeters: { focused: 0.6, regional: 1.8 }, roadSimplificationMeters: { focused: 1.5, regional: 6 }, minorRegionalServiceAndTrailSampling: "one in three by stable OSM ID; all focus services and trails retained", buildingSurfaces: "Walls and one roof only; no invisible bottoms or duplicate top caps." },
   counts: { ...counts, meshes: scene.children.length, sourceElements: source.elements.length, sourceTiles: source.tileBounds.length }, palette,
   styleParity: { source: "/data/san-diego/manifest.json", rule: "Existing sage terrain, scrub/nature reserves, meadow, park, retail/campus, parking, sports, road, warm walls, terracotta roofs and foliage reuse the original semantic palette. No extra residential/commercial ground washes.", buildingFoundations: "Level roofs clear the maximum footprint terrain height. Wall bottoms split at every terrain-plane boundary and extend 0.08 m below the local terrain, eliminating floating downhill walls and buried uphill roofs.", treeExclusions: "All mapped buildings and roads (including omitted regional LOD), water polygons/streams, parking, sports, tracks, playgrounds and other canopies, with canopy-radius clearance." },
-  torreyPinesRelief: { interpretation: "Intentionally enlarged, approximately 300 m coastal mountain; an artistic geographic illustration, not surveyed elevation or a DEM.", influence: { northSouthZ: [3150, 5700], inlandFromCoastMeters: [190, 1250], gridInterpolationHaloMeters: 185 }, form: "An elongated crest, steep west-facing rock cliff, east-facing descent and two diagonal gullies, tapered at both ends. Shoreline and lagoon remain low.", serviceBuildingShoulder: { sourceIds: ridgeShoulderSources.map((id) => `way/${id}`), terrainVertices: ridgeShoulderVertices.size, elevation: "A gently sloping shared-ground shoulder near 305 m avoids oversized service-building foundations." }, cliffColors: [palette.rock[1]], surfaceLift: 1.6, cameraElevationDegrees: Math.atan2(2000, 3200) * 180 / Math.PI },
-  assumptions: ["Mapped coastline, waterways, roads, landcover and buildings derive from the checked-in ODbL OSM snapshot. Missing source footprints are not fabricated.", "Regional building LOD retains all focus-area footprints and large buildings, plus one in four smaller buildings elsewhere. Trees are deterministic artistic planting, checked against all mapped buildings and roads, water polygons and streams, sports surfaces, parking, playgrounds and neighboring canopies.", "Sage terrain uses artistic coastal-bluff and canyon relief, including the deliberately enlarged Torrey Pines ridge, not surveyed elevations. The original flat Torrey Highlands model is preserved byte-for-byte and the new model has an exact rectangular hole for it.", "An unselectable 2.5 km peripheral terrain skirt (5 km to the west) and endpoint-extrapolated ocean prevent the framed region from looking like a cut-out tile. Those outer margins contain no invented streets or buildings and are excluded from overview fitting bounds.", "Road and stream widths are exaggerated slightly for regional readability. Trails have 4–6 m widths, named Peñasquitos creek is 20 m wide, and building heights use explicit OSM values or 6.5/12 m defaults.", "The Park Village waterfall is merged static scenery, with creek-scale angular boulders, a short continuous cascade, restrained foam and a small pool inspired by supplied photographs. It has no separate zoom state or interactive root.", "Torrey Pines includes the actual mapped coast, beach, lagoon, reserve trails, low-poly bluff relief and supplemental broad-crowned pines."],
+  torreyPinesRoads: { interpretation: torreyRoads.interpretation, gradingBounds: torreyRoads.bounds, sourceIds: torreyRoads.profiles.map((r) => r.sourceId), profileLayoutPath: "/data/san-diego/region-layout.json#roadProfiles", widthLayoutPath: "/data/san-diego/region-layout.json#roadWidths", trailProfileLayoutPath: "/data/san-diego/region-layout.json#trailProfiles", trails: "Only the reference named Guy Fleming, Parry Grove and Beach Trail routes and High Point approach receive contour benches. Mapped steps remain distinct. Trail grading is disabled within 24 m of paved road cores and blends in over the next 26 m.", corridorBlend: "Continuous finite-width weighting, including overlapping road cores; compatible adjacent main/Park profiles avoid nearest-family vertical fins.", bridgeApproaches: "70 m ramps carry the same bridge-end influence across adjacent source-way boundaries, including connected local footways.", centerlines: "Exact mapped vertices/endpoints, no blanket curves or simplification for Torrey Pines ways.", profileTargets: { mainMaximumGrade: 0.12, parkMaximumGrade: 0.15, pavedMaximumCrossfall: 0.08, scope: "Illustrative reserve-core targets, not surveyed engineering values. The northern exterior preserves its previous coarse ground planes and pre-existing crossfall through Z=2344.752 m, then blends into the revised profile by Z=2600 m." }, buildingShoulders: { footwayGuard: footwayShoulderGuard, sourceIds: roadsideBuildingPads.map((p) => p.sourceId), layoutPath: "/data/san-diego/region-layout.json#roadsideBuildingShoulders", description: "Footprint-following shared-ground accommodations prevent road grading banks from producing oversized foundations. Adjacent footprint parts share a gentle plane; unchanged nearby footprints constrain the blend. Paved road cores within 24 m are protected, with a localized 32 m shared-triangle guard at the adjacent way/777620904 sidewalk bend. Northern houses retain the previous coarse terrain planes; the southern exterior blends to those planes over Z=6634.752–6764.752 m." }, northernTransition: { preservedThroughZ: 2344.752000000173, profileBlendCompleteZ: 2600, method: "Previous 130 m triangle planes and an unsplit exterior diagonal preserve the existing approach height and longitudinal grade; its pre-existing peripheral crossfall is intentionally retained." }, joins: "Shared bounded miter cross-sections, at most twice the half width.", widthRule: "Explicit OSM width first; lane-based primary carriageways; 3.6–5.8 m reserve roads and 1.5–2.6 m paths. Planting exclusions retain previous conservative widths and random sequence." },
+  torreyPinesParking: { ...layout.parking, layoutPath: "/data/san-diego/region-layout.json#parking", interpretation: "A shallow mapped parking pad and connected entrance/frontage grade use the same terrain as aisles, buildings and trees. The pad follows a 2.01% plane; shared 4.0625 m pad cells and 8.125 m frontage cells transition conformingly into the accepted terrain. Coastal-road cores and mapped lagoon water are guarded, and the grading mask fades to zero at its bounds. Mc Gonigle and its immediate Carmel Valley/Del Mar junction share the entrance grade before blending back to existing roads. Steeper grades remain where the immediate Del Mar and Carmel Valley frontage reconnects to surrounding roads; the shallow lot and Mc Gonigle access are the focus of this local correction. This is an illustrative grading correction, not surveyed elevation." },
+  torreyPinesRelief: { interpretation: "Raised coastal bluff reduced to approximately 140 m to fit the reference road and reserve relationships; an artistic geographic illustration, not surveyed elevation or a DEM.", influence: { northSouthZ: [3150, 5700], inlandFromCoastMeters: [190, 1250], gridInterpolationHaloMeters: 185 }, refinement: { ...localTerrain.refinement, cells: undefined, geometryInfluenceBounds: Object.fromEntries(Object.entries(localTerrain.refinement.bounds).map(([key, value]) => [key, value + (key.startsWith("min") ? -50 : 50)])), geometryInfluenceNote: "Conservative 50 m halo includes whole buildings and tree crowns that straddle the ground refinement boundary; ground triangles change only inside refinement bounds.", triangleCount: localTerrain.refinement.cells.reduce((sum, cell) => sum + cell.triangles.length, 0), cellCount: localTerrain.refinement.cells.length, vertexOffsetMeters: 7, layoutPath: "/data/san-diego/region-layout.json#terrainGrid/refinement" }, form: "A broad, gently meandering crest, steep west-facing sandstone cliff, descending eastern shoulders and several tapered, branching ravines. Both ends blend into the low beach and lagoon surroundings.", serviceBuildingShoulder: { sourceIds: ridgeShoulderSources.map((id) => `way/${id}`), center: shoulderCenter, coreRadiusMeters: 85, blendRadiusMeters: 235, elevation: shoulderHeight, additionalShoulders: reserveShoulders.slice(1), description: "A small oval shoulder follows the adjacent crest height and gently blends into it, keeping service-building foundations low without a forced rectangular terrace." }, cliffColors: [palette.rock[1]], surfaceLift: 1.6, cameraElevationDegrees: Math.atan2(2000, 3200) * 180 / Math.PI },
+  assumptions: ["Mapped coastline, waterways, roads, landcover and buildings derive from the checked-in ODbL OSM snapshot. Missing source footprints are not fabricated.", "Regional building LOD retains all focus-area footprints and large buildings, plus one in four smaller buildings elsewhere. Trees are deterministic artistic planting, checked against all mapped buildings and roads, water polygons and streams, sports surfaces, parking, playgrounds and neighboring canopies.", "Sage terrain uses artistic coastal-bluff and canyon relief, including the reference-informed raised Torrey Pines bluff, not surveyed elevations. The original flat Torrey Highlands model is preserved byte-for-byte and the new model has an exact rectangular hole for it.", "An unselectable 2.5 km peripheral terrain skirt (5 km to the west) and endpoint-extrapolated ocean prevent the framed region from looking like a cut-out tile. Those outer margins contain no invented streets or buildings and are excluded from overview fitting bounds.", "Road and stream widths are exaggerated slightly for regional readability. Trails have 4–6 m widths, named Peñasquitos creek is 20 m wide, and building heights use explicit OSM values or 6.5/12 m defaults.", "The Park Village waterfall is merged static scenery, with creek-scale angular boulders, a short continuous cascade, restrained foam and a small pool inspired by supplied photographs. It has no separate zoom state or interactive root.", "Torrey Pines includes the actual mapped coast, beach, lagoon, reserve trails, low-poly bluff relief and supplemental broad-crowned pines."],
   compression: { extension: "EXT_meshopt_compression", positions: "lossless Float32", normals: "8-bit", colors: "8-bit" },
   originalModel: { modelUrl: oldManifest.modelUrl, contentHash: oldManifest.contentHash, byteLength: oldManifest.byteLength },
 };

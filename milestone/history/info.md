@@ -6,6 +6,16 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-13_21-45-18-publish-torrey-pines-refinements.md` records the requested new refinement development branch, complete release scope, fresh production-build verification, and preservation of prior development refs.
+
+- `2026-10-13_21-40-34-torrey-pines-parking.md` records the planar north Torrey Pines parking lot, local entrance/frontage grading, explicit terrain tradeoffs, independent checks, and matched visual review.
+
+- `2026-10-13_21-07-12-torrey-pines-roads.md` records source-preserving Torrey Pines road profiles and widths, localized terrain/foundation/footway corrections, independent signoff, final screenshots, and tunnel asset verification.
+
+- `2026-10-13_19-57-08-torrey-pines-topology.md` records local conforming terrain refinement, the curved crest and branching gullies, corrected service-building foundations, and independent geometry/visual verification.
+
+- `2026-10-13_17-38-22-phone-preview-tunnel.md` records the temporary Cloudflare phone preview, exact-host dev-origin allowance, detached processes, and public HTTP/HMR checks.
+
 - `2026-10-13_16-33-24-separate-san-diego-dev-branch.md` records the requested separate development branch, complete release scope, preserved original dev ref, and passing production build before publication.
 
 - `2026-10-13_16-30-10-waterfall-rocks-only-scale.md` records the further boulder-only reduction, preserved cascade/pool/foam and all other geometry, and independent verification.
