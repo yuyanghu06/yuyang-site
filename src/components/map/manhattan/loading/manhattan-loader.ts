@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { AMBIENT_LAYOUT } from "../../../../generated/ambient-layout";
 import {
   HUDSON_MIN_CITY_TILE_X,
@@ -16,7 +15,8 @@ import {
   type WashingtonCityRuntimeData,
   type WashingtonParkData,
 } from "../../shared/core";
-import { animateArrivals, type SpringArrival } from "../../animation/arrivals";
+import { disposeSceneObjects } from "../../runtime/dispose-runtime";
+import type { SpringArrival } from "../../animation/arrivals";
 import { createSkyTravelers } from "../ambient/sky";
 import { createPedestrians, createTraffic } from "../ambient/street-life";
 import {
@@ -64,7 +64,7 @@ export interface ManhattanLoaderOptions {
   setNavigationArrowSpringStartedAt: (startedAt: number) => void;
 }
 
-export function startManhattanLoading(options: ManhattanLoaderOptions) {
+export function startManhattanLoading(options: ManhattanLoaderOptions): Promise<boolean> {
   const {
     abortController,
     isDisposed,
@@ -90,7 +90,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
   } = options;
       const roadVisualReady = loadGlb(`/models/manhattan-roads.glb?v=${SHARED_DATA_VERSION}`, abortController.signal)
         .then((gltf) => {
-          if (isDisposed()) return performance.now();
+          if (isDisposed()) { disposeSceneObjects([gltf.scene]); return performance.now(); }
           const roadMaterial = new THREE.MeshStandardMaterial({
             color: 0x6f6a61,
             roughness: 1,
@@ -100,12 +100,15 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             stencilFunc: THREE.AlwaysStencilFunc,
             stencilZPass: THREE.ReplaceStencilOp,
           });
+          const replacedMaterials = new Set<THREE.Material>();
           gltf.scene.traverse((object) => {
             if (!(object instanceof THREE.Mesh)) return;
+            (Array.isArray(object.material) ? object.material : [object.material]).forEach((material) => replacedMaterials.add(material));
             object.material = roadMaterial;
             object.receiveShadow = true;
             object.renderOrder = -1;
           });
+          replacedMaterials.forEach((material) => material.dispose());
           gltf.scene.position.y = -34;
           gltf.scene.visible = false;
           gltf.scene.name = "Precompiled NYC 2022 planimetric roadbeds";
@@ -118,9 +121,13 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
           if (isAbortError(error)) return performance.now();
           throw error;
         });
-  
+
+      // Observe road failures immediately while other assets are being prepared.
+      let roadError: unknown;
+      const roadSettled = roadVisualReady.catch((error) => { roadError = error; });
+      let cityTilesReady: Promise<void> = Promise.resolve();
       logLoad("Data requests started");
-      void (async () => {
+      return (async () => {
         try {
           const manifestRequest = fetch("/models/washington-city/manifest.json", { signal: abortController.signal });
           const requests = [
@@ -139,7 +146,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             washingtonParkResponse.json() as Promise<WashingtonParkData>,
             unionParkResponse.json() as Promise<WashingtonParkData>,
           ]);
-          if (isDisposed()) return;
+          if (isDisposed()) return false;
           logLoad("Runtime data parsed", {
             buildings: manifest.buildingCount,
             footprints: runtime.footprints.length,
@@ -169,9 +176,10 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             } finally {
               loadingCityTiles.delete(tile.file);
             }
-            if (isDisposed()) return;
-            const roadRevealAt = await roadVisualReady;
-            if (isDisposed()) return;
+            if (isDisposed()) { disposeSceneObjects([gltf.scene]); return; }
+            let roadRevealAt: number;
+            try { roadRevealAt = await roadVisualReady; } catch (error) { disposeSceneObjects([gltf.scene]); throw error; }
+            if (isDisposed()) { disposeSceneObjects([gltf.scene]); return; }
             gltf.scene.traverse((object) => {
               if (!(object instanceof THREE.Mesh)) return;
               object.receiveShadow = true;
@@ -230,7 +238,9 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
               if (initial && index === 0) {
                 endFirstCityTiles = logLoad.start("First city tiles", { requestedTiles: firstBatchSize });
               }
-              await Promise.all(orderedTiles.slice(index, index + 4).map((tile) => loadTile(tile, center)));
+              const batch = await Promise.allSettled(orderedTiles.slice(index, index + 4).map((tile) => loadTile(tile, center)));
+              const failed = batch.find((result) => result.status === "rejected");
+              if (failed?.status === "rejected") throw failed.reason;
               if (isDisposed() || requestId !== neighborhoodRequest) return;
               if (initial && index === 0) {
                 endFirstCityTiles?.({
@@ -263,11 +273,13 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
               if (!isAbortError(error)) console.warn(loadLogPrefix, "Neighborhood load failed", error);
             });
           });
-          let cityTilesReady = Promise.resolve();
           let cityTilesError: unknown;
           const washingtonTrees = createParkTrees(AMBIENT_LAYOUT.washingtonTrees, "Washington Square");
           const unionAndGramercyTrees = createParkTrees(AMBIENT_LAYOUT.unionTrees, "Union Square and Gramercy Park");
           const contextParkTrees = createParkTrees(AMBIENT_LAYOUT.contextTrees, "Manhattan context park");
+          // Mount prepared trees immediately so failed/aborted preparation can dispose them.
+          scene.add(washingtonTrees, unionAndGramercyTrees, contextParkTrees);
+          washingtonTrees.visible = unionAndGramercyTrees.visible = contextParkTrees.visible = false;
           const addCustomLandmarks = async () => {
             const landmarkDetails = createLandmarkDetails(runtime.details);
             const liptonSource = createInteractiveBuildingGroup(runtime.details, ["1008875"], "Lipton Hall source geometry");
@@ -319,7 +331,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             const customLoads: Promise<void>[] = [];
             if (washingtonPark.arch) customLoads.push(loadBlenderArch(washingtonPark.arch, abortController.signal)
               .then((arch) => {
-                if (isDisposed()) return;
+                if (isDisposed()) { disposeSceneObjects([arch]); return; }
                 scene.add(arch);
                 queueSpringArrival(arch, 360);
               })
@@ -331,13 +343,15 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
               }));
             customLoads.push(loadBobstLibrary(abortController.signal)
               .then((bobst) => {
-                if (isDisposed()) return;
+                if (isDisposed()) { disposeSceneObjects([bobst]); return; }
                 const bobstLandmark = registerClickableLandmark(bobst);
                 addNeighborhoodBuildingMarker("washington", bobstLandmark);
                 queueSpringArrival(bobst, 480);
               })
-              .catch((error) => { if (!isAbortError(error)) console.warn(loadLogPrefix, "Bobst GLB failed", error); }));
-            await Promise.all(customLoads);
+              .catch((error) => { if (!isAbortError(error)) throw error; }));
+            const results = await Promise.allSettled(customLoads);
+            const failed = results.find((result) => result.status === "rejected");
+            if (failed?.status === "rejected") throw failed.reason;
           };
           logLoad("Ambient geometry ready");
           ground.renderOrder = 0;
@@ -384,7 +398,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             cityTilesError = error;
           });
           await waitForVisible();
-          if (isDisposed()) return;
+          if (isDisposed()) return false;
           const endDeferredRoutes = logLoad.start("Deferred routes", {
             pedestrians: AMBIENT_LAYOUT.pedestrians.length,
             traffic: AMBIENT_LAYOUT.traffic.length,
@@ -393,7 +407,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
           ambientAnimations.push(createPedestrians(scene, () => getActiveStudy() === "washington" || getActiveStudy() === "union", () => ambientRevealAt + 500));
           await yieldToMainThread();
           await waitForVisible();
-          if (isDisposed()) return;
+          if (isDisposed()) return false;
           ambientAnimations.push(createTraffic(scene, () => ambientRevealAt + 250, () => ["manhattan", "washington", "union"].includes(getActiveStudy())));
           const parkPaths = createParkPaths(
             new THREE.MeshStandardMaterial({ color: 0xc6baa6, roughness: 1 }),
@@ -402,10 +416,13 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
           parkPaths.visible = false;
           endDeferredRoutes();
           const fountain = washingtonPark.fountain ? createSimpleFountain(washingtonPark.fountain) : null;
+          if (fountain) { scene.add(fountain.group); fountain.group.visible = false; }
           await cityTilesReady;
           if (cityTilesError) throw cityTilesError;
+          await roadSettled;
+          if (roadError) throw roadError;
           await waitForVisible();
-          if (isDisposed()) return;
+          if (isDisposed()) return false;
           await addCustomLandmarks();
           ambientRevealAt = performance.now() + 180;
           if (parkGround) queueSpringArrival(parkGround, 0, 18);
@@ -428,11 +445,15 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             }
             setNavigationArrowSpringStartedAt(performance.now() + 1900);
           }
+          return !isDisposed();
         } catch (error) {
-          if (isAbortError(error)) return;
+          abortController.abort();
+          await Promise.allSettled([roadSettled, cityTilesReady]);
+          if (isAbortError(error) || isDisposed()) return false;
           console.error(loadLogPrefix, "Scene load failed", error);
           setStatus(error instanceof Error ? error.message : "Scene load failed");
+          return false;
         }
       })();
-  
+
 }

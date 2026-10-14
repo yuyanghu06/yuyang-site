@@ -5,16 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import * as THREE from "three";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
-import { AMBIENT_LAYOUT } from "../../../generated/ambient-layout";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import AvatarCall from "../../avatar-call";
-import { Point3, CityGmlSurface, WashingtonCityRuntimeData, WashingtonCityManifest, WashingtonParkData, SHARED_DATA_VERSION, isAbortError, createLoadLogger, SkyTraveler, AmbientAnimation, BLOCKED_ZOOM_DURATION_MS, BLOCKED_ZOOM_SCALE, BLOCKED_ZOOM_GESTURE_SETTLE_MS, NAVIGATION_ARROW_Y, NAVIGATION_ARROW_SCALE, NAVIGATION_ARROW_SPRING_DURATION_MS, WASHINGTON_ARROW_POSITION, UNION_ARROW_POSITION, MANHATTAN_CENTER, WASHINGTON_CENTER, UNION_CENTER, WASHINGTON_PARK_VISUAL_CENTER, UNION_PARK_VISUAL_CENTER, MANHATTAN_TILE_RADIUS, NEIGHBORHOOD_TILE_RADIUS, PARK_ZOOM_HIT_RADIUS, MANHATTAN_CAMERA_HEIGHT, MANHATTAN_CAMERA_RADIUS, HUDSON_MIN_CITY_TILE_X, WORLD_UP, MapView, type CityOverview } from "../shared/core";
+import { Point3, isAbortError, createLoadLogger, SkyTraveler, AmbientAnimation, BLOCKED_ZOOM_DURATION_MS, BLOCKED_ZOOM_SCALE, BLOCKED_ZOOM_GESTURE_SETTLE_MS, NAVIGATION_ARROW_Y, NAVIGATION_ARROW_SCALE, NAVIGATION_ARROW_SPRING_DURATION_MS, WASHINGTON_ARROW_POSITION, UNION_ARROW_POSITION, MANHATTAN_CENTER, WASHINGTON_CENTER, UNION_CENTER, WASHINGTON_PARK_VISUAL_CENTER, UNION_PARK_VISUAL_CENTER, MANHATTAN_TILE_RADIUS, NEIGHBORHOOD_TILE_RADIUS, PARK_ZOOM_HIT_RADIUS, MANHATTAN_CAMERA_HEIGHT, MANHATTAN_CAMERA_RADIUS, WORLD_UP, MapView, type CityOverview } from "../shared/core";
 import { GLOBE_RADIUS, GLOBE_START_CAMERA_DISTANCE, GLOBE_MAX_CAMERA_DISTANCE, createWatercolorGlobe, createStarField, northUpGlobeQuaternion, IMPORTED_EARTH_SD_LATITUDE, IMPORTED_EARTH_SD_LONGITUDE } from "../globe/scene";
 import { createManhattanDestinationMarker, ClickableLandmark, createBuildingGlow, createWorldNavigationArrow } from "../manhattan/navigation";
-import { makeSurfaceGeometry, createParkPaths, createParkTrees, createSimpleFountain, createSimpleArch, loadGlb, loadBlenderArch, loadBobstLibrary, createCrosswalks } from "../manhattan/neighborhoods/park";
 import { createNeighborhoodBirdTravelers, createGlobeClouds, createSkyTravelers } from "../manhattan/ambient/sky";
-import { createInteractiveBuildingGroup, bakeLandmarkAsSingleMesh, createLandmarkDetails, createSternRotundaDetails, createGouldPlaza, createCourantGarden } from "../manhattan/neighborhoods/landmarks";
-import { createHudsonWaterAndPier, createEastRiverWaterAndPiers } from "../manhattan/waterfront";
-import { createMapRenderer, renderMapFrame } from "../shared/rendering";
+import { createMapRenderer, renderMapFrame, readMapDeviceCapabilities } from "../shared/rendering";
 import { animateGlobeClouds } from "../animation/globe-clouds";
 import { animateGlobeTravelers, createGlobeTravelers } from "../animation/globe-travelers";
 import { animateLandmarks } from "../animation/landmarks";
@@ -26,7 +23,7 @@ import {
   animateNeighborhoodMarkers,
 } from "../animation/markers";
 import { createAdaptiveResolution } from "../animation/adaptive-resolution";
-import { startManhattanLoading } from "../manhattan/loading/manhattan-loader";
+import { getMapQualityProfile } from "../shared/quality-profile";
 import { disposeScenes, disposeSceneObjects } from "./dispose-runtime";
 import { createHitTesting } from "../interaction/hit-testing";
 import { createInputController } from "../interaction/input-controller";
@@ -108,6 +105,11 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let sanDiegoReady = false;
     let sanDiegoLoading: Promise<boolean> | null = null;
     let ensureSanDiego: () => Promise<boolean> = () => Promise.resolve(false);
+    let manhattanReady = false;
+    let manhattanLoading: Promise<boolean> | null = null;
+    let ensureManhattan: () => Promise<boolean> = () => Promise.resolve(false);
+    let navigationGeneration = 0;
+    let applyQualityProfile = () => undefined;
     const globeScene = new THREE.Scene();
     const skyOverlayScene = new THREE.Scene();
     skyOverlayScene.add(new THREE.HemisphereLight(0xffffff, 0xded8cc, 2.4));
@@ -140,7 +142,12 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     globe.add(globeClouds);
     globe.add(globeTravelers);
     globeScene.add(globe);
-    void loadGlb("/models/low-poly-planet-earth-e54e8607.glb", abortController.signal)
+    void fetch("/models/low-poly-planet-earth-e54e8607.glb", { signal: abortController.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Globe model failed (${response.status})`);
+        return response.arrayBuffer();
+      })
+      .then((buffer) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, ""))
       .then((gltf) => {
         if (disposed) { disposeSceneObjects([gltf.scene]); return; }
         const bounds = new THREE.Box3().setFromObject(gltf.scene);
@@ -258,6 +265,15 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     camera.zoom = desiredCameraZoom;
     let cameraLocked = false, cameraTransitioning = false; const reportSettledView = createMapViewSettledReporter();
     let pendingAgentDestination: CameraViewId | null = null;
+    const isCityRequestCurrent = (city: CityOverview) => {
+      // A cancelled or superseded first load may still finish into its cache.
+      // Only the destination the user is currently visiting owns status text.
+      if (activeStudy !== "globe") return (activeStudy === "san-diego" ? "san-diego" : "manhattan") === city;
+      if (globeTransitionStartedAt && globeTransitionDirection === "in") return globeTransitionCity === city;
+      const view = pendingAgentDestination && getCameraView(pendingAgentDestination);
+      const geographic = view && (view.kind === "landmark" ? view.neighborhood : view.id);
+      return geographic && geographic !== "globe" && (geographic === "san-diego" ? "san-diego" : "manhattan") === city;
+    };
     let sanDiegoManuallyAdjusted = false;
     let navigateAgentCamera: (destination: CameraViewId, updateUrl?: boolean) => void = () => undefined;
     let selectLandmark: (landmark: ClickableLandmark, updateUrl?: boolean) => void = () => undefined;
@@ -311,12 +327,15 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     let navigationArrowSpringStartedAt = Number.POSITIVE_INFINITY;
     let navigationArrowSpringComplete = false;
     switchStudyRef.current = (next, updateUrl = true) => {
-      if (next === "san-diego" && !sanDiegoReady) {
-        void ensureSanDiego().then((ready) => { if (ready && !disposed) switchStudyRef.current(next, updateUrl); });
+      const generation = ++navigationGeneration;
+      if (next !== "globe" && (next === "san-diego" ? !sanDiegoReady : !manhattanReady)) {
+        const prepare = next === "san-diego" ? ensureSanDiego : ensureManhattan;
+        void prepare().then((ready) => { if (ready && !disposed && generation === navigationGeneration) switchStudyRef.current(next, updateUrl); });
         return;
       }
       const previousStudy = activeStudy;
       activeStudy = next;
+      applyQualityProfile();
       sanDiegoManuallyAdjusted = false;
       camera.far = next === "san-diego" ? 12000 : 3500;
       camera.updateProjectionMatrix();
@@ -410,6 +429,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const rendererState = createMapRenderer();
     const { renderer, minimumPixelRatio, maximumPixelRatio } = rendererState;
     let { activePixelRatio } = rendererState;
+    let qualityProfile = getMapQualityProfile(activeStudy, readMapDeviceCapabilities());
+    let qualityView: MapView = activeStudy;
 
     scene.add(new THREE.HemisphereLight(0xfff4dc, 0x87908c, 1.9));
     navigationArrow = createWorldNavigationArrow();
@@ -582,12 +603,12 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           sanDiegoReady = true;
           sanDiegoSun.shadow.needsUpdate = true;
           if (activeStudy === "san-diego") renderer.shadowMap.needsUpdate = true;
-          setStatus("");
+          if (isCityRequestCurrent("san-diego")) setStatus("");
           return true;
         }).catch((error) => {
           if (!disposed && !isAbortError(error)) {
             console.error("[San Diego] Scene loading failed", error);
-            setStatus("San Diego could not load. Select its globe marker to try again.");
+            if (isCityRequestCurrent("san-diego")) setStatus("San Diego could not load. Select its globe marker to try again.");
           }
           sanDiegoLoading = null;
           return false;
@@ -597,66 +618,141 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     const timer = new THREE.Timer();
     timer.connect(document);
 
-    const sidewalkMaterial = new THREE.MeshStandardMaterial({
-      color: 0xaaa9a1,
-      roughness: 1,
-      stencilWrite: true,
-      stencilRef: 1,
-      stencilFunc: THREE.NotEqualStencilFunc,
-    });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(5200, 5200), sidewalkMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.copy(parkCenter).setY(0.68);
-    ground.receiveShadow = true;
-    scene.add(ground);
-    const hudsonWaterAndPier = createHudsonWaterAndPier();
-    const eastRiverWaterAndPiers = createEastRiverWaterAndPiers();
-    scene.add(hudsonWaterAndPier, eastRiverWaterAndPiers);
-    const hudsonWater = hudsonWaterAndPier.children.find((child) => child.name.includes("Hudson River surface"));
-    const eastRiverWater = eastRiverWaterAndPiers.children.find((child) => child.name.includes("East River surface"));
-    // Land is present on frame zero. Both complete water surfaces then fade in
-    // together at their final elevation; no fill or vertical plane crossing.
-    const waterArrivalDelayMs = 260;
-    const waterArrivalDurationMs = 260;
-    const waterArrivalCompleteAt = performance.now() + waterArrivalDelayMs + waterArrivalDurationMs;
-    if (hudsonWater) queueSpringArrival(hudsonWater, waterArrivalDelayMs, 0, true, waterArrivalDurationMs);
-    if (eastRiverWater) queueSpringArrival(eastRiverWater, waterArrivalDelayMs, 0, true, waterArrivalDurationMs);
-    const waterfrontArrivalDelayMs = waterArrivalDelayMs + waterArrivalDurationMs + 80;
-    hudsonWaterAndPier.children
-      .filter((child) => child !== hudsonWater)
-      .forEach((child, index) => queueSpringArrival(child, waterfrontArrivalDelayMs + index * 35, 22));
-    eastRiverWaterAndPiers.children
-      .filter((child) => child !== eastRiverWater)
-      .forEach((child, index) => queueSpringArrival(child, waterfrontArrivalDelayMs + 60 + index * 24, 22));
+    ensureManhattan = () => {
+      if (manhattanReady) return Promise.resolve(true);
+      if (manhattanLoading) return manhattanLoading;
+      mapAudio.prepareManhattan();
+      setStatus("");
+      const loadController = new AbortController();
+      const abortLoad = () => loadController.abort();
+      abortController.signal.addEventListener("abort", abortLoad, { once: true });
+      const existingRoots = new Set(scene.children);
+      const existingOverlayRoots = new Set(skyOverlayScene.children);
+      const existingArrivals = new Set(arrivingTiles);
+      const animationStart = ambientAnimations.length;
+      const rollback = () => {
+        const failedRoots = scene.children.filter((root) => !existingRoots.has(root));
+        const failedOverlayRoots = skyOverlayScene.children.filter((root) => !existingOverlayRoots.has(root));
+        for (const view of ["washington", "union"] as const) {
+          for (const marker of neighborhoodBuildingMarkers.get(view)!.splice(0)) {
+            landmarkByRoot.delete(marker);
+            const index = raycastRoots.indexOf(marker);
+            if (index >= 0) raycastRoots.splice(index, 1);
+          }
+        }
+        for (const landmark of newYorkLandmarks.splice(0)) {
+          landmarkByRoot.delete(landmark.root);
+          const pickIndex = raycastRoots.indexOf(landmark.root);
+          if (pickIndex >= 0) raycastRoots.splice(pickIndex, 1);
+          const landmarkIndex = clickableLandmarks.indexOf(landmark);
+          if (landmarkIndex >= 0) clickableLandmarks.splice(landmarkIndex, 1);
+        }
+        for (let index = arrivingTiles.length - 1; index >= 0; index -= 1) {
+          if (!existingArrivals.has(arrivingTiles[index])) arrivingTiles.splice(index, 1);
+        }
+        ambientAnimations.splice(animationStart);
+        skyTravelers = [];
+        requestNeighborhood = null;
+        [...failedRoots, ...failedOverlayRoots].forEach((root) => root.removeFromParent());
+        if (!disposed) disposeSceneObjects([...failedRoots, ...failedOverlayRoots]);
+      };
+      manhattanLoading = (async () => {
+        try {
+          const [{ startManhattanLoading }, { createHudsonWaterAndPier, createEastRiverWaterAndPiers }] = await Promise.all([
+            import("../manhattan/loading/manhattan-loader"),
+            import("../manhattan/waterfront"),
+          ]);
+          if (disposed) return false;
+          const sidewalkMaterial = new THREE.MeshStandardMaterial({
+            color: 0xaaa9a1,
+            roughness: 1,
+            stencilWrite: true,
+            stencilRef: 1,
+            stencilFunc: THREE.NotEqualStencilFunc,
+          });
+          const ground = new THREE.Mesh(new THREE.PlaneGeometry(5200, 5200), sidewalkMaterial);
+          ground.rotation.x = -Math.PI / 2;
+          ground.position.copy(parkCenter).setY(0.68);
+          ground.receiveShadow = true;
+          scene.add(ground);
+          const hudsonWaterAndPier = createHudsonWaterAndPier();
+          const eastRiverWaterAndPiers = createEastRiverWaterAndPiers();
+          scene.add(hudsonWaterAndPier, eastRiverWaterAndPiers);
+          const hudsonWater = hudsonWaterAndPier.children.find((child) => child.name.includes("Hudson River surface"));
+          const eastRiverWater = eastRiverWaterAndPiers.children.find((child) => child.name.includes("East River surface"));
+          // Land is present on frame zero. Both complete water surfaces then fade in
+          // together at their final elevation; no fill or vertical plane crossing.
+          const waterArrivalDelayMs = 260;
+          const waterArrivalDurationMs = 260;
+          const waterArrivalCompleteAt = performance.now() + waterArrivalDelayMs + waterArrivalDurationMs;
+          if (hudsonWater) queueSpringArrival(hudsonWater, waterArrivalDelayMs, 0, true, waterArrivalDurationMs);
+          if (eastRiverWater) queueSpringArrival(eastRiverWater, waterArrivalDelayMs, 0, true, waterArrivalDurationMs);
+          const waterfrontArrivalDelayMs = waterArrivalDelayMs + waterArrivalDurationMs + 80;
+          hudsonWaterAndPier.children
+            .filter((child) => child !== hudsonWater)
+            .forEach((child, index) => queueSpringArrival(child, waterfrontArrivalDelayMs + index * 35, 22));
+          eastRiverWaterAndPiers.children
+            .filter((child) => child !== eastRiverWater)
+            .forEach((child, index) => queueSpringArrival(child, waterfrontArrivalDelayMs + 60 + index * 24, 22));
 
-    startManhattanLoading({
-      abortController,
-      isDisposed: () => disposed,
-      getActiveStudy: () => activeStudy,
-      scene,
-      skyOverlayScene,
-      renderer,
-      ground,
-      arrivingTiles,
-      ambientAnimations,
-      waterArrivalCompleteAt,
-      waitForVisible,
-      yieldToMainThread,
-      logLoad,
-      loadLogPrefix,
-      setStatus: (message) => { if (activeStudy !== "san-diego" && globeTransitionCity !== "san-diego") setStatus(message); },
-      queueSpringArrival,
-      registerClickableLandmark,
-      addNeighborhoodBuildingMarker,
-      setRequestNeighborhood: (request) => { requestNeighborhood = request; },
-      setSkyTravelers: (travelers) => { skyTravelers = travelers; },
-      setNavigationArrowSpringStartedAt: (startedAt) => {
-        navigationArrowSpringStartedAt = startedAt;
-      },
-    });
+          const ready = await startManhattanLoading({
+            abortController: loadController,
+            isDisposed: () => disposed || loadController.signal.aborted,
+            getActiveStudy: () => activeStudy,
+            scene,
+            skyOverlayScene,
+            renderer,
+            ground,
+            arrivingTiles,
+            ambientAnimations,
+            waterArrivalCompleteAt,
+            waitForVisible,
+            yieldToMainThread,
+            logLoad,
+            loadLogPrefix,
+            setStatus: (message) => { if (isCityRequestCurrent("manhattan")) setStatus(message); },
+            queueSpringArrival,
+            registerClickableLandmark,
+            addNeighborhoodBuildingMarker,
+            setRequestNeighborhood: (request) => { requestNeighborhood = request; },
+            setSkyTravelers: (travelers) => { skyTravelers = travelers; },
+            setNavigationArrowSpringStartedAt: (startedAt) => {
+              navigationArrowSpringStartedAt = startedAt;
+            },
+          });
+
+          if (!ready || disposed) {
+            rollback();
+            return false;
+          }
+          const registeredIds = new Set<string>(newYorkLandmarks.map((landmark) => landmark.cameraViewId));
+          for (const id of ["lipton-hall", "courant-institute", "stern-school-of-business", "bobst-library", "25-union-square-west", "235-park-avenue-south"]) {
+            if (!registeredIds.has(id)) throw new Error(`New York landmark ${id} did not load.`);
+          }
+          manhattanReady = true;
+          if (isCityRequestCurrent("manhattan")) setStatus("");
+          return true;
+        } catch (error) {
+          loadController.abort();
+          rollback();
+          if (!disposed && !isAbortError(error)) console.error("[New York] Scene loading failed", error);
+          return false;
+        }
+      })().then((ready) => {
+        if (!ready) {
+          abortController.signal.removeEventListener("abort", abortLoad);
+          manhattanLoading = null;
+          if (!disposed && isCityRequestCurrent("manhattan")) setStatus("New York could not load. Select its globe marker to try again.");
+        }
+        return ready;
+      });
+      return manhattanLoading;
+    };
 
     const resize = () => {
       if (!mount.clientWidth || !mount.clientHeight) return;
+      applyQualityProfile();
+      recordRenderCost.resetSamples();
       const referenceHeight = 546, referenceAspect = 1935 / 935, viewportAspect = mount.clientWidth / mount.clientHeight;
       const width = Math.min(referenceHeight * referenceAspect, referenceHeight * viewportAspect);
       const height = width / viewportAspect;
@@ -689,12 +785,37 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       minimumPixelRatio,
       maximumPixelRatio,
       initialPixelRatio: activePixelRatio,
-      resize,
+      resize: () => renderer.setSize(mount.clientWidth, mount.clientHeight),
       report: (pixelRatio, averageRenderMs) => {
         activePixelRatio = pixelRatio;
         logLoad("Adaptive resolution changed", { pixelRatio, averageRenderMs });
       },
     });
+    applyQualityProfile = () => {
+      const next = getMapQualityProfile(activeStudy, readMapDeviceCapabilities());
+      const changed = qualityView !== activeStudy
+        || next.minimumPixelRatio !== qualityProfile.minimumPixelRatio
+        || next.maximumPixelRatio !== qualityProfile.maximumPixelRatio;
+      if (changed) {
+        qualityView = activeStudy;
+        recordRenderCost.setLimits(next);
+      }
+      qualityProfile = next;
+      if (sanDiegoSun.shadow.mapSize.x !== next.sanDiegoShadowMapSize) {
+        // Release both render targets before changing dimensions; Three otherwise
+        // retains an allocated target at its original size.
+        sanDiegoSun.shadow.dispose();
+        sanDiegoSun.shadow.map = null;
+        sanDiegoSun.shadow.mapPass = null;
+        sanDiegoSun.shadow.mapSize.set(next.sanDiegoShadowMapSize, next.sanDiegoShadowMapSize);
+        sanDiegoSun.shadow.needsUpdate = true;
+        renderer.shadowMap.needsUpdate = true;
+      }
+      return undefined;
+    };
+    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+    coarsePointerQuery.addEventListener("change", applyQualityProfile);
+    window.addEventListener("resize", resize);
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
     resize();
@@ -743,13 +864,16 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     });
     const enterCityFromGlobe = (destination: CityOverview, updateUrl = true) => {
       if (activeStudy !== "globe" || globeTransitionStartedAt) return;
-      if (destination === "san-diego") {
-        void ensureSanDiego().then((ready) => {
+      {
+        const prepare = destination === "san-diego" ? ensureSanDiego : ensureManhattan;
+        void prepare().then((ready) => {
           if (ready || disposed || globeTransitionCity !== destination || globeTransitionDirection !== "in") return;
           globeTransitionStartedAt = 0;
           globeTransitionDirection = null;
           globeTransitionLanded = false;
-          pendingAgentDestination = null;
+          const pendingView = pendingAgentDestination && getCameraView(pendingAgentDestination);
+          const pendingGeographic = pendingView && (pendingView.kind === "landmark" ? pendingView.neighborhood : pendingView.id);
+          if (!pendingGeographic || pendingGeographic === "globe" || (pendingGeographic === "san-diego" ? "san-diego" : "manhattan") === destination) pendingAgentDestination = null;
           cloudVeil.style.opacity = "0";
           globe.quaternion.copy(globeHomeQuaternion);
           globeOrbitYaw = globeOrbitPitch = 0;
@@ -809,6 +933,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     };
     navigateAgentCamera = (destination, updateUrl = true) => {
       if (!getCameraView(destination)) return;
+      navigationGeneration += 1;
       if (destination === "globe" && activeStudy === "globe" && globeTransitionDirection === "in") {
         globeTransitionStartedAt = 0;
         globeTransitionDirection = null;
@@ -948,7 +1073,8 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         || cameraTransitioning
         || blockedZoomStartedAt > 0
         || globeTransitionStartedAt > 0;
-      if (!interactionNeedsFullFrameRate && now - previousRender < 1000 / 30) return;
+      const maximumFrameRate = interactionNeedsFullFrameRate ? qualityProfile.maximumFrameRate : 30;
+      if (maximumFrameRate && now - previousRender + 0.5 < 1000 / maximumFrameRate) return;
       previousRender = now;
       timer.update();
       const delta = Math.min(timer.getDelta(), 0.05);
@@ -980,7 +1106,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         if (progress >= 1) globeBlockedZoomStartedAt = 0;
       }
       if (globeTransitionStartedAt) {
-        if (globeTransitionDirection === "in" && globeTransitionCity === "san-diego" && !sanDiegoReady) {
+        if (globeTransitionDirection === "in" && !(globeTransitionCity === "san-diego" ? sanDiegoReady : manhattanReady)) {
           // Keep the veil fully covered until decoded geometry and interaction roots are ready.
           globeTransitionStartedAt = Math.max(globeTransitionStartedAt, now - GLOBE_TRANSITION_DURATION_MS * 0.55);
         }
@@ -1070,7 +1196,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
         cameraTransitioning,
         globeTransitioning: globeTransitionStartedAt > 0,
       });
-      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination && (activeStudy !== "san-diego" || sanDiegoReady) ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
+      reportSettledView(!cameraTransitioning && !globeTransitionStartedAt && !pendingAgentDestination && (activeStudy === "globe" || (activeStudy === "san-diego" ? sanDiegoReady : manhattanReady)) ? clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? activeStudy : null);
       if (blockedZoomStartedAt) {
         const progress = Math.min(1, (now - blockedZoomStartedAt) / BLOCKED_ZOOM_DURATION_MS);
         const pulse = Math.sin(progress * Math.PI);
@@ -1136,11 +1262,14 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       for (const resolve of visibilityWaiters) resolve();
       visibilityWaiters.clear();
       observer.disconnect();
+      coarsePointerQuery.removeEventListener("change", applyQualityProfile);
+      window.removeEventListener("resize", resize);
       viewportLifecycle.dispose();
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener(AGENT_COMMAND_EVENT, handleAgentCommand);
       inputController.dispose();
       sanDiegoSun.shadow.dispose();
+      sun.shadow.dispose();
       disposeScenes(renderer, [scene, sanDiegoScene, globeScene, skyOverlayScene]);
       timer.dispose();
       mapAudio.dispose();

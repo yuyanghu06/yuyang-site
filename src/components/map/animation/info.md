@@ -6,7 +6,7 @@ Keep each system focused and pass explicit state rather than reaching into React
 
 ## Files
 
-- `adaptive-resolution.ts` adjusts renderer pixel ratio according to frame timing.
+- `adaptive-resolution.ts` adjusts renderer pixel ratio according to frame timing, clamps immediately when view/device limits change, and clears timing samples on profile changes so old-city measurements cannot drive the next view. Its resize callback should resize the drawing buffer without restarting camera fitting.
 - `arrivals.ts` advances spring-based object arrival motion.
 - `globe-clouds.ts` moves cloud formations around the globe and keeps them tangent to its surface.
 - `globe-travelers.ts` creates and animates six globally distributed planes, nine ocean boats whose hull bottoms are scale-aligned to the imported model's inset water radius, and four satellites above the cloud layer, cloning shared model templates to keep the expanded ambient layer lightweight.

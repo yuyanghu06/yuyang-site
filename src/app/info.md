@@ -14,8 +14,10 @@ This directory owns the root App Router layout, page, metadata/icon, and API rou
 
 - `info.md` documents this folder.
 - `icon.png` is the transparent illustrated application icon.
-- `layout.tsx` defines the site URL-aware metadata base, title template, viewport settings, asset preloading, the document shell, and imports the global base stylesheet from `src/styles/`.
+- `layout.tsx` defines the site URL-aware metadata base, title template, viewport settings, the document shell, and imports the global base stylesheet from `src/styles/`.
 - `page.tsx` mounts the map shell, imports its social-link presentation from `src/styles/`, and renders fixed external GitHub, LinkedIn, and Instagram profile links as minimal inline SVG logos.
 - `sitemap.ts` publishes the home page, blog index, and all ten article URLs for search crawlers using the configured production host.
 
 Before changing App Router conventions, read the relevant installed Next.js documentation under `node_modules/next/dist/docs/`. Feature presentation belongs in `src/styles/`; keep this route folder focused on App Router concerns.
+
+City model assets are requested by the map runtime on first entry to the corresponding city. The root layout does not preload New York roads, so fresh globe or San Diego visits avoid that New York-only request. Metadata and viewport settings remain owned by the Next.js Metadata API.

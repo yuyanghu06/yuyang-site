@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MapView } from "./core";
+import { getMapQualityProfile, type MapDeviceCapabilities } from "./quality-profile";
 
 export interface MapRendererState {
   renderer: THREE.WebGLRenderer;
@@ -8,19 +9,26 @@ export interface MapRendererState {
   activePixelRatio: number;
 }
 
-export function createMapRenderer(): MapRendererState {
+export function readMapDeviceCapabilities(): MapDeviceCapabilities {
+  return {
+    devicePixelRatio: window.devicePixelRatio,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    maxTouchPoints: navigator.maxTouchPoints,
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+  };
+}
+
+export function createMapRenderer(activeView: MapView = "globe"): MapRendererState {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: "high-performance",
     stencil: true,
   });
   renderer.autoClear = false;
-  const maximumPixelRatio = Math.min(
-    window.devicePixelRatio,
-    navigator.hardwareConcurrency <= 4 ? 1.5 : 2,
-  );
-  const minimumPixelRatio = Math.min(maximumPixelRatio, 1.5);
-  const activePixelRatio = Math.min(window.devicePixelRatio, maximumPixelRatio);
+  const { minimumPixelRatio, maximumPixelRatio, initialPixelRatio: activePixelRatio } =
+    getMapQualityProfile(activeView, readMapDeviceCapabilities());
   renderer.setPixelRatio(activePixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
