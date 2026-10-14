@@ -122,7 +122,8 @@ export function createInputController(options: InputControllerOptions) {
     const freeCamera = options.isFreeCameraEnabled();
     activePointerId = event.pointerId;
     freePanning = freeCamera && (event.button === 2 || event.shiftKey);
-    dragging = freeCamera || (!options.getCameraLocked() && (activeView === "washington" || activeView === "union"));
+    dragging = freeCamera || (!options.getCameraLocked()
+      && (activeView === "washington" || activeView === "union" || activeView === "san-diego"));
     if (event.pointerType === "touch" && !options.isGlobeTransitioning()) {
       touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       globeDragging = activeView === "globe";
@@ -195,7 +196,8 @@ export function createInputController(options: InputControllerOptions) {
         const move = freePanning || event.shiftKey ? options.panFreeCamera : options.orbitFreeCamera;
         move(event.clientX - pointerX, event.clientY - pointerY);
       } else if (!options.getCameraLocked()
-        && (options.getActiveView() === "washington" || options.getActiveView() === "union")) {
+        && (options.getActiveView() === "washington" || options.getActiveView() === "union"
+          || options.getActiveView() === "san-diego")) {
         options.rotateNeighborhood(event.clientX - pointerX);
       }
       pointerX = event.clientX;

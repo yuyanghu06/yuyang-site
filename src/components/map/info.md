@@ -11,8 +11,8 @@ Add new behavior to its owning system instead of growing the runtime component i
 - `interaction/` routes pointer, wheel, pinch, keyboard, and hit-testing behavior.
 - `manhattan/` owns New York geography, landmarks, loading, navigation helpers, and ambient activity.
 - `runtime/` composes persistent rendering, city navigation, lifecycle, and disposal.
-- `san-diego/` loads the generated Torrey Highlands region and its merged Westview High School and plaza landmarks.
-- `shared/` provides common types, geographic framing, and rendering helpers.
+- `san-diego/` loads the generated Torrey Highlands region and four merged landmarks: Westview High School, Torrey Highlands Plaza, Mesa Verde Middle School, and Deer Canyon Elementary School. Its lazy population uses the same shared low-poly people and cars as New York with independent school-focused placement and an ordinary-car palette without taxis.
+- `shared/` provides common types, geographic framing, rendering helpers, and reusable instanced pedestrian/car models used by both cities.
 
 ## Direct files
 

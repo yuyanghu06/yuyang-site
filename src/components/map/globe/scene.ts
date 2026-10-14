@@ -103,7 +103,8 @@ function createGlobeDestinationMarker(labelText: string, latitude: number, longi
   labelContext.font = "600 55px Helvetica Neue, Arial, sans-serif";
   labelContext.fillStyle = "#ffffff";
   labelContext.textBaseline = "middle";
-  labelContext.fillText(labelText, 8, labelCanvas.height / 2);
+  labelContext.textAlign = side === -1 ? "right" : "left";
+  labelContext.fillText(labelText, side === -1 ? labelCanvas.width - 8 : 8, labelCanvas.height / 2);
   const labelTexture = new THREE.CanvasTexture(labelCanvas);
   labelTexture.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -114,6 +115,11 @@ function createGlobeDestinationMarker(labelText: string, latitude: number, longi
     toneMapped: false,
   }));
   label.position.set(side * 139, 14, 2);
+  if (side === -1) {
+    // Keep the visible text's right edge beside the scaled leader endpoint.
+    label.center.set(1, 0.5);
+    label.position.set(-68 * leader.scale.x - 5, 14 * leader.scale.y, 2);
+  }
   label.scale.set(136.5, 26, 1);
   const calloutHitMaterial = new THREE.MeshBasicMaterial({
     transparent: true,

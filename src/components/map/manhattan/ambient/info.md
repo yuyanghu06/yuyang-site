@@ -5,5 +5,5 @@ Sky travelers, clouds, birds, pedestrians, and traffic helpers live here. The pl
 ## Files
 
 - `sky.ts` builds clouds, birds, planes, and passenger boats for Manhattan and the globe.
-- `street-life.ts` builds pedestrian and traffic ambient systems.
+- `street-life.ts` adapts frozen NYC layouts to the shared pedestrian/car instance factory. It preserves the existing clothing, geometry, reveal animation, and exact alternating ordinary-car colors with every third car a yellow taxi.
 - `info.md` is this local ownership guide.

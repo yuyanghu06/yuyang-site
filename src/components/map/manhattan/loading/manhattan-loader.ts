@@ -390,11 +390,11 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
             traffic: AMBIENT_LAYOUT.traffic.length,
             paths: AMBIENT_LAYOUT.parkPaths.length,
           });
-          ambientAnimations.push(createPedestrians(scene, () => getActiveStudy() !== "manhattan", () => ambientRevealAt + 500));
+          ambientAnimations.push(createPedestrians(scene, () => getActiveStudy() === "washington" || getActiveStudy() === "union", () => ambientRevealAt + 500));
           await yieldToMainThread();
           await waitForVisible();
           if (isDisposed()) return;
-          ambientAnimations.push(createTraffic(scene, () => ambientRevealAt + 250));
+          ambientAnimations.push(createTraffic(scene, () => ambientRevealAt + 250, () => ["manhattan", "washington", "union"].includes(getActiveStudy())));
           const parkPaths = createParkPaths(
             new THREE.MeshStandardMaterial({ color: 0xc6baa6, roughness: 1 }),
           );
