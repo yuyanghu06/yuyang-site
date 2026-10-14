@@ -15,6 +15,7 @@ import {
   type MapViewSettledDetail,
 } from "@/agent/contracts/types";
 import {
+  cityChoiceDialogue,
   introDialogue,
   liptonHallDialogue,
   manhattanDialogue,
@@ -26,6 +27,7 @@ import { getPreviousTourStop, getSanDiegoStop, LANDMARK_DIALOGUES, SAN_DIEGO_STO
 import { DIALOGUE_LINK_PATTERN, splitCaptionText } from "./dialogue/caption-text";
 import { startCaptionReveal, type CaptionRevealHandle } from "./caption-reveal";
 import { AnimatedAgentStatus } from "./agent-status";
+import { TourDestinationChoices } from "./tour-destination-choices";
 import { playDialogueBlip, primeDialogueAudio, stopDialogueBlip } from "./site-audio";
 
 const YUYANG_BIRTH_DATE = { year: 2006, month: 10, day: 29 } as const;
@@ -214,6 +216,20 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     });
   }, [onStreamingChange, playStreamBlip]);
 
+  const showDestinationChoice = useCallback((view: "globe" | "manhattan") => {
+    const arrivalPhase = view === "globe" ? "globe_arrival" : "manhattan_arrival";
+    const choicePhase = view === "globe" ? "globe_choice" : "manhattan_choice";
+    introPhaseRef.current = arrivalPhase;
+    setIntroPhase(arrivalPhase);
+    setComposerOpen(false);
+    setFixedCameraDialogueActive(view === "manhattan");
+    streamScript(view === "globe" ? cityChoiceDialogue : manhattanDialogue, () => {
+      introPhaseRef.current = choicePhase;
+      setIntroPhase(choicePhase);
+      setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+    });
+  }, [streamScript]);
+
   useEffect(() => {
     const handleViewSettled = (event: Event) => {
       const { view } = (event as CustomEvent<MapViewSettledDetail>).detail;
@@ -224,6 +240,11 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       deferredCameraDialogueRef.current = null;
       const previousView = lastSettledViewRef.current;
       lastSettledViewRef.current = view;
+      if (view === "globe" && guidedTourActiveRef.current
+        && (introPhaseRef.current === "globe_arrival" || getSanDiegoStop(previousView))) {
+        backwardTourDestinationRef.current = null;
+        return showDestinationChoice("globe");
+      }
       if (view === backwardTourDestinationRef.current) {
         backwardTourDestinationRef.current = null;
         const previousStop = getPreviousTourStop(view);
@@ -335,18 +356,23 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         });
         return;
       }
-      if (view !== "manhattan" || introPhaseRef.current !== "touring") return;
-      introPhaseRef.current = "manhattan_arrival";
-      setIntroPhase("manhattan_arrival");
-      streamScript(manhattanDialogue, () => {
-        introPhaseRef.current = "manhattan_choice";
-        setIntroPhase("manhattan_choice");
-        setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
-      });
+      if (view !== "manhattan" || (introPhaseRef.current !== "touring" && introPhaseRef.current !== "globe_choice")) return;
+      showDestinationChoice("manhattan");
     };
     window.addEventListener(MAP_VIEW_SETTLED_EVENT, handleViewSettled);
     return () => window.removeEventListener(MAP_VIEW_SETTLED_EVENT, handleViewSettled);
-  }, [onStreamingChange, streamScript]);
+  }, [onStreamingChange, showDestinationChoice, streamScript]);
+
+  const chooseNewYork = () => {
+    guidedTourActiveRef.current = true;
+    setGuidedTourActive(true);
+    introPhaseRef.current = "touring";
+    setIntroPhase("touring");
+    setComposerOpen(false);
+    onMinimize();
+    if (lastSettledViewRef.current === "manhattan") return showDestinationChoice("manhattan");
+    dispatchAgentCommand({ type: "navigate_map", destination: "manhattan" });
+  };
 
   const navigateSanDiegoTour = (destination: MapDestination) => {
     guidedTourActiveRef.current = true;
@@ -461,8 +487,9 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                   : null);
     if (!destination) return;
     backwardTourDestinationRef.current = destination;
-    introPhaseRef.current = "free";
-    setIntroPhase("free");
+    const nextPhase = destination === "globe" && guidedTourActiveRef.current ? "globe_arrival" : "free";
+    introPhaseRef.current = nextPhase;
+    setIntroPhase(nextPhase);
     dispatchAgentCommand({ type: "navigate_map", destination });
   };
 
@@ -593,12 +620,14 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     guidedTourActiveRef.current = true;
     setGuidedTourActive(true);
     setComposerOpen(false);
-    setIntroPhase("touring");
+    introPhaseRef.current = "globe_arrival";
+    setIntroPhase("globe_arrival");
     streamScript("Gotcha, let me show you around.", () => {
       window.setTimeout(() => {
         onMinimize();
         window.requestAnimationFrame(() => {
-          dispatchAgentCommand({ type: "navigate_map", destination: "manhattan" });
+          if (lastSettledViewRef.current === "globe") showDestinationChoice("globe");
+          else dispatchAgentCommand({ type: "navigate_map", destination: "globe" });
         });
       }, 280);
     });
@@ -788,24 +817,16 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && introPhase === "manhattan_choice" && !pending && presentationAction === null && !composerOpen && (
-              <div className="agent-chat__caption-actions">
-                <div
-                  className="agent-chat__choices agent-chat__choices--white"
-                  aria-label="Choose a tour destination"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood("union"))}>Union Square</button>
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood("washington"))}>Washington Square</button>
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("san-diego"))}>San Diego</button>
-                </div>
-                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
-                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
-                </button>
-              </div>
+            {index === assistantMessages.length - 1 && (introPhase === "globe_choice" || introPhase === "manhattan_choice") && !pending && !captionStreaming && presentationAction === null && !composerOpen && (
+              <TourDestinationChoices
+                level={introPhase === "globe_choice" ? "city" : "neighborhood"}
+                onChooseNewYork={() => runAfterDockedCaptionFade(chooseNewYork)}
+                onChooseSanDiego={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("san-diego"))}
+                onChooseNeighborhood={(destination) => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood(destination))}
+                onReply={() => setComposerOpen(true)}
+              />
             )}
-            {index === assistantMessages.length - 1 && (introPhase === "san_diego_next" || introPhase === "westview_next" || introPhase === "plaza_next") && !pending && presentationAction === null && !composerOpen && (
+            {index === assistantMessages.length - 1 && (introPhase === "san_diego_next" || introPhase === "westview_next" || introPhase === "plaza_next" || introPhase === "mesa_verde_next" || introPhase === "deer_canyon_next") && !pending && presentationAction === null && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div className="agent-chat__choices" aria-label="Continue the San Diego tour">
                   <button type="button" onClick={() => runAfterDockedCaptionFade(continueSanDiegoTour)}>Next</button>
@@ -819,10 +840,8 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
             {index === assistantMessages.length - 1 && introPhase === "san_diego_complete" && !pending && presentationAction === null && !composerOpen && (
               <div className="agent-chat__caption-actions">
                 <div className="agent-chat__choices agent-chat__choices--white" aria-label="Choose where to go after San Diego">
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("san-diego"))}>Overview</button>
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("manhattan"))}>New York</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(chooseNewYork)}>New York</button>
                   <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("globe"))}>Globe</button>
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => { finishGuidedTour(); onMinimize(); })}>Done</button>
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                   <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
@@ -889,7 +908,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "san_diego_next" && introPhase !== "westview_next" && introPhase !== "plaza_next" && introPhase !== "san_diego_complete" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
+            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "globe_arrival" && introPhase !== "globe_choice" && introPhase !== "touring" && introPhase !== "manhattan_arrival" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "san_diego_next" && introPhase !== "westview_next" && introPhase !== "plaza_next" && introPhase !== "mesa_verde_next" && introPhase !== "deer_canyon_next" && introPhase !== "san_diego_complete" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
               composerOpen ? (
                 <form className="agent-chat__form agent-chat__form--inline" onSubmit={submit} ref={formRef}>
                   <div className="agent-chat__input-row">

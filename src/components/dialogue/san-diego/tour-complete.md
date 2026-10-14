@@ -1,1 +1,1 @@
-That's the San Diego preview. We can revisit the area, head to New York, or return to the globe.
+Thanks for visiting my hometown! Ready to head to New York now?

@@ -2,7 +2,7 @@
   {
     "type": "function",
     "name": "navigate_map",
-    "description": "Move the persistent map camera to one authored view. San Diego opens the Torrey Highlands area around Camino del Sur and SR-56; its stops are Westview High School and Torrey Highlands Plaza with Chef Zhu's.",
+    "description": "Move the persistent map camera to one authored view. San Diego opens the Torrey Highlands area around Camino del Sur and SR-56; its stops are Westview High School, Torrey Highlands Plaza with Chef Zhu's, Mesa Verde Middle School, and Deer Canyon Elementary School.",
     "strict": true,
     "parameters": {
       "type": "object",
@@ -22,7 +22,9 @@
             "25-union-square-west",
             "235-park-avenue-south",
             "westview-high-school",
-            "torrey-highlands-plaza"
+            "torrey-highlands-plaza",
+            "mesa-verde-middle-school",
+            "deer-canyon-elementary-school"
           ]
         }
       },

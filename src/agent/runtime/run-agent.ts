@@ -36,7 +36,7 @@ export async function* streamAgent(messages: AgentMessage[], currentView: MapDes
   ];
   const commands = new Map<string, AgentCommand>();
   const openai = getOpenAIClient();
-  const model = process.env.OPENAI_AGENT_MODEL ?? "gpt-5.4-mini";
+  const model = process.env.OPENAI_AGENT_MODEL ?? "gpt-6-luna";
   let previousResponseId: string | undefined;
   let roundInput = input;
   const forceHyperlinkFirst = explicitlyRequestsApprovedLink(messages);

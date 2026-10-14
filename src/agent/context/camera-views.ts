@@ -9,7 +9,9 @@ export type LandmarkCameraViewId =
   | "25-union-square-west"
   | "235-park-avenue-south"
   | "westview-high-school"
-  | "torrey-highlands-plaza";
+  | "torrey-highlands-plaza"
+  | "mesa-verde-middle-school"
+  | "deer-canyon-elementary-school";
 export type CameraViewId = GeographicMapView | LandmarkCameraViewId;
 
 interface GeographicCameraView {

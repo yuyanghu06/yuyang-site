@@ -1,17 +1,19 @@
 import type { MapDestination } from "@/agent/contracts/types";
 import {
   bobstLibraryDialogue, courantInstituteDialogue, liptonHallDialogue, manhattanDialogue,
-  sanDiegoDialogue, sternSchoolOfBusinessDialogue, torreyHighlandsPlazaDialogue,
+  mesaVerdeDialogue, deerCanyonDialogue, torreyHighlandsDialogue, sternSchoolOfBusinessDialogue, torreyHighlandsPlazaDialogue,
   twentyFiveUnionSquareWestDialogue, twoThirtyFiveParkAvenueSouthDialogue,
   unionSquareDialogue, washingtonSquareDialogue, westviewHighSchoolDialogue,
 } from "./index";
 
-export type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "san_diego_next" | "westview_next" | "plaza_next" | "san_diego_complete" | "camera_dialogue_streaming" | "free";
+export type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "globe_arrival" | "globe_choice" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "san_diego_next" | "westview_next" | "plaza_next" | "mesa_verde_next" | "deer_canyon_next" | "san_diego_complete" | "camera_dialogue_streaming" | "free";
 
 export const SAN_DIEGO_STOPS = {
-  "san-diego": { content: sanDiegoDialogue, phase: "san_diego_next", next: "westview-high-school", previous: "globe" },
+  "san-diego": { content: torreyHighlandsDialogue, phase: "san_diego_next", next: "westview-high-school", previous: "globe" },
   "westview-high-school": { content: westviewHighSchoolDialogue, phase: "westview_next", next: "torrey-highlands-plaza", previous: "san-diego" },
-  "torrey-highlands-plaza": { content: torreyHighlandsPlazaDialogue, phase: "plaza_next", next: null, previous: "westview-high-school" },
+  "torrey-highlands-plaza": { content: torreyHighlandsPlazaDialogue, phase: "plaza_next", next: "mesa-verde-middle-school", previous: "westview-high-school" },
+  "mesa-verde-middle-school": { content: mesaVerdeDialogue, phase: "mesa_verde_next", next: "deer-canyon-elementary-school", previous: "torrey-highlands-plaza" },
+  "deer-canyon-elementary-school": { content: deerCanyonDialogue, phase: "deer_canyon_next", next: null, previous: "mesa-verde-middle-school" },
 } as const satisfies Partial<Record<MapDestination, { content: string; phase: IntroPhase; next: MapDestination | null; previous: MapDestination }>>;
 
 export const getSanDiegoStop = (view: MapDestination) => view in SAN_DIEGO_STOPS

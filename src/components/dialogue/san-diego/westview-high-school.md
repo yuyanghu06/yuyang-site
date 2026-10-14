@@ -1,3 +1,5 @@
-Here's Westview High School. This camera stop is ready; we'll add its story later.
+This is Westview High School!
 
-Next up is the Torrey Highlands plaza with Chef Zhu's.
+I went to high school here, and I was also president of the [East Asian Student Union](https://www.instagram.com/wv.easu/),
+
+and the Super Joey Foundation's (cancer awareness non profit) Westview chapter.

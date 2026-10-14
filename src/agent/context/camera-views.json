@@ -93,5 +93,27 @@
     "height": 350,
     "radius": 460,
     "zoom": 1.6
+  },
+  {
+    "id": "mesa-verde-middle-school",
+    "label": "Mesa Verde Middle School",
+    "kind": "landmark",
+    "neighborhood": "san-diego",
+    "rootNameIncludes": "Mesa Verde Middle School",
+    "azimuth": 0,
+    "height": 350,
+    "radius": 460,
+    "zoom": 1.6
+  },
+  {
+    "id": "deer-canyon-elementary-school",
+    "label": "Deer Canyon Elementary School",
+    "kind": "landmark",
+    "neighborhood": "san-diego",
+    "rootNameIncludes": "Deer Canyon Elementary School",
+    "azimuth": 0,
+    "height": 350,
+    "radius": 460,
+    "zoom": 1.6
   }
 ]

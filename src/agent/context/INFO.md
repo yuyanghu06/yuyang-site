@@ -10,6 +10,6 @@ There are no direct subfolders.
 
 - `INFO.md` documents this folder.
 - `base-prompt.md` is the authoritative base agent prompt, including Yuyang Hu's identity, natural answer-composition rules that prevent fact-dump responses, ten session-grounded conversational cadence examples, quick facts, memory policy, and UI-tool behavior. Caption length is a renderer concern rather than a model-writing instruction.
-- `camera-views.json` is the data-only registry of geographic and landmark camera configurations, including San Diego's Torrey Highlands overview, Westview High School, and Torrey Highlands Plaza.
+- `camera-views.json` is the data-only registry of geographic and landmark camera configurations, including San Diego's Torrey Highlands overview, Westview High School, Torrey Highlands Plaza, Mesa Verde Middle School, and Deer Canyon Elementary School.
 - `camera-views.ts` imports the JSON camera registry and exposes geographic/landmark IDs, neighborhood ownership, and lookup helpers shared by the map, navigation validation, and audio.
 - `links.json` is the approved key-to-URL registry used by the server-side hyperlink tool.

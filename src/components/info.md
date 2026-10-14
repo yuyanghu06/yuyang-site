@@ -28,7 +28,7 @@ In short landscape, the dialogue renderer observes the visible latest card, mess
 
 ## San Diego extension
 
-The shared guide offers New York and San Diego from the same tour flow. San Diego uses authored placeholder captions for the Torrey Highlands overview, Westview High School, and the plaza containing Chef Zhu. The same segmented captions, Next/Back/Reply controls, avatar shell, and existing audio assets apply to both cities. `site-audio.ts` classifies the San Diego overview and selected landmarks using the existing map ambience transitions.
+Accepting the shared guide's Yes/No invitation keeps or returns the camera to the globe, where “Where should we go first?” offers New York and San Diego. New York's settled Manhattan arrival then asks which neighborhood to visit and offers only Union Square and Washington Square. A direct New York globe-marker selection during city choice uses the same settled narration. City and neighborhood menus wait until their final caption is complete; their separate accessible labels distinguish the two steps. Guided San Diego overview Back and Globe returns restore the globe's city question without ending the tour. San Diego uses authored placeholder captions for the Torrey Highlands overview, Westview High School, the plaza containing Chef Zhu, Mesa Verde Middle School, and Deer Canyon Elementary School. The same segmented captions, Next/Back/Reply controls, avatar shell, and existing audio assets apply to both cities. `site-audio.ts` classifies the San Diego overview and selected landmarks using the existing map ambience transitions.
 
 ## Direct subfolders
 
@@ -38,10 +38,13 @@ The shared guide offers New York and San Diego from the same tour flow. San Dieg
 
 ## Direct files
 
-- `agent-chat.tsx` owns authored tours, caption actions, and streamed agent conversation.
+- `agent-chat.tsx` owns the globe city choice, settled New York neighborhood choice, authored tours, caption actions, and streamed agent conversation. San Diego tour completion offers only New York and Globe, alongside the inline Reply composer.
 - `agent-status.tsx` renders animated pending-response labels.
+- `tour-destination-choices.tsx` renders the separate city and New York neighborhood menus with one inline Reply action; `agent-chat.tsx` owns their navigation and fade timing.
 - `avatar-call.tsx` owns the guide's dock, expanded call shell, and audio controls.
 - `caption-reveal.ts` schedules frame-aligned caption text reveals.
 - `site-audio.ts` manages shared music, ambient audio, sound effects, and channel muting.
 - `world-loader.tsx` renders the introductory loading and entry flow.
 - `info.md` is this folder's guide.
+
+San Diego-only birds and mall ambience remain source-free at global startup. The audio controller’s idempotent `prepareSanDiego()` assigns and preloads their sources when the lazy destination load begins, so 5,338,866 bytes of unused SD audio are deferred for New York/globe visits. Playback still waits for the existing settled-camera policy, and effects mute/fades/disposal remain shared.
