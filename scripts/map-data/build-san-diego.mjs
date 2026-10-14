@@ -20,7 +20,9 @@ const COMMIT = "2c5d732477ba7c55995572aae926bf80303c00b9";
 const DATA = "public/data/san-diego";
 const MODEL = "public/models/san-diego/torrey-highlands.glb";
 const ORIGIN = [-117.1518, 32.9606];
-const BOUNDS = { west: -117.163, south: 32.951, east: -117.138, north: 32.971 };
+// Extend the geography around the unchanged authored camera. North/west include
+// a small allowance for diagonal overview yaw on the widest desktop viewport.
+const BOUNDS = { west: -117.167, south: 32.948, east: -117.13425, north: 32.9755 };
 const M_PER_LAT = 111320;
 const M_PER_LON = M_PER_LAT * Math.cos(ORIGIN[1] * Math.PI / 180);
 const project = (lat, lon) => new THREE.Vector2((lon - ORIGIN[0]) * M_PER_LON, (lat - ORIGIN[1]) * M_PER_LAT);
@@ -70,20 +72,67 @@ function parseOsm(xml) {
   }
   return elements;
 }
-let source;
-try { if (process.argv.includes("--refresh")) throw new Error("refresh"); source = JSON.parse(await fs.readFile(sourcePath, "utf8")); }
-catch {
-  const bbox = `${BOUNDS.west},${BOUNDS.south},${BOUNDS.east},${BOUNDS.north}`;
+function coversBounds(bounds, requested = BOUNDS) {
+  return bounds && [bounds.west, bounds.south, bounds.east, bounds.north].every(Number.isFinite)
+    && bounds.west <= requested.west && bounds.south <= requested.south
+    && bounds.east >= requested.east && bounds.north >= requested.north;
+}
+let cachedSource;
+try { cachedSource = JSON.parse(await fs.readFile(sourcePath, "utf8")); }
+catch (error) { if (error.code !== "ENOENT") throw error; }
+const refresh = process.argv.includes("--refresh");
+let source = refresh ? undefined : cachedSource;
+if (source && !coversBounds(source.bounds)) {
+  throw new Error("Cached San Diego source bounds do not cover the requested geography. Run npm run data:san-diego -- --refresh to acquire the expanded OSM source.");
+}
+if (!source) {
   let xml;
-  if (!process.argv.includes("--refresh")) {
-    try { xml = await fs.readFile(`${UPSTREAM}/san-diego-source.osm`, "utf8"); } catch { /* Fresh checkout downloads below. */ }
+  let fallbackBounds;
+  if (!refresh) {
+    try {
+      const candidate = await fs.readFile(`${UPSTREAM}/san-diego-source.osm`, "utf8");
+      const tag = candidate.match(/<bounds\b([^>]*)\/>/);
+      const a = tag ? attributes(tag[1]) : {};
+      const bounds = { west: Number(a.minlon), south: Number(a.minlat), east: Number(a.maxlon), north: Number(a.maxlat) };
+      if (coversBounds(bounds)) { xml = candidate; fallbackBounds = bounds; }
+    } catch { /* Missing or undersized fallback downloads below. */ }
   }
-  if (!xml) {
-    const response = await fetch(`https://api.openstreetmap.org/api/0.6/map?bbox=${bbox}`, { signal: AbortSignal.timeout(60000), headers: { "User-Agent": "YuyangSite San Diego map study" } });
-    if (!response.ok) throw new Error(`OSM export failed: ${response.status}`);
-    xml = await response.text();
+  const exports = [];
+  if (xml) exports.push({ sourceUrl: `${UPSTREAM}/san-diego-source.osm`, bounds: fallbackBounds, xml });
+  else {
+    // Smaller map API requests avoid its bounding-box area/download limits.
+    const midLon = (BOUNDS.west + BOUNDS.east) / 2, midLat = (BOUNDS.south + BOUNDS.north) / 2;
+    for (const [west, east] of [[BOUNDS.west, midLon], [midLon, BOUNDS.east]]) {
+      for (const [south, north] of [[BOUNDS.south, midLat], [midLat, BOUNDS.north]]) {
+        const bounds = { west, south, east, north };
+        const sourceUrl = `https://api.openstreetmap.org/api/0.6/map?bbox=${west},${south},${east},${north}`;
+        const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(60000), headers: { "User-Agent": "YuyangSite San Diego map study" } });
+        if (!response.ok) throw new Error(`OSM export failed (${sourceUrl}): ${response.status} ${await response.text()}`);
+        exports.push({ sourceUrl, bounds, retrievedAt: new Date().toISOString(), xml: await response.text() });
+      }
+    }
   }
-  source = { license: "ODbL-1.0", attribution: "© OpenStreetMap contributors", sourceUrl: `https://api.openstreetmap.org/api/0.6/map?bbox=${bbox}`, retrievedAt: new Date().toISOString(), bounds: BOUNDS, elements: parseOsm(xml) };
+  // Parse tiles together: relation boundary ways can refer to nodes in another
+  // tile. Deduplicate their repeated feature IDs before model generation.
+  const features = new Map();
+  for (const f of parseOsm(exports.map((entry) => entry.xml).join("\n"))) {
+    const id = `${f.type}/${f.id}`;
+    if (!features.has(id)) features.set(id, f);
+  }
+  source = { license: "ODbL-1.0", attribution: "© OpenStreetMap contributors", sourceUrl: exports[0].sourceUrl, sourceExports: exports.map(({ xml: _xml, ...entry }) => entry), retrievedAt: new Date().toISOString(), bounds: BOUNDS, elements: [...features.values()] };
+  if (cachedSource && coversBounds(BOUNDS, cachedSource.bounds) && !coversBounds(cachedSource.bounds)) {
+    // Coverage expansion preserves the reviewed center, including entire ways
+    // that cross its old boundary. Append actual mapped perimeter features.
+    const retainedIds = new Set(cachedSource.elements.map((f) => `${f.type}/${f.id}`));
+    const additions = source.elements.filter((f) => !retainedIds.has(`${f.type}/${f.id}`))
+      .sort((a, b) => a.type.localeCompare(b.type, "en") || a.id - b.id);
+    source.provenance = {
+      strategy: "Retain the original snapshot records and order; append new feature IDs from the expanded OSM export, sorted by type and ID. Original records win for overlapping IDs so reviewed geometry remains unchanged.",
+      retainedSnapshot: { sourceUrl: cachedSource.sourceUrl, retrievedAt: cachedSource.retrievedAt, bounds: cachedSource.bounds, elements: cachedSource.elements.length, ...(cachedSource.provenance ? { provenance: cachedSource.provenance } : {}) },
+      expandedSnapshot: { sourceExports: source.sourceExports, retrievedAt: source.retrievedAt, bounds: source.bounds, elements: source.elements.length, appendedElements: additions.length },
+    };
+    source.elements = [...cachedSource.elements, ...additions];
+  }
   await fs.writeFile(sourcePath, JSON.stringify(source));
 }
 
@@ -168,11 +217,72 @@ function box(x, y, z, width, height, depth, color, batch, angle = 0) {
 }
 const ground = new THREE.PlaneGeometry(limits.maxX - limits.minX, limits.maxZ - limits.minZ); ground.rotateX(-Math.PI / 2); ground.translate((limits.minX + limits.maxX) / 2, -0.03, (limits.minZ + limits.maxZ) / 2); add(ground, palette.ground);
 const campus = wayById.get(61862546); const plaza = wayById.get(61862581);
-if (!campus || !plaza) throw new Error("Required OSM landmark areas are missing");
+const mesaVerde = wayById.get(61861106); const deerCanyon = wayById.get(61861114);
+if (!campus || !plaza || !mesaVerde || !deerCanyon) throw new Error("Required OSM landmark areas are missing");
 const landmarkAreas = [
+  { id: "mesa-verde-middle-school", name: "Mesa Verde Middle School", feature: mesaVerde, ring: cleanRing(mesaVerde.geometry.map(point)), sourceIds: [] },
+  { id: "deer-canyon-elementary-school", name: "Deer Canyon Elementary School", feature: deerCanyon, ring: cleanRing(deerCanyon.geometry.map(point)), sourceIds: [] },
   { id: "westview-high-school", name: "Westview High School", feature: campus, ring: cleanRing(campus.geometry.map(point)), address: "13500 Camino Del Sur, San Diego, CA 92129", sourceIds: [] },
   { id: "torrey-highlands-plaza", name: "Torrey Highlands Plaza", feature: plaza, ring: cleanRing(plaza.geometry.map(point)), address: "7845 Highlands Village Place, San Diego, CA 92129 (Chef Zhu, C101)", sourceIds: [] },
 ];
+
+
+// School details are artistic approximations on mapped footprints, not a new
+// architectural survey. Keep every detail in its school's merged root.
+const schoolAreas = landmarkAreas.filter((area) => [61861106, 61861114].includes(area.feature.id));
+const schoolPalette = { wall: "#eadfc7", roofs: ["#a99b83", "#b2a08a", "#a99380"], trim: "#f2e6cc", window: "#718c8d", accent: "#b4ac8c", vent: "#8e9388", court: "#97aaa0", play: "#c5b38d", line: "#f0e7cf", canopy: "#a9ae8c" };
+const schoolDetails = schoolAreas.map((area) => ({ id: area.id, name: area.name, campusSourceId: sourceId(area.feature), batch: area.name, buildings: [], surfaces: [], structures: [] }));
+const schoolDetailFor = (area) => schoolDetails.find((detail) => detail.id === area.id);
+const edges = (ring) => ring.map((a, i) => [a, ring[(i + 1) % ring.length]]);
+function segmentsIntersect(a, b, c, d) {
+  const cross = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const values = [cross(a, b, c), cross(a, b, d), cross(c, d, a), cross(c, d, b)];
+  if (values[0] * values[1] < 0 && values[2] * values[3] < 0) return true;
+  return [[c, a, b, values[0]], [d, a, b, values[1]], [a, c, d, values[2]], [b, c, d, values[3]]]
+    .some(([p, x, y, v]) => Math.abs(v) < 1e-7 && segmentDistance(p, x, y) < 1e-7);
+}
+function ringContained(inner, outer, clearance = 0) {
+  // Corner-only tests miss a rectangle crossing a concave roof notch.
+  return inner.every((p) => inside(p, outer)) && edges(inner).every(([a, b]) => edges(outer).every(([c, d]) =>
+    !segmentsIntersect(a, b, c, d) && Math.min(segmentDistance(a, c, d), segmentDistance(b, c, d), segmentDistance(c, a, b), segmentDistance(d, a, b)) >= clearance));
+}
+function ringsOverlap(a, b, clearance = 0) {
+  return a.some((p) => inside(p, b)) || b.some((p) => inside(p, a)) || edges(a).some(([p, q]) => edges(b).some(([r, s]) =>
+    segmentsIntersect(p, q, r, s) || Math.min(segmentDistance(p, r, s), segmentDistance(q, r, s), segmentDistance(r, p, q), segmentDistance(s, p, q)) < clearance));
+}
+function rectangle(x, z, width, depth, angle = 0) {
+  return [[-width / 2, -depth / 2], [width / 2, -depth / 2], [width / 2, depth / 2], [-width / 2, depth / 2]]
+    .map(([u, v]) => [x + Math.cos(angle) * u + Math.sin(angle) * v, z - Math.sin(angle) * u + Math.cos(angle) * v]);
+}
+function schoolFacades(area, feature, ring, height) {
+  const detail = { sourceId: sourceId(feature), roofColor: schoolPalette.roofs[feature.id % schoolPalette.roofs.length], roofEdgeSegments: 0, windows: [], vents: [], doors: [], canopies: [] };
+  schoolDetailFor(area).buildings.push(detail);
+  for (const [a, b] of edges(ring)) {
+    const dx = b[0] - a[0], dz = b[1] - a[1], length = Math.hypot(dx, dz), angle = -Math.atan2(dz, dx);
+    if (length > 0.4) { box((a[0] + b[0]) / 2, height + 0.48, (a[1] + b[1]) / 2, length, 0.22, 0.24, schoolPalette.trim, area.name, angle); detail.roofEdgeSegments++; }
+    if (length < 5) continue;
+    box((a[0] + b[0]) / 2, 0.95, (a[1] + b[1]) / 2, length, 0.25, 0.16, schoolPalette.accent, area.name, angle);
+    const count = Math.floor(length / 5.5), windowHeight = Math.min(1.65, height * 0.25), y = 0.35 + height * 0.53;
+    for (let i = 0; i < count; i++) {
+      const t = (i + 0.5) / count, position = [a[0] + dx * t, y, a[1] + dz * t], width = Math.min(2.4, length / count * 0.48);
+      box(...position, width + 0.22, windowHeight + 0.22, 0.19, schoolPalette.trim, area.name, angle);
+      box(...position, width, windowHeight, 0.23, schoolPalette.window, area.name, angle);
+      detail.windows.push({ position: rounded(position), width, height: windowHeight, angle });
+    }
+  }
+  const xs = ring.map(([x]) => x), zs = ring.map(([, z]) => z);
+  const maxVents = Math.min(4, Math.max(1, Math.floor((Math.max(...xs) - Math.min(...xs)) * (Math.max(...zs) - Math.min(...zs)) / 550)));
+  for (let x = Math.min(...xs) + 2; x < Math.max(...xs) && detail.vents.length < maxVents; x += 3) {
+    for (let z = Math.min(...zs) + 2; z < Math.max(...zs) && detail.vents.length < maxVents; z += 3) {
+      const footprint = rectangle(x, z, 1.4, 1.8);
+      if (!ringContained(footprint, ring, 0.5) || detail.vents.some((vent) => Math.hypot(x - vent.center[0], z - vent.center[1]) < 11)) continue;
+      box(x, height + 0.7, z, 1.4, 0.6, 1.8, schoolPalette.vent, area.name);
+      box(x, height + 1.03, z, 1.6, 0.1, 2, schoolPalette.trim, area.name);
+      detail.vents.push({ center: rounded([x, z]), footprint: rectangle(x, z, 1.6, 2).map(rounded), baseY: height + 0.4, topY: height + 1.08 });
+      if (!ringContained(rectangle(x, z, 1.6, 2), ring, 0.3)) throw new Error(`Vent cap leaves ${detail.sourceId}`);
+    }
+  }
+}
 
 // Join multipolygon fragments before triangulation so reserves preserve holes.
 const relationMemberIds = new Set(); const polygons = [];
@@ -222,6 +332,37 @@ for (const [polygonIndex, p] of polygons.entries()) {
   if (color) flat(p.ring, color, y + polygonIndex * 0.0003, "terrain", p.holes);
 }
 
+// The source snapshot omits Mesa Verde's western athletics field. Fit the
+// reference's north-south oval inside the mapped school parcel, west of its
+// buildings. This is an authored surface, not a new surveyed OSM feature.
+const mesaVerdeRing = cleanRing(mesaVerde.geometry.map(point));
+const mesaVerdeField = [[238, -222], [425, -222], [425, -15], [238, -15]];
+const mesaVerdeTrack = { center: [307, -128], radius: 32, straightHalfLength: 49, width: 4 };
+function stadiumRing(radius) {
+  const [cx, cz] = mesaVerdeTrack.center;
+  const half = mesaVerdeTrack.straightHalfLength;
+  const ring = [];
+  for (let i = 0; i <= 24; i++) {
+    const angle = Math.PI + i * Math.PI / 24;
+    ring.push([cx + Math.cos(angle) * radius, cz - half + Math.sin(angle) * radius]);
+  }
+  for (let i = 0; i <= 24; i++) {
+    const angle = i * Math.PI / 24;
+    ring.push([cx + Math.cos(angle) * radius, cz + half + Math.sin(angle) * radius]);
+  }
+  return ring;
+}
+const mesaVerdeTrackRing = stadiumRing(mesaVerdeTrack.radius);
+if (![...mesaVerdeField, ...mesaVerdeTrackRing].every((p) => inside(p, mesaVerdeRing))) {
+  throw new Error("Authored Mesa Verde field must remain inside its school parcel");
+}
+const mesaVerdeInfield = stadiumRing(mesaVerdeTrack.radius - mesaVerdeTrack.width);
+// Adjacent surfaces avoid stacked additive glow across the field and infield.
+flat(mesaVerdeField, palette.park, 0.4, "Mesa Verde Middle School", [mesaVerdeTrackRing]);
+flat(mesaVerdeTrackRing, palette.walk, 0.43, "Mesa Verde Middle School", [mesaVerdeInfield]);
+flat(mesaVerdeInfield, palette.pitch, 0.46, "Mesa Verde Middle School");
+treeExclusions.push({ feature: mesaVerde, ring: mesaVerdeField, holes: [] });
+
 // Buildings: real OSM footprints, upstream Map3D extrusion, explicit inferred
 // heights only where OSM lacks them. Details are baked into the same batch/root.
 const buildingRecords = []; let inferredHeights = 0;
@@ -232,17 +373,19 @@ for (const f of allWays.filter((f) => f.tags.building && f.tags.building !== "no
   const tags = { ...f.tags };
   let inferred = false;
   if (!Number.parseFloat(tags.height) && !Number.parseFloat(tags["building:levels"])) {
-    tags.height = String(landmark ? (landmark.id === "westview-high-school" ? 8.5 : 7) : ["office", "commercial"].includes(tags.building) ? 12 : 6.5);
+    tags.height = String(landmark ? (landmark.id === "westview-high-school" ? 8.5 : landmark.id === "torrey-highlands-plaza" ? 7 : 6.5) : ["office", "commercial"].includes(tags.building) ? 12 : 6.5);
     inferred = true; inferredHeights++;
   }
   const [data] = areaData(THREE, [{ geometry: f.geometry.map((p) => ({ lat: p.lat, lng: p.lon })), tags }], project);
   const batch = landmark?.name ?? "Neighborhood buildings"; const height = data.extrudeSettings.depth;
   const geometry = new THREE.ExtrudeGeometry(data.shape, data.extrudeSettings); geometry.rotateX(-Math.PI / 2); geometry.translate(0, 0.35, 0);
-  add(geometry, landmark?.id === "westview-high-school" ? palette.campusWall : palette.wall[f.id % palette.wall.length], batch);
-  flat(ring, landmark ? palette.landmarkRoof : palette.roof[f.id % palette.roof.length], height + 0.37, batch);
+  const school = schoolAreas.find((area) => area.id === landmark?.id);
+  add(geometry, school ? schoolPalette.wall : landmark?.id === "westview-high-school" ? palette.campusWall : palette.wall[f.id % palette.wall.length], batch);
+  flat(ring, school ? schoolPalette.roofs[f.id % schoolPalette.roofs.length] : landmark ? palette.landmarkRoof : palette.roof[f.id % palette.roof.length], height + 0.37, batch);
+  if (school) schoolFacades(school, f, ring, height);
   if (landmark) {
     landmark.sourceIds.push(sourceId(f));
-    for (let i = 0; i < ring.length; i++) {
+    if (!school) for (let i = 0; i < ring.length; i++) {
       const a = ring[i], b = ring[(i + 1) % ring.length]; const dx = b[0] - a[0], dz = b[1] - a[1]; const length = Math.hypot(dx, dz);
       if (length < 7) continue;
       const count = Math.floor(length / 6); const angle = -Math.atan2(dz, dx);
@@ -315,6 +458,75 @@ for (const f of allWays.filter((f) => f.tags.highway && !["proposed", "construct
   }
 }
 
+
+// Fixed modest campus gathering and play additions use verified open space.
+// They are baked into the same school roots as the buildings and athletics.
+function campusGroundClear(ring, area, ignoreBuilding = null, clearance = 0.6) {
+  if (!ringContained(ring, area.ring, 0.4)) return false;
+  if (buildingRecords.some((building) => building.sourceId !== ignoreBuilding && ringsOverlap(ring, building.ring, clearance))) return false;
+  return !roadRecords.some((road) => road.points.slice(1).some((b, i) => {
+    const a = road.points[i];
+    return inside(a, ring) || inside(b, ring) || edges(ring).some(([c, d]) => segmentsIntersect(a, b, c, d)
+      || Math.min(segmentDistance(a, c, d), segmentDistance(b, c, d), segmentDistance(c, a, b), segmentDistance(d, a, b)) < road.width / 2 + 1);
+  }));
+}
+function addSchoolSurface(area, id, kind, ring, color, y = 0.55) {
+  if (!campusGroundClear(ring, area)) throw new Error(`Unsafe school surface ${id}`);
+  flat(ring, color, y, area.name);
+  schoolDetailFor(area).surfaces.push({ id, kind, footprint: ring.map(rounded), color, y });
+  treeExclusions.push({ feature: area.feature, ring, holes: [] });
+}
+for (const area of schoolAreas) {
+  const mesa = area.feature.id === 61861106;
+  const court = mesa ? rectangle(395.5, -185.5, 51, 41) : rectangle(905, -410.5, 38, 43);
+  addSchoolSurface(area, `${area.id}-court`, "court", court, schoolPalette.court);
+  // Inset perimeter and a single center stripe read at the neighborhood scale.
+  const [minX, minZ] = court[0], [maxX, maxZ] = court[2];
+  const inset = [[minX + 3, minZ + 3], [maxX - 3, minZ + 3], [maxX - 3, maxZ - 3], [minX + 3, maxZ - 3]];
+  for (const [a, b] of edges(inset)) {
+    const dx = b[0] - a[0], dz = b[1] - a[1], length = Math.hypot(dx, dz);
+    flat(rectangle((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, length, 0.24, -Math.atan2(dz, dx)), schoolPalette.line, 0.58, area.name);
+  }
+  flat(rectangle((minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX - 6, 0.24), schoolPalette.line, 0.58, area.name);
+  if (!mesa) addSchoolSurface(area, `${area.id}-play`, "play", rectangle(904, -337, 32, 32), schoolPalette.play);
+  const shade = mesa ? rectangle(401, -140, 22, 12) : rectangle(897.5, -298, 19, 12);
+  addSchoolSurface(area, `${area.id}-gathering`, "gathering", shade, palette.walk);
+  const center = centroid(shade), width = shade[1][0] - shade[0][0], depth = shade[2][1] - shade[1][1];
+  const structureRing = rectangle(...center, width - 2, depth - 2);
+  box(center[0], 3.65, center[1], width - 2, 0.3, depth - 2, schoolPalette.canopy, area.name);
+  for (const [x, z] of rectangle(...center, width - 3, depth - 3)) box(x, 1.95, z, 0.35, 3.4, 0.35, schoolPalette.trim, area.name);
+  for (const offset of [-depth / 4, depth / 4]) {
+    box(center[0], 0.85, center[1] + offset, width * 0.45, 0.3, 1.1, schoolPalette.accent, area.name);
+    for (const side of [-1, 1]) box(center[0] + side * width * 0.17, 0.625, center[1] + offset, 0.6, 0.15, 0.8, schoolPalette.trim, area.name);
+  }
+  schoolDetailFor(area).structures.push({ id: `${area.id}-shade`, kind: "gathering-shade", footprint: structureRing.map(rounded), baseY: 0.25, topY: 3.8 });
+  const paths = mesa ? [rectangle(411.5, -100, 5, 120), rectangle(395.5, -157, 37, 4)]
+    : [rectangle(880, -360, 4, 140), rectangle(900, -379, 40, 4), rectangle(900, -359, 40, 4), rectangle(889, -312, 18, 4)];
+  for (const [index, path] of paths.entries()) addSchoolSurface(area, `${area.id}-path-${index + 1}`, "path", path, palette.walk);
+  // Entrance canopies face a verified open side of each actual footprint.
+  for (const detail of schoolDetailFor(area).buildings) {
+    const building = buildingRecords.find((record) => record.sourceId === detail.sourceId);
+    for (const [a, b] of edges(building.ring).sort(([a, b], [c, d]) => Math.hypot(d[0] - c[0], d[1] - c[1]) - Math.hypot(b[0] - a[0], b[1] - a[1]))) {
+      const dx = b[0] - a[0], dz = b[1] - a[1], length = Math.hypot(dx, dz);
+      if (length < 4.8) continue;
+      const angle = -Math.atan2(dz, dx), middle = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      let normal = [-dz / length, dx / length];
+      if (inside([middle[0] + normal[0], middle[1] + normal[1]], building.ring)) normal = normal.map((n) => -n);
+      const center = [middle[0] + normal[0] * 1.9, middle[1] + normal[1] * 1.9];
+      const footprint = rectangle(...center, 4.2, 3.2, angle);
+      if (!campusGroundClear(footprint, area, building.sourceId) || ringsOverlap(footprint, building.ring, 0.15) || schoolDetailFor(area).surfaces.some((surface) => ringsOverlap(footprint, surface.footprint, 0.4))) continue;
+      const doorPosition = [middle[0] + normal[0] * 0.13, 1.55, middle[1] + normal[1] * 0.13];
+      box(...doorPosition, 1.65, 2.4, 0.3, schoolPalette.window, area.name, angle);
+      box(center[0], 3.15, center[1], 4.2, 0.24, 3.2, schoolPalette.canopy, area.name, angle);
+      for (const [x, z] of rectangle(...center, 3.7, 2.7, angle)) box(x, 1.575, z, 0.18, 2.91, 0.18, schoolPalette.trim, area.name);
+      detail.doors.push({ position: rounded(doorPosition), width: 1.65, height: 2.4, angle });
+      detail.canopies.push({ footprint: footprint.map(rounded), baseY: 0.12, topY: 3.27, angle });
+      treeExclusions.push({ feature: area.feature, ring: footprint, holes: [] });
+      break;
+    }
+  }
+}
+
 // Deterministic stylized landscape. Every canopy clears buildings, roadbeds,
 // parking lots, sport surfaces, and other canopies, including source trees.
 let seed = 56013500;
@@ -365,6 +577,12 @@ for (const road of roadRecords.filter((r) => ["residential", "primary", "seconda
   }
 }
 
+for (const detail of schoolDetails) {
+  const expected = detail.campusSourceId === "way/61861106" ? 7 : 12;
+  if (detail.buildings.length !== expected) throw new Error(`Unexpected mapped school building count for ${detail.name}`);
+  detail.counts = { buildings: detail.buildings.length, roofEdgeSegments: detail.buildings.reduce((n, b) => n + b.roofEdgeSegments, 0), ...Object.fromEntries(["windows", "vents", "doors", "canopies"].map((kind) => [kind, detail.buildings.reduce((n, b) => n + b[kind].length, 0)])), surfaces: detail.surfaces.length, shadeStructures: detail.structures.length };
+}
+
 const landmarkResults = [];
 for (const [name, geometries] of batches) {
   const geometry = mergeGeometries(geometries); if (!geometry) throw new Error(`Failed merging ${name}`);
@@ -394,7 +612,7 @@ await fs.writeFile(MODEL, Buffer.from(await new GLTFExporter().parseAsync(scene,
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });
 const document = await io.read(MODEL);
-// A neighborhood spans 2.3 km, so even 16-bit position quantization merges the
+// The neighborhood spans about 3.06 km, so even 16-bit position quantization merges the
 // 2–5 cm road, shoulder, roof and surface layers. Keep Float32 positions exactly;
 // lossless Meshopt still compresses the resulting buffers effectively.
 await document.transform(dedup(), weld(), prune(), reorder({ encoder: MeshoptEncoder, target: "size" }), quantize({ pattern: /^(NORMAL|COLOR_0)$/, quantizeNormal: 10, quantizeColor: 8 }));
@@ -407,14 +625,16 @@ const manifest = {
   map3d: { repository: "https://github.com/cartesiancs/map3d", commit: COMMIT, license: "MIT", sourceFile: "src/three/Space.tsx", implementation: "Executes the pinned upstream areaData extrusion function; replaces its 51000 arbitrary scale with a local metric projection and supplies explicit inferred heights where OSM has none." },
   projection: { type: "local-equirectangular", originLongitudeLatitude: ORIGIN, units: "meters", axes: "east +X, up +Y, north -Z", metersPerLatitudeDegree: M_PER_LAT, metersPerLongitudeDegree: M_PER_LON },
   bounds: BOUNDS, localBounds: limits,
-  overview: { target: [0, 0, 0], height: 1200, radius: 1350, zoom: 0.65 }, landmarks: landmarkResults,
+  overview: { target: [0, 0, -240], height: 1200, radius: 1350, zoom: 0.5 }, landmarks: landmarkResults,
+  authoredSurfaces: { mesaVerdeAthletics: { campusSourceId: sourceId(mesaVerde), field: mesaVerdeField, track: mesaVerdeTrack, reference: "User-supplied Mesa Verde map screenshot; approximate placement and dimensions." } },
+  schoolDetails: { provenance: "Deterministic artistic architectural and campus details; mapped OSM footprints and heights retained. Court, play, shade, and paths are approximate authored placements, not surveyed architecture.", palette: schoolPalette, campuses: schoolDetails },
   counts: { buildings: buildingRecords.length, buildingsWithInferredHeight: inferredHeights, roadsAndPaths: roadRecords.length, bridges: roadRecords.filter((r) => r.bridge).length, landcoverPolygons: polygons.length, greenAreas: greenAreas.length, trees: trees.length, sourcedTrees: trees.filter((t) => t.sourceId).length, selectableLandmarks: landmarkResults.length, meshes: scene.children.length },
-  assumptions: ["Flat stylized terrain; no surveyed elevation model.", "Building footprints, roads, campus, plaza, parks, and sport surfaces use OpenStreetMap geometry. Missing building heights: homes 6.5 m, offices/commercial 12 m, Westview 8.5 m, plaza 7 m. Supplied OSM levels retain Map3D's 2.2 m/level convention.", "Window panels, flat roof colors, and supplemental trees are deterministic artistic details, not surveyed architecture or vegetation.", "Road widths are inferred from tagged lane counts or highway class where explicit widths are absent. Mapped bridges are raised to 5.9 m with 70 m approach ramps.", "All landmark buildings, roofs, and facade panels are merged into one selectable mesh per destination."],
+  assumptions: ["Flat stylized terrain; no surveyed elevation model.", "Building footprints, roads, campus, plaza, parks, and sport surfaces use OpenStreetMap geometry. Missing building heights: homes 6.5 m, offices/commercial 12 m, Westview 8.5 m, plaza 7 m. Supplied OSM levels retain Map3D's 2.2 m/level convention.", "Window panels, flat roof colors, and supplemental trees are deterministic artistic details, not surveyed architecture or vegetation.", "Mesa Verde athletics field and north-south oval track are authored from the user reference within the mapped school parcel; placement and dimensions are approximate.", "Road widths are inferred from tagged lane counts or highway class where explicit widths are absent. Mapped bridges are raised to 5.9 m with 70 m approach ramps.", "All landmark buildings, roofs, and facade panels are merged into one selectable mesh per destination. Mesa Verde also includes its authored athletics field and track in that same selectable mesh."],
   compression: { extension: "EXT_meshopt_compression", positions: "lossless Float32 (preserves centimeter layer gaps)", normals: "10-bit", colors: "8-bit" },
   palette,
-  treeValidation: { seed: 56013500, excluded: ["building footprint plus canopy radius + 1 m", "road/path half-width plus canopy radius + 1 m", "parking and sports polygons plus canopy radius + 1 m", "other canopies plus 1 m"], conflicts: 0 },
+  treeValidation: { seed: 56013500, excluded: ["building footprint plus canopy radius + 1 m", "road/path half-width plus canopy radius + 1 m", "parking, sports, authored school surfaces and entrance canopies plus canopy radius + 1 m", "other canopies plus 1 m"], conflicts: 0 },
 };
 await fs.writeFile(`${DATA}/manifest.json`, JSON.stringify(manifest, null, 2) + "\n");
-await fs.writeFile(`${DATA}/layout.json`, JSON.stringify({ buildings: buildingRecords, roads: roadRecords, greenAreas: greenAreas.map((p) => ({ sourceId: sourceId(p.feature), ring: p.ring.map(rounded), holes: p.holes.map((h) => h.map(rounded)) })), treeExclusions: treeExclusions.map((p) => ({ sourceId: sourceId(p.feature), ring: p.ring.map(rounded) })), trees: trees.map((t) => ({ ...t, x: Math.round(t.x * 1000) / 1000, z: Math.round(t.z * 1000) / 1000, radius: Math.round(t.radius * 1000) / 1000 })) }));
+await fs.writeFile(`${DATA}/layout.json`, JSON.stringify({ schoolDetails, buildings: buildingRecords, roads: roadRecords, greenAreas: greenAreas.map((p) => ({ sourceId: sourceId(p.feature), ring: p.ring.map(rounded), holes: p.holes.map((h) => h.map(rounded)) })), treeExclusions: treeExclusions.map((p) => ({ sourceId: sourceId(p.feature), ring: p.ring.map(rounded) })), trees: trees.map((t) => ({ ...t, x: Math.round(t.x * 1000) / 1000, z: Math.round(t.z * 1000) / 1000, radius: Math.round(t.radius * 1000) / 1000 })) }));
 await fs.copyFile(`${UPSTREAM}/LICENSE`, `${DATA}/MAP3D-LICENSE.txt`);
 console.log(JSON.stringify({ counts: manifest.counts, landmarks: landmarkResults, modelKiB: Math.round(glb.byteLength / 1024), contentHash: manifest.contentHash }, null, 2));
