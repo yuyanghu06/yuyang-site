@@ -9,7 +9,7 @@ export function animateTravelers(
   for (const traveler of travelers) {
     traveler.group.visible = traveler.view === "manhattan"
       ? activeView === "manhattan"
-      : activeView !== "manhattan";
+      : activeView === "washington" || activeView === "union";
     if (!traveler.group.visible) continue;
     const span = traveler.endX - traveler.startX;
     const axis = traveler.axis ?? "x";

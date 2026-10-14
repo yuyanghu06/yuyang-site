@@ -4,14 +4,16 @@ import {
   UNION_CENTER,
   WASHINGTON_CENTER,
   type MapView,
+  type CityOverview,
 } from "../shared/core";
+import { getCameraView } from "@/agent/context/camera-views";
 import type { ClickableLandmark } from "../manhattan/navigation";
 
 export interface HitTestingOptions {
   renderer: THREE.WebGLRenderer;
   camera: THREE.Camera;
   globeCamera: THREE.Camera;
-  manhattanGlobeMarker: THREE.Object3D;
+  globeMarkers: Map<CityOverview, THREE.Object3D>;
   raycastRoots: THREE.Object3D[];
   landmarkByRoot: Map<THREE.Object3D, ClickableLandmark>;
   manhattanMarkerDestinations: Map<THREE.Object3D, "washington" | "union">;
@@ -34,15 +36,29 @@ export function createHitTesting(options: HitTestingOptions) {
     );
     raycaster.setFromCamera(pointer, globe ? options.globeCamera : options.camera);
   };
-  const globeManhattanAtPointer = (event: { clientX: number; clientY: number }) => {
-    if (options.getActiveView() !== "globe" || options.isGlobeTransitioning()) return false;
+  const isVisible = (root: THREE.Object3D) => {
+    for (let object: THREE.Object3D | null = root; object; object = object.parent) {
+      if (!object.visible) return false;
+    }
+    return true;
+  };
+  const globeDestinationAtPointer = (event: { clientX: number; clientY: number }): CityOverview | null => {
+    if (options.getActiveView() !== "globe" || options.isGlobeTransitioning()) return null;
     updatePointerRay(event, true);
-    return raycaster.intersectObject(options.manhattanGlobeMarker, true).length > 0;
+    for (const [destination, marker] of options.globeMarkers) {
+      if (isVisible(marker) && raycaster.intersectObject(marker, true).length > 0) return destination;
+    }
+    return null;
   };
   const landmarkAtPointer = (event: { clientX: number; clientY: number }) => {
-    if (options.getActiveView() === "manhattan") return null;
+    const view = options.getActiveView();
+    if (view === "manhattan" || view === "globe" || options.isGlobeTransitioning()) return null;
     updatePointerRay(event);
-    for (const intersection of raycaster.intersectObjects(options.raycastRoots, true)) {
+    for (const intersection of raycaster.intersectObjects(options.raycastRoots.filter((root) => {
+      const landmark = options.landmarkByRoot.get(root);
+      const cameraView = landmark && getCameraView(landmark.cameraViewId);
+      return isVisible(root) && cameraView?.kind === "landmark" && cameraView.neighborhood === view;
+    }), true)) {
       let object: THREE.Object3D | null = intersection.object;
       while (object) {
         const landmark = options.landmarkByRoot.get(object);
@@ -54,7 +70,8 @@ export function createHitTesting(options: HitTestingOptions) {
   };
   const navigationAtPointer = (event: { clientX: number; clientY: number }) => {
     const arrow = options.getNavigationArrow();
-    if (!arrow || options.getActiveView() === "manhattan") return false;
+    const view = options.getActiveView();
+    if (!arrow || !isVisible(arrow) || (view !== "washington" && view !== "union") || options.isGlobeTransitioning()) return false;
     updatePointerRay(event);
     return raycaster.intersectObject(arrow, true).length > 0;
   };
@@ -82,7 +99,7 @@ export function createHitTesting(options: HitTestingOptions) {
     return washingtonDistance <= unionDistance ? "washington" : "union";
   };
   return {
-    globeManhattanAtPointer,
+    globeDestinationAtPointer,
     landmarkAtPointer,
     navigationAtPointer,
     manhattanMarkerAtPointer,

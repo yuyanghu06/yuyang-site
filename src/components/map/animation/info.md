@@ -1,6 +1,6 @@
 # Frame animation systems
 
-Independent per-frame systems live here: globe-cloud motion, globe planes and boats, landmark glow/lift, travelers, navigation and destination markers, spring arrivals, and adaptive resolution.
+There are no direct subfolders. Independent per-frame systems live here: globe-cloud motion, globe planes and boats, landmark glow/lift, travelers, navigation and destination markers, spring arrivals, and adaptive resolution.
 
 Keep each system focused and pass explicit state rather than reaching into React lifecycle ownership.
 
@@ -10,7 +10,7 @@ Keep each system focused and pass explicit state rather than reaching into React
 - `arrivals.ts` advances spring-based object arrival motion.
 - `globe-clouds.ts` moves cloud formations around the globe and keeps them tangent to its surface.
 - `globe-travelers.ts` creates and animates six globally distributed planes, nine ocean boats whose hull bottoms are scale-aligned to the imported model's inset water radius, and four satellites above the cloud layer, cloning shared model templates to keep the expanded ambient layer lightweight.
-- `landmarks.ts` animates interactive landmark glow and lift states.
-- `markers.ts` animates navigation and destination markers.
-- `travelers.ts` advances Manhattan and neighborhood ambient travelers.
-- `info.md` is this local ownership guide.
+- `landmarks.ts` animates interactive landmark glow and lift states. It retains shared renderer shadow invalidation and also returns whether a landmark caster moved enough to need a shadow refresh, so San Diego can independently invalidate its fixed light.
+- `markers.ts` animates navigation and destination markers, including all four San Diego landmark pins; the New York square arrow stays hidden outside its own neighborhoods.
+- `travelers.ts` advances Manhattan and New York neighborhood ambient travelers without exposing them over San Diego.
+- `INFO.md` is this local ownership guide.

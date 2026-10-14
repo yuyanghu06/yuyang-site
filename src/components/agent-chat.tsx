@@ -15,19 +15,19 @@ import {
   type MapViewSettledDetail,
 } from "@/agent/contracts/types";
 import {
-  bobstLibraryDialogue,
-  courantInstituteDialogue,
+  cityChoiceDialogue,
   introDialogue,
   liptonHallDialogue,
   manhattanDialogue,
-  sternSchoolOfBusinessDialogue,
-  twentyFiveUnionSquareWestDialogue,
-  twoThirtyFiveParkAvenueSouthDialogue,
   unionSquareDialogue,
   washingtonSquareDialogue,
+  sanDiegoCompleteDialogue,
 } from "./dialogue";
+import { getPreviousTourStop, getSanDiegoStop, LANDMARK_DIALOGUES, SAN_DIEGO_STOPS, type IntroPhase } from "./dialogue/tour-stops";
+import { DIALOGUE_LINK_PATTERN, splitCaptionText } from "./dialogue/caption-text";
 import { startCaptionReveal, type CaptionRevealHandle } from "./caption-reveal";
 import { AnimatedAgentStatus } from "./agent-status";
+import { TourDestinationChoices } from "./tour-destination-choices";
 import { playDialogueBlip, primeDialogueAudio, stopDialogueBlip } from "./site-audio";
 
 const YUYANG_BIRTH_DATE = { year: 2006, month: 10, day: 29 } as const;
@@ -39,51 +39,6 @@ const getYuyangAge = (today = new Date()) => {
 const INTRO_GREETING = introDialogue.replace("{{age}}", String(getYuyangAge()));
 const STREAM_BLIP_INTERVAL_MS = 58;
 const DOCKED_CAPTION_FADE_MS = 180;
-const MAX_CAPTION_CHARACTERS = 120;
-const MIN_CAPTION_BREAK_CHARACTERS = Math.floor(MAX_CAPTION_CHARACTERS * 0.4);
-const DIALOGUE_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "camera_dialogue_streaming" | "free";
-
-const splitCaptionText = (content: string) => {
-  const links: string[] = [];
-  const protectedContent = content.replace(DIALOGUE_LINK_PATTERN, (link) => {
-    const placeholder = `\uE000${links.length}\uE001`;
-    links.push(link);
-    return placeholder;
-  });
-  const segments: string[] = [];
-  const paragraphs = protectedContent.trim().split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
-  for (const paragraph of paragraphs) {
-    let remaining = paragraph;
-    while (remaining.length > MAX_CAPTION_CHARACTERS) {
-      const preferredWindow = remaining.slice(0, MAX_CAPTION_CHARACTERS + 1);
-      const preferredLineBreak = preferredWindow.lastIndexOf("\n");
-      const preferredPunctuationBreak = [...preferredWindow.matchAll(/[.!?:](?=\s|$)/g)].at(-1)?.index ?? -1;
-      const preferredBreak = Math.max(
-        preferredLineBreak >= MIN_CAPTION_BREAK_CHARACTERS ? preferredLineBreak : -1,
-        preferredPunctuationBreak >= MIN_CAPTION_BREAK_CHARACTERS ? preferredPunctuationBreak : -1,
-      );
-      if (preferredBreak >= 0) {
-        const splitAt = remaining[preferredBreak] === "\n" ? preferredBreak : preferredBreak + 1;
-        segments.push(remaining.slice(0, splitAt).trim());
-        remaining = remaining.slice(splitAt).trim();
-        continue;
-      }
-      const overflow = remaining.slice(MAX_CAPTION_CHARACTERS);
-      const boundaries = [overflow.indexOf("\n"), overflow.search(/[.!?:](?=\s|$)/)]
-        .filter((boundary) => boundary >= 0)
-        .sort((left, right) => left - right);
-      const naturalBreak = boundaries[0] ?? -1;
-      if (naturalBreak < 0) break;
-      const boundary = MAX_CAPTION_CHARACTERS + naturalBreak;
-      const splitAt = remaining[boundary] === "\n" ? boundary : boundary + 1;
-      segments.push(remaining.slice(0, splitAt).trim());
-      remaining = remaining.slice(splitAt).trim();
-    }
-    if (remaining) segments.push(remaining);
-  }
-  return segments.map((segment) => segment.replace(/\uE000(\d+)\uE001/g, (_, index: string) => links[Number(index)]));
-};
 
 const renderDialogueContent = (content: string) => {
   const rendered: ReactNode[] = [];
@@ -163,6 +118,8 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   const unionTourVisitedRef = useRef(false);
   const washingtonTourVisitedRef = useRef(false);
   const guidedTourActiveRef = useRef(false);
+  const lastSettledViewRef = useRef<MapDestination>(currentView);
+  const deferredCameraDialogueRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     introPhaseRef.current = introPhase;
@@ -259,26 +216,38 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     });
   }, [onStreamingChange, playStreamBlip]);
 
+  const showDestinationChoice = useCallback((view: "globe" | "manhattan") => {
+    const arrivalPhase = view === "globe" ? "globe_arrival" : "manhattan_arrival";
+    const choicePhase = view === "globe" ? "globe_choice" : "manhattan_choice";
+    introPhaseRef.current = arrivalPhase;
+    setIntroPhase(arrivalPhase);
+    setComposerOpen(false);
+    setFixedCameraDialogueActive(view === "manhattan");
+    streamScript(view === "globe" ? cityChoiceDialogue : manhattanDialogue, () => {
+      introPhaseRef.current = choicePhase;
+      setIntroPhase(choicePhase);
+      setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+    });
+  }, [streamScript]);
+
   useEffect(() => {
     const handleViewSettled = (event: Event) => {
       const { view } = (event as CustomEvent<MapViewSettledDetail>).detail;
+      if (requestRef.current && getSanDiegoStop(view)) {
+        deferredCameraDialogueRef.current = () => handleViewSettled(event);
+        return;
+      }
+      deferredCameraDialogueRef.current = null;
+      const previousView = lastSettledViewRef.current;
+      lastSettledViewRef.current = view;
+      if (view === "globe" && guidedTourActiveRef.current
+        && (introPhaseRef.current === "globe_arrival" || getSanDiegoStop(previousView))) {
+        backwardTourDestinationRef.current = null;
+        return showDestinationChoice("globe");
+      }
       if (view === backwardTourDestinationRef.current) {
         backwardTourDestinationRef.current = null;
-        const previousStop = view === "manhattan"
-          ? { content: manhattanDialogue, phase: "manhattan_choice" as const }
-          : view === "union"
-            ? { content: unionSquareDialogue, phase: "union_next" as const }
-            : view === "25-union-square-west"
-              ? { content: twentyFiveUnionSquareWestDialogue, phase: "carlyle_next" as const }
-          : view === "washington"
-            ? { content: washingtonSquareDialogue, phase: "washington_next" as const }
-            : view === "lipton-hall"
-              ? { content: liptonHallDialogue, phase: "lipton_next" as const }
-              : view === "bobst-library"
-                ? { content: bobstLibraryDialogue, phase: "bobst_next" as const }
-                : view === "stern-school-of-business"
-                  ? { content: sternSchoolOfBusinessDialogue, phase: "stern_next" as const }
-                  : null;
+        const previousStop = getPreviousTourStop(view);
         if (previousStop) {
           introPhaseRef.current = "camera_dialogue_streaming";
           setIntroPhase("camera_dialogue_streaming");
@@ -289,6 +258,39 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
             setIntroPhase(previousStop.phase);
             setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
           });
+          return;
+        }
+      }
+      const sanDiegoStop = getSanDiegoStop(view);
+      if (sanDiegoStop) {
+        introPhaseRef.current = "camera_dialogue_streaming";
+        setIntroPhase("camera_dialogue_streaming");
+        setFixedCameraDialogueActive(true);
+        streamScript(sanDiegoStop.content, () => {
+          introPhaseRef.current = sanDiegoStop.phase;
+          setIntroPhase(sanDiegoStop.phase);
+          setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+        });
+        return;
+      }
+      // Manual exit from San Diego must retire its route controls as well.
+      if (getSanDiegoStop(previousView)) {
+        const nextPhase = view === "manhattan" ? "touring" : "free";
+        introPhaseRef.current = nextPhase;
+        setIntroPhase(nextPhase);
+        setFixedCameraDialogueActive(false);
+        queuedCaptionSegmentsRef.current = [];
+        shownScriptSegmentsRef.current = [];
+        setScriptSegmentIndex(0);
+        setPresentationAction(null);
+        if (view === "globe") {
+          guidedTourActiveRef.current = false;
+          setGuidedTourActive(false);
+          captionRevealRef.current?.cancel();
+          setCaptionStreaming(false);
+          onStreamingChange(false);
+          terminalPresentationRef.current = "reply";
+          setPresentationAction("reply");
           return;
         }
       }
@@ -337,70 +339,13 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         });
         return;
       }
-      if (view === "bobst-library") {
+      const landmarkDialogue = LANDMARK_DIALOGUES[view];
+      if (landmarkDialogue) {
         introPhaseRef.current = "camera_dialogue_streaming";
         setIntroPhase("camera_dialogue_streaming");
         setFixedCameraDialogueActive(true);
-        streamScript(bobstLibraryDialogue, () => {
-          const nextPhase = guidedTourActiveRef.current ? "bobst_next" : "free";
-          introPhaseRef.current = nextPhase;
-          setIntroPhase(nextPhase);
-          if (guidedTourActiveRef.current) {
-            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
-          }
-          else {
-            terminalPresentationRef.current = "reply";
-            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
-          }
-        });
-        return;
-      }
-      if (view === "stern-school-of-business") {
-        introPhaseRef.current = "camera_dialogue_streaming";
-        setIntroPhase("camera_dialogue_streaming");
-        setFixedCameraDialogueActive(true);
-        streamScript(sternSchoolOfBusinessDialogue, () => {
-          const nextPhase = guidedTourActiveRef.current ? "stern_next" : "free";
-          introPhaseRef.current = nextPhase;
-          setIntroPhase(nextPhase);
-          if (guidedTourActiveRef.current) {
-            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
-          }
-          else {
-            terminalPresentationRef.current = "reply";
-            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
-          }
-        });
-        return;
-      }
-      if (view === "courant-institute") {
-        introPhaseRef.current = "camera_dialogue_streaming";
-        setIntroPhase("camera_dialogue_streaming");
-        setFixedCameraDialogueActive(true);
-        streamScript(courantInstituteDialogue, () => {
-          const nextPhase = guidedTourActiveRef.current ? "courant_next" : "free";
-          introPhaseRef.current = nextPhase;
-          setIntroPhase(nextPhase);
-          if (guidedTourActiveRef.current) {
-            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
-          }
-          else {
-            terminalPresentationRef.current = "reply";
-            setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : "reply");
-          }
-        });
-        return;
-      }
-      if (view === "25-union-square-west" || view === "235-park-avenue-south") {
-        introPhaseRef.current = "camera_dialogue_streaming";
-        setIntroPhase("camera_dialogue_streaming");
-        setFixedCameraDialogueActive(true);
-        const dialogue = view === "25-union-square-west"
-          ? twentyFiveUnionSquareWestDialogue
-          : twoThirtyFiveParkAvenueSouthDialogue;
-        streamScript(dialogue, () => {
-          const guidedPhase = view === "25-union-square-west" ? "carlyle_next" : "shift_next";
-          const nextPhase = guidedTourActiveRef.current ? guidedPhase : "free";
+        streamScript(landmarkDialogue.content, () => {
+          const nextPhase = guidedTourActiveRef.current ? landmarkDialogue.phase : "free";
           introPhaseRef.current = nextPhase;
           setIntroPhase(nextPhase);
           if (guidedTourActiveRef.current) setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
@@ -411,20 +356,45 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         });
         return;
       }
-      if (view !== "manhattan" || introPhaseRef.current !== "touring") return;
-      introPhaseRef.current = "manhattan_arrival";
-      setIntroPhase("manhattan_arrival");
-      streamScript(manhattanDialogue, () => {
-        introPhaseRef.current = "manhattan_choice";
-        setIntroPhase("manhattan_choice");
-        setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
-      });
+      if (view !== "manhattan" || (introPhaseRef.current !== "touring" && introPhaseRef.current !== "globe_choice")) return;
+      showDestinationChoice("manhattan");
     };
     window.addEventListener(MAP_VIEW_SETTLED_EVENT, handleViewSettled);
     return () => window.removeEventListener(MAP_VIEW_SETTLED_EVENT, handleViewSettled);
-  }, [streamScript]);
+  }, [onStreamingChange, showDestinationChoice, streamScript]);
+
+  const chooseNewYork = () => {
+    guidedTourActiveRef.current = true;
+    setGuidedTourActive(true);
+    introPhaseRef.current = "touring";
+    setIntroPhase("touring");
+    setComposerOpen(false);
+    onMinimize();
+    if (lastSettledViewRef.current === "manhattan") return showDestinationChoice("manhattan");
+    dispatchAgentCommand({ type: "navigate_map", destination: "manhattan" });
+  };
+
+  const navigateSanDiegoTour = (destination: MapDestination) => {
+    guidedTourActiveRef.current = true;
+    setGuidedTourActive(true);
+    introPhaseRef.current = "camera_dialogue_streaming";
+    setIntroPhase("camera_dialogue_streaming");
+    onMinimize();
+    const stop = getSanDiegoStop(destination);
+    if (lastSettledViewRef.current === destination && stop) {
+      streamScript(stop.content, () => {
+        introPhaseRef.current = stop.phase;
+        setIntroPhase(stop.phase);
+        setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+      });
+      return;
+    }
+    dispatchAgentCommand({ type: "navigate_map", destination });
+  };
 
   const chooseManhattanNeighborhood = (destination: "union" | "washington") => {
+    if (destination === "union") unionTourShownRef.current = false;
+    else washingtonTourShownRef.current = false;
     if (destination === "union") unionTourVisitedRef.current = true;
     else washingtonTourVisitedRef.current = true;
     const nextPhase = destination === "washington" ? "washington_arrival" : "free";
@@ -466,11 +436,16 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     else if (list.scrollTop > maximum) list.scrollTop = maximum;
   };
 
+  const resumeDeferredCameraDialogue = () => {
+    if (!requestRef.current && queuedCaptionSegmentsRef.current.length === 0) deferredCameraDialogueRef.current?.();
+  };
+
   const requestNextMessage = () => {
     const nextSegment = queuedCaptionSegmentsRef.current.shift();
     if (nextSegment) {
       streamScript(nextSegment, () => {
         setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : terminalPresentationRef.current);
+        resumeDeferredCameraDialogue();
       }, true);
       return;
     }
@@ -489,7 +464,8 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
   };
 
   const returnToPreviousTourStop = () => {
-    if (shownScriptSegmentsRef.current.length > 1) {
+    const sanDiegoStop = Object.values(SAN_DIEGO_STOPS).find((stop) => stop.phase === introPhaseRef.current);
+    if (!sanDiegoStop && shownScriptSegmentsRef.current.length > 1) {
       const currentSegment = shownScriptSegmentsRef.current.pop();
       if (currentSegment) queuedCaptionSegmentsRef.current.unshift(currentSegment);
       setMessages((current) => {
@@ -501,19 +477,35 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       setScriptSegmentIndex((current) => Math.max(0, current - 1));
       return;
     }
-    const destination = introPhaseRef.current === "washington_next" || introPhaseRef.current === "union_next" ? "manhattan"
+    const destination = sanDiegoStop?.previous ?? (introPhaseRef.current === "washington_next" || introPhaseRef.current === "union_next" ? "manhattan"
       : introPhaseRef.current === "carlyle_next" ? "union"
         : introPhaseRef.current === "shift_next" ? "25-union-square-west"
           : introPhaseRef.current === "lipton_next" ? "washington"
             : introPhaseRef.current === "bobst_next" ? "lipton-hall"
               : introPhaseRef.current === "stern_next" ? "bobst-library"
                 : introPhaseRef.current === "courant_next" ? "stern-school-of-business"
-                  : null;
+                  : null);
     if (!destination) return;
     backwardTourDestinationRef.current = destination;
-    introPhaseRef.current = "free";
-    setIntroPhase("free");
+    const nextPhase = destination === "globe" && guidedTourActiveRef.current ? "globe_arrival" : "free";
+    introPhaseRef.current = nextPhase;
+    setIntroPhase(nextPhase);
     dispatchAgentCommand({ type: "navigate_map", destination });
+  };
+
+  const continueSanDiegoTour = () => {
+    const stop = Object.values(SAN_DIEGO_STOPS).find((candidate) => candidate.phase === introPhaseRef.current);
+    if (stop?.next) {
+      navigateSanDiegoTour(stop.next);
+      return;
+    }
+    introPhaseRef.current = "camera_dialogue_streaming";
+    setIntroPhase("camera_dialogue_streaming");
+    streamScript(sanDiegoCompleteDialogue, () => {
+      introPhaseRef.current = "san_diego_complete";
+      setIntroPhase("san_diego_complete");
+      setPresentationAction(queuedCaptionSegmentsRef.current.length > 0 ? "next" : null);
+    });
   };
 
   const returnToPreviousFreeSegment = () => {
@@ -628,12 +620,14 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     guidedTourActiveRef.current = true;
     setGuidedTourActive(true);
     setComposerOpen(false);
-    setIntroPhase("touring");
+    introPhaseRef.current = "globe_arrival";
+    setIntroPhase("globe_arrival");
     streamScript("Gotcha, let me show you around.", () => {
       window.setTimeout(() => {
         onMinimize();
         window.requestAnimationFrame(() => {
-          dispatchAgentCommand({ type: "navigate_map", destination: "manhattan" });
+          if (lastSettledViewRef.current === "globe") showDestinationChoice("globe");
+          else dispatchAgentCommand({ type: "navigate_map", destination: "globe" });
         });
       }, 280);
     });
@@ -656,6 +650,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
     event.preventDefault();
     const content = draft.trim();
     if (!content || pending) return;
+    deferredCameraDialogueRef.current = null;
     guidedTourActiveRef.current = false;
     setGuidedTourActive(false);
     introPhaseRef.current = "free";
@@ -732,9 +727,11 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       }
     } finally {
       if (requestRef.current === controller) {
+        requestRef.current = null;
         setPending(false);
         setAgentStatus("thinking");
         onStreamingChange(false);
+        resumeDeferredCameraDialogue();
       }
     }
   };
@@ -820,16 +817,31 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && introPhase === "manhattan_choice" && !pending && presentationAction === null && !composerOpen && (
+            {index === assistantMessages.length - 1 && (introPhase === "globe_choice" || introPhase === "manhattan_choice") && !pending && !captionStreaming && presentationAction === null && !composerOpen && (
+              <TourDestinationChoices
+                level={introPhase === "globe_choice" ? "city" : "neighborhood"}
+                onChooseNewYork={() => runAfterDockedCaptionFade(chooseNewYork)}
+                onChooseSanDiego={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("san-diego"))}
+                onChooseNeighborhood={(destination) => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood(destination))}
+                onReply={() => setComposerOpen(true)}
+              />
+            )}
+            {index === assistantMessages.length - 1 && (introPhase === "san_diego_next" || introPhase === "westview_next" || introPhase === "plaza_next" || introPhase === "mesa_verde_next" || introPhase === "deer_canyon_next") && !pending && presentationAction === null && !composerOpen && (
               <div className="agent-chat__caption-actions">
-                <div
-                  className="agent-chat__choices agent-chat__choices--white"
-                  aria-label="Choose a Manhattan neighborhood"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood("union"))}>Union Square</button>
-                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => chooseManhattanNeighborhood("washington"))}>Washington Square</button>
+                <div className="agent-chat__choices" aria-label="Continue the San Diego tour">
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(continueSanDiegoTour)}>Next</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(returnToPreviousTourStop)}>Back</button>
+                </div>
+                <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
+                  <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
+                </button>
+              </div>
+            )}
+            {index === assistantMessages.length - 1 && introPhase === "san_diego_complete" && !pending && presentationAction === null && !composerOpen && (
+              <div className="agent-chat__caption-actions">
+                <div className="agent-chat__choices agent-chat__choices--white" aria-label="Choose where to go after San Diego">
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(chooseNewYork)}>New York</button>
+                  <button type="button" onClick={() => runAfterDockedCaptionFade(() => navigateSanDiegoTour("globe"))}>Globe</button>
                 </div>
                 <button type="button" className="agent-chat__inline-reply" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setComposerOpen(true); }}>
                   <span className="agent-chat__reply-icon" aria-hidden="true">↩</span> Reply…
@@ -896,7 +908,7 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
                 </button>
               </div>
             )}
-            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
+            {index === assistantMessages.length - 1 && !pending && !(composerOpen && introPhase === "choice" && presentationAction === null) && (composerOpen || (!showFreeDialogueBack && introPhase !== "greeting" && introPhase !== "choice" && introPhase !== "declined" && introPhase !== "globe_arrival" && introPhase !== "globe_choice" && introPhase !== "touring" && introPhase !== "manhattan_arrival" && introPhase !== "manhattan_choice" && introPhase !== "union_next" && introPhase !== "carlyle_next" && introPhase !== "shift_next" && introPhase !== "washington_next" && introPhase !== "lipton_next" && introPhase !== "bobst_next" && introPhase !== "stern_next" && introPhase !== "courant_next" && introPhase !== "tour_location_choice" && introPhase !== "san_diego_next" && introPhase !== "westview_next" && introPhase !== "plaza_next" && introPhase !== "mesa_verde_next" && introPhase !== "deer_canyon_next" && introPhase !== "san_diego_complete" && introPhase !== "camera_dialogue_streaming" && presentationAction === null)) && (
               composerOpen ? (
                 <form className="agent-chat__form agent-chat__form--inline" onSubmit={submit} ref={formRef}>
                   <div className="agent-chat__input-row">

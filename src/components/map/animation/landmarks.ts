@@ -8,6 +8,7 @@ export function animateLandmarks(
   renderer: THREE.WebGLRenderer,
 ) {
   const selected = landmarks.find((landmark) => landmark.selected);
+  let shadowChanged = false;
   for (const landmark of landmarks) {
     const lift = !landmark.selected && landmark.hovered ? 4.5 : 0;
     const previousY = landmark.root.position.y;
@@ -18,6 +19,7 @@ export function animateLandmarks(
     );
     if (Math.abs(landmark.root.position.y - previousY) > 0.001) {
       renderer.shadowMap.needsUpdate = true;
+      shadowChanged = true;
     }
     const glowMaterial = (landmark.glow.children[0] as THREE.Mesh | undefined)?.material;
     if (!(glowMaterial instanceof THREE.MeshBasicMaterial)) continue;
@@ -31,4 +33,5 @@ export function animateLandmarks(
       interactionEase,
     );
   }
+  return shadowChanged;
 }

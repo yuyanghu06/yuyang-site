@@ -109,5 +109,6 @@ export const MANHATTAN_CAMERA_RADIUS = (MANHATTAN_CAMERA_HEIGHT - MANHATTAN_CENT
 export const HUDSON_MIN_CITY_TILE_X = -1152;
 export const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
-export type MapView = "globe" | "manhattan" | "washington" | "union";
+export type MapView = "globe" | "manhattan" | "washington" | "union" | "san-diego";
+export type CityOverview = "manhattan" | "san-diego";
 

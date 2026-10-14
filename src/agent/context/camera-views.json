@@ -3,6 +3,7 @@
   { "id": "manhattan", "label": "Manhattan", "kind": "geographic" },
   { "id": "washington", "label": "Washington Square", "kind": "geographic" },
   { "id": "union", "label": "Union Square", "kind": "geographic" },
+  { "id": "san-diego", "label": "San Diego · Torrey Highlands", "kind": "geographic" },
   {
     "id": "bobst-library",
     "label": "Bobst Library",
@@ -70,5 +71,49 @@
     "height": 235,
     "radius": 330,
     "zoom": 2.41
+  },
+  {
+    "id": "westview-high-school",
+    "label": "Westview High School",
+    "kind": "landmark",
+    "neighborhood": "san-diego",
+    "rootNameIncludes": "Westview High School",
+    "azimuth": 0,
+    "height": 500,
+    "radius": 650,
+    "zoom": 1.4
+  },
+  {
+    "id": "torrey-highlands-plaza",
+    "label": "Torrey Highlands Plaza · Chef Zhu's",
+    "kind": "landmark",
+    "neighborhood": "san-diego",
+    "rootNameIncludes": "Torrey Highlands Plaza",
+    "azimuth": 0,
+    "height": 350,
+    "radius": 460,
+    "zoom": 1.6
+  },
+  {
+    "id": "mesa-verde-middle-school",
+    "label": "Mesa Verde Middle School",
+    "kind": "landmark",
+    "neighborhood": "san-diego",
+    "rootNameIncludes": "Mesa Verde Middle School",
+    "azimuth": 0,
+    "height": 350,
+    "radius": 460,
+    "zoom": 1.6
+  },
+  {
+    "id": "deer-canyon-elementary-school",
+    "label": "Deer Canyon Elementary School",
+    "kind": "landmark",
+    "neighborhood": "san-diego",
+    "rootNameIncludes": "Deer Canyon Elementary School",
+    "azimuth": 0,
+    "height": 350,
+    "radius": 460,
+    "zoom": 1.6
   }
 ]

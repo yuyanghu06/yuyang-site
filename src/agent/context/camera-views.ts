@@ -1,13 +1,17 @@
 import cameraViews from "./camera-views.json";
 
-export type GeographicMapView = "globe" | "manhattan" | "washington" | "union";
+export type GeographicMapView = "globe" | "manhattan" | "washington" | "union" | "san-diego";
 export type LandmarkCameraViewId =
   | "bobst-library"
   | "lipton-hall"
   | "courant-institute"
   | "stern-school-of-business"
   | "25-union-square-west"
-  | "235-park-avenue-south";
+  | "235-park-avenue-south"
+  | "westview-high-school"
+  | "torrey-highlands-plaza"
+  | "mesa-verde-middle-school"
+  | "deer-canyon-elementary-school";
 export type CameraViewId = GeographicMapView | LandmarkCameraViewId;
 
 interface GeographicCameraView {
@@ -20,7 +24,7 @@ export interface LandmarkCameraView {
   id: LandmarkCameraViewId;
   label: string;
   kind: "landmark";
-  neighborhood: "washington" | "union";
+  neighborhood: "washington" | "union" | "san-diego";
   rootNameIncludes: string;
   targetOffset?: readonly [number, number, number];
   azimuth: number;

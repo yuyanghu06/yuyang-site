@@ -4,12 +4,16 @@ This folder owns concise, conversational Markdown dialogue injected into the cli
 
 ## Subfolders
 
-- `global/` contains dialogue that belongs to the overall experience rather than one geographic view.
+- `global/` contains the invitation and globe-level city-choice question for New York and San Diego.
 - `manhattan/` contains only the Manhattan overview dialogue.
 - `washington-square/` contains the Washington Square overview and landmark camera dialogue.
 - `union-square/` contains the Union Square overview and landmark camera dialogue.
+- `san-diego/` contains authored Torrey Highlands neighborhood, Westview High School, and plaza narratives, plus provisional Mesa Verde, Deer Canyon, and route-completion dialogue. Westview links its East Asian Student Union account, and the plaza links Chef Beric episodes.
 
 ## Files
 
-- `index.ts` imports and exports every overview and landmark Markdown dialogue string consumed by `agent-chat.tsx`, including both clickable Union Square buildings.
+- `index.ts` imports and exports the globe city-choice question and every overview and landmark Markdown dialogue string consumed by `agent-chat.tsx`, including the New York stops and Torrey Highlands neighborhood overview → Westview → plaza → Mesa Verde → Deer Canyon route.
+- `tour-stops.ts` defines typed dialogue phases, including globe arrival/city choice, the San Diego stop sequence, shared New York landmark captions, and the previous-stop lookup used by Back. San Diego's terminal Back action returns directly to the preceding camera stop even after multiple captions; guided overview Back returns to the globe city choice. New York retains its existing caption-history behavior. Each authored stop uses the same renderer; freeform Reply still exits the scripted route.
+- `caption-text.ts` owns the existing 120-character soft-target caption splitting and link protection shared by all tour and agent replies; paragraph boundaries always start another caption, and protected links are restored after segmentation.
+- `INFO.md` documents the dialogue folders and direct files.
 - `markdown.d.ts` declares Markdown imports as string modules for TypeScript.

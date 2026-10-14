@@ -10,6 +10,9 @@ export const MANHATTAN_LONGITUDE = -74.006;
 // places the low-poly coastline's NYC destination at WGS84 + 224°.
 export const IMPORTED_EARTH_NYC_LATITUDE = MANHATTAN_LATITUDE;
 export const IMPORTED_EARTH_NYC_LONGITUDE = MANHATTAN_LONGITUDE + 224;
+// Torrey Highlands / Camino del Sur, the requested San Diego region.
+export const IMPORTED_EARTH_SD_LATITUDE = 32.9624;
+export const IMPORTED_EARTH_SD_LONGITUDE = -117.1548 + 224;
 
 export function globePoint(latitude: number, longitude: number, radius: number) {
   const latitudeRadians = THREE.MathUtils.degToRad(latitude);
@@ -48,7 +51,7 @@ export function northUpGlobeQuaternion(latitude: number, longitude: number) {
 
 export function createWatercolorGlobe() {
   const group = new THREE.Group();
-  group.name = "Imported low-poly globe with Manhattan destination";
+  group.name = "Imported low-poly globe with New York and San Diego destinations";
   const placeholder = new THREE.Mesh(
     new THREE.IcosahedronGeometry(GLOBE_RADIUS, 4),
     new THREE.MeshStandardMaterial({
@@ -60,15 +63,21 @@ export function createWatercolorGlobe() {
   placeholder.name = "Powder blue globe loading placeholder";
   group.add(placeholder);
 
-  const manhattanNormal = globePoint(IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE, 1);
   group.quaternion.copy(
     northUpGlobeQuaternion(IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE),
   );
+  const { marker, leader } = createGlobeDestinationMarker("New York City", IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE, 1);
+  const { marker: sanDiegoMarker, leader: sanDiegoLeader } = createGlobeDestinationMarker("San Diego", IMPORTED_EARTH_SD_LATITUDE, IMPORTED_EARTH_SD_LONGITUDE, -1);
+  group.add(marker, sanDiegoMarker);
+  return { group, marker, leader, sanDiegoMarker, sanDiegoLeader, placeholder };
+}
+
+function createGlobeDestinationMarker(labelText: string, latitude: number, longitude: number, side: 1 | -1) {
   const marker = new THREE.Group();
-  marker.name = "Manhattan globe destination";
-  marker.position.copy(manhattanNormal).multiplyScalar(GLOBE_RADIUS + 4);
+  marker.name = `${labelText} globe destination`;
+  marker.position.copy(globePoint(latitude, longitude, 1)).multiplyScalar(GLOBE_RADIUS + 4);
   marker.quaternion.copy(
-    globeTangentQuaternion(IMPORTED_EARTH_NYC_LATITUDE, IMPORTED_EARTH_NYC_LONGITUDE),
+    globeTangentQuaternion(latitude, longitude),
   );
   const markerFill = new THREE.Mesh(
     new THREE.CircleGeometry(2.1, 24),
@@ -78,9 +87,9 @@ export function createWatercolorGlobe() {
   const leaderMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
   const leaderLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(2, 0, 1),
-      new THREE.Vector3(18, 14, 1),
-      new THREE.Vector3(68, 14, 1),
+      new THREE.Vector3(side * 2, 0, 1),
+      new THREE.Vector3(side * 18, 14, 1),
+      new THREE.Vector3(side * 68, 14, 1),
     ]),
     leaderMaterial,
   );
@@ -90,11 +99,12 @@ export function createWatercolorGlobe() {
   labelCanvas.width = 512;
   labelCanvas.height = 96;
   const labelContext = labelCanvas.getContext("2d");
-  if (!labelContext) throw new Error("Could not create the Manhattan label canvas");
+  if (!labelContext) throw new Error("Could not create the globe label canvas");
   labelContext.font = "600 55px Helvetica Neue, Arial, sans-serif";
   labelContext.fillStyle = "#ffffff";
   labelContext.textBaseline = "middle";
-  labelContext.fillText("New York City", 8, labelCanvas.height / 2);
+  labelContext.textAlign = side === -1 ? "right" : "left";
+  labelContext.fillText(labelText, side === -1 ? labelCanvas.width - 8 : 8, labelCanvas.height / 2);
   const labelTexture = new THREE.CanvasTexture(labelCanvas);
   labelTexture.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -104,7 +114,12 @@ export function createWatercolorGlobe() {
     depthWrite: false,
     toneMapped: false,
   }));
-  label.position.set(139, 14, 2);
+  label.position.set(side * 139, 14, 2);
+  if (side === -1) {
+    // Keep the visible text's right edge beside the scaled leader endpoint.
+    label.center.set(1, 0.5);
+    label.position.set(-68 * leader.scale.x - 5, 14 * leader.scale.y, 2);
+  }
   label.scale.set(136.5, 26, 1);
   const calloutHitMaterial = new THREE.MeshBasicMaterial({
     transparent: true,
@@ -115,18 +130,18 @@ export function createWatercolorGlobe() {
     side: THREE.DoubleSide,
   });
   const markerHitTarget = new THREE.Mesh(new THREE.CircleGeometry(13, 24), calloutHitMaterial);
-  markerHitTarget.name = "NYC dot padded interaction target";
+  markerHitTarget.name = `${labelText} dot padded interaction target`;
   markerHitTarget.position.z = 3;
   const leaderHitTarget = new THREE.Mesh(new THREE.PlaneGeometry(72, 16), calloutHitMaterial);
-  leaderHitTarget.name = "NYC leader padded interaction target";
-  leaderHitTarget.position.set(36, 8, 3);
+  leaderHitTarget.name = `${labelText} leader padded interaction target`;
+  leaderHitTarget.position.set(side * 36, 8, 3);
   markerFill.renderOrder = 4;
   leader.renderOrder = 4;
   label.renderOrder = 4;
   marker.add(markerFill, leader, label, markerHitTarget, leaderHitTarget);
-  group.add(marker);
-  return { group, marker, leader, placeholder };
+  return { marker, leader };
 }
+
 
 export function createStarField() {
   const group = new THREE.Group();

@@ -19,7 +19,11 @@
     "data:washington-park": "node scripts/map-data/build-washington-park.mjs",
     "data:union-park": "node scripts/map-data/build-union-square-park.mjs",
     "data:hudson-waterfront": "node scripts/map-data/build-hudson-waterfront.mjs",
-    "data:manhattan-parks": "node scripts/map-data/build-manhattan-parks.mjs"
+    "data:manhattan-parks": "node scripts/map-data/build-manhattan-parks.mjs",
+    "data:san-diego": "node scripts/map-data/build-san-diego.mjs",
+    "data:san-diego:cars": "node scripts/map-data/build-san-diego-car-spawns.mjs",
+    "data:san-diego:people": "node scripts/map-data/build-san-diego-people-spawns.mjs",
+    "data:san-diego:population": "npm run data:san-diego:people && npm run data:san-diego:cars"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^8.2.0",

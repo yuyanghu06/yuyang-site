@@ -7,11 +7,11 @@ import {
 import type { LandmarkCameraViewId } from "@/agent/context/camera-views";
 
 export function createManhattanDestinationMarker(
-  destination: "washington" | "union",
+  destination: "washington" | "union" | "san-diego",
   displayScale = 1,
 ) {
   const group = new THREE.Group();
-  group.name = `${destination === "washington" ? "Washington" : "Union"} Square Manhattan destination marker`;
+  group.name = `${destination === "san-diego" ? "San Diego" : destination === "washington" ? "Washington Square" : "Union Square"} destination marker`;
   const fallbackCanvas = document.createElement("canvas");
   fallbackCanvas.width = 256;
   fallbackCanvas.height = 320;
