@@ -1,10 +1,12 @@
 # Shared map infrastructure
 
+The shared classifier recognizes all three district views and all four Torrey Highlands landmarks, so picking, renderer overlay selection, navigation and audio consistently treat them as San Diego.
+
 Cross-view types, constants, logging, renderer creation, and frame composition live here. There are no direct subfolders. Keep this layer view-neutral and preserve one renderer across cities.
 
-## Files
+## Direct files
 
 - `core.ts` defines geometry contracts, shared animation and New York framing constants, all geographic `MapView` values, and the New York/San Diego `CityOverview` type.
 - `street-life.ts` defines the shared NYC pedestrian/car geometry, clothing, materials, animation, staged reveal, visibility guards, and conservative culling envelopes, and optional per-spawn ground support heights (NYC defaults stay exact); each city supplies its own frozen routes and vehicle colors.
-- `rendering.ts` creates the persistent renderer and renders the selected city's scene. San Diego deliberately omits the New York-only sky overlay, so overlapping local coordinates cannot mix city visuals.
+- `rendering.ts` creates the persistent renderer and composes the selected map and its own sky overlay. The runtime supplies distinct New York and San Diego sky scenes and can pass a separate overlay camera, preserving city isolation while allowing overhead clouds/planes/birds in San Diego.
 - `info.md` is this folder guide.

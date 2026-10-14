@@ -1,7 +1,11 @@
 import * as THREE from "three";
 
 /** Cache culling bounds and local transforms; landmark lift remains dynamic. */
-export function prepareSanDiegoScene(group: THREE.Group, landmarkRoots: THREE.Mesh[]) {
+export function prepareSanDiegoScene(
+  group: THREE.Group,
+  landmarkRoots: THREE.Mesh[],
+  castsShadow?: (mesh: THREE.Mesh) => boolean,
+) {
   const dynamicRoots = new Set<THREE.Object3D>(landmarkRoots);
   group.traverse((object) => {
     object.updateMatrix();
@@ -10,7 +14,7 @@ export function prepareSanDiegoScene(group: THREE.Group, landmarkRoots: THREE.Me
     object.geometry.computeBoundingBox();
     object.geometry.computeBoundingSphere();
     const category = object.userData.backgroundCategory ?? object.name;
-    object.castShadow = category !== "terrain";
+    object.castShadow = castsShadow ? castsShadow(object) : category !== "terrain";
     object.receiveShadow = true;
   });
 }

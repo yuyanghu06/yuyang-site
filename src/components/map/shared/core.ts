@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { GeographicMapView } from "@/agent/context/camera-views";
 
 export type Point3 = [number, number, number];
 export type SurfaceKind = "ground" | "roof" | "wall";
@@ -109,6 +110,5 @@ export const MANHATTAN_CAMERA_RADIUS = (MANHATTAN_CAMERA_HEIGHT - MANHATTAN_CENT
 export const HUDSON_MIN_CITY_TILE_X = -1152;
 export const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
-export type MapView = "globe" | "manhattan" | "washington" | "union" | "san-diego";
+export type MapView = GeographicMapView;
 export type CityOverview = "manhattan" | "san-diego";
-

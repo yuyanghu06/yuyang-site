@@ -1,5 +1,7 @@
 # Frame animation systems
 
+The integrated runtime skips hidden city/globe frame work, updates population only in Torrey Highlands, explicitly hides it on district changes and invalidates cached San Diego shadows when landmark lift or light framing changes.
+
 There are no direct subfolders. Independent per-frame systems live here: globe-cloud motion, globe planes and boats, landmark glow/lift, travelers, navigation and destination markers, spring arrivals, and adaptive resolution.
 
 Keep each system focused and pass explicit state rather than reaching into React lifecycle ownership.
@@ -14,3 +16,5 @@ Keep each system focused and pass explicit state rather than reaching into React
 - `markers.ts` animates navigation and destination markers, including all four San Diego landmark pins; the New York square arrow stays hidden outside its own neighborhoods.
 - `travelers.ts` advances Manhattan and New York neighborhood ambient travelers without exposing them over San Diego.
 - `INFO.md` is this local ownership guide.
+
+San Diego pins retain the shared NYC 1.55-radian/second bob and staggered phases; the runtime supplies a zoom/projection-adjusted amplitude of four screen pixels. The NYC default amplitude remains four world meters.

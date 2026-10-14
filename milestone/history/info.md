@@ -6,6 +6,30 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-13_21-45-18-publish-torrey-pines-refinements.md` records the requested new refinement development branch, complete release scope, fresh production-build verification, and preservation of prior development refs.
+
+- `2026-10-13_21-40-34-torrey-pines-parking.md` records the planar north Torrey Pines parking lot, local entrance/frontage grading, explicit terrain tradeoffs, independent checks, and matched visual review.
+
+- `2026-10-13_21-07-12-torrey-pines-roads.md` records source-preserving Torrey Pines road profiles and widths, localized terrain/foundation/footway corrections, independent signoff, final screenshots, and tunnel asset verification.
+
+- `2026-10-13_19-57-08-torrey-pines-topology.md` records local conforming terrain refinement, the curved crest and branching gullies, corrected service-building foundations, and independent geometry/visual verification.
+
+- `2026-10-13_17-38-22-phone-preview-tunnel.md` records the temporary Cloudflare phone preview, exact-host dev-origin allowance, detached processes, and public HTTP/HMR checks.
+
+- `2026-10-13_16-33-24-separate-san-diego-dev-branch.md` records the requested separate development branch, complete release scope, preserved original dev ref, and passing production build before publication.
+
+- `2026-10-13_16-30-10-waterfall-rocks-only-scale.md` records the further boulder-only reduction, preserved cascade/pool/foam and all other geometry, and independent verification.
+
+- `2026-10-13_16-24-33-smaller-park-village-waterfall.md` records the user-requested waterfall size reduction, creek alignment, connected low cascade, preserved map geometry, and desktop/phone review.
+
+- `2026-10-13_16-12-53-torrey-pines-raised-terrain.md` records the raised coastal ridge, oblique camera, cohesive cliffs, corrected building shoulder, and independent geometry/coverage verification.
+
+- `2026-10-13_15-53-00-san-diego-road-join-review.md` records the final road-bend gap repair, preserved original geometry, and independent close-up signoff.
+
+- `2026-10-13_15-40-00-san-diego-detailing-qa.md` records camera coverage constraints, terrain/coast/foundation repairs, shadow cleanup, responsive choices, and independent visual/geometry checks.
+
+- `2026-10-13_15-03-45-expanded-san-diego-region.md` records the expanded San Diego overview, three district views, static waterfall scenery, geometry repairs, and verified navigation/framing.
+
 - `2026-10-13_12-01-52-prepare-dev-branch-release.md` records the complete diff prepared for the dev branch and fresh production-build verification.
 
 - `2026-10-13_10-44-12-fixed-san-diego-cameras.md` records restoring fixed San Diego cameras, hiding authoring controls, and checking guided navigation.
@@ -605,3 +629,11 @@ Use these records only when historical context is needed; do not load the entire
 
 - `2026-10-13_21-51-01-san-diego-runtime-optimization.md` records final static/glow/frame/shadow/lifecycle implementation and harness checks.
 - `2026-10-13_21-51-01-san-diego-optimization-final-review.md` records independent acceptance, production/browser evidence, rejected batching, and benchmark limits.
+
+- `2026-10-14_00-24-46-pending-dev-torrey-pines-merge.md` records the pending main-dev/new-dev merge, 28 unresolved paths, user-selected visual preservation, and remaining integration decisions.
+
+- `2026-10-14_00-49-30-dev-torrey-pines-merge-review.md` records all conflict decisions, preserved main-dev assets/scripts, regional exclusion regeneration, final rotation/pin changes, build and actual-source/browser evidence, and the staged uncommitted review state.
+
+- `2026-10-14_02-09-45-san-diego-ocean-sky-labels.md` records the scenery-label removal, ocean crests, bobbing pins, corrected map-anchored sky, stronger departure zoom, checks and uncommitted merge preservation.
+
+- `2026-10-14_12-50-35-publish-dev-torrey-pines-integration.md` records the authorized main-dev release, fresh build/lint/whitespace checks, reviewed scope, preserved stash and normal `origin/dev` publication.

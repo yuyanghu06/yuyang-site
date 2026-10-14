@@ -1,6 +1,7 @@
 import cameraViews from "./camera-views.json";
 
-export type GeographicMapView = "globe" | "manhattan" | "washington" | "union" | "san-diego";
+export type SanDiegoDistrictView = "torrey-highlands" | "torrey-pines" | "park-village";
+export type GeographicMapView = "globe" | "manhattan" | "washington" | "union" | "san-diego" | SanDiegoDistrictView;
 export type LandmarkCameraViewId =
   | "bobst-library"
   | "lipton-hall"
@@ -24,7 +25,7 @@ export interface LandmarkCameraView {
   id: LandmarkCameraViewId;
   label: string;
   kind: "landmark";
-  neighborhood: "washington" | "union" | "san-diego";
+  neighborhood: "washington" | "union" | "torrey-highlands";
   rootNameIncludes: string;
   targetOffset?: readonly [number, number, number];
   azimuth: number;
@@ -48,4 +49,23 @@ export function getLandmarkCameraViewForRoot(rootName: string): LandmarkCameraVi
   return CAMERA_VIEWS.find((view) =>
     view.kind === "landmark" && rootName.includes(view.rootNameIncludes),
   ) as LandmarkCameraView | undefined;
+}
+
+export function isSanDiegoView(view: CameraViewId): boolean {
+  return view === "san-diego" || view === "torrey-highlands" || view === "torrey-pines"
+    || view === "park-village" || view === "westview-high-school" || view === "torrey-highlands-plaza"
+    || view === "mesa-verde-middle-school" || view === "deer-canyon-elementary-school";
+}
+
+export function getCityOverview(view: CameraViewId): "manhattan" | "san-diego" {
+  return isSanDiegoView(view) ? "san-diego" : "manhattan";
+}
+
+/** Geographic zoom-out destination; tour order is defined separately. */
+export function getParentMapView(view: CameraViewId): GeographicMapView | null {
+  if (view === "globe") return null;
+  if (view === "san-diego" || view === "manhattan") return "globe";
+  if (view === "torrey-highlands" || view === "torrey-pines" || view === "park-village") return "san-diego";
+  const camera = getCameraView(view);
+  return camera?.kind === "landmark" ? camera.neighborhood : "manhattan";
 }

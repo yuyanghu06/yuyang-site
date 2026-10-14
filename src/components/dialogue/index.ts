@@ -10,6 +10,9 @@ import twoThirtyFiveParkAvenueSouthDialogue from "./union-square/235-park-avenue
 import unionSquareDialogue from "./union-square/union-square.md";
 import washingtonSquareDialogue from "./washington-square/washington-square.md";
 import torreyHighlandsDialogue from "./san-diego/torrey-highlands.md";
+import torreyPinesDialogue from "./san-diego/torrey-pines.md";
+import parkVillageDialogue from "./san-diego/park-village.md";
+import sanDiegoDialogue from "./san-diego/san-diego.md";
 import westviewHighSchoolDialogue from "./san-diego/westview-high-school.md";
 import torreyHighlandsPlazaDialogue from "./san-diego/torrey-highlands-plaza.md";
 import mesaVerdeDialogue from "./san-diego/mesa-verde-middle-school.md";
@@ -28,7 +31,10 @@ export {
   twoThirtyFiveParkAvenueSouthDialogue,
   unionSquareDialogue,
   washingtonSquareDialogue,
+  sanDiegoDialogue,
   torreyHighlandsDialogue,
+  torreyPinesDialogue,
+  parkVillageDialogue,
   westviewHighSchoolDialogue,
   torreyHighlandsPlazaDialogue,
   sanDiegoCompleteDialogue,

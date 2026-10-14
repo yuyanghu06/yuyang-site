@@ -2,8 +2,10 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const markdownStringLoader = path.resolve(process.cwd(), "scripts/loaders/markdown-string-loader.cjs");
+const devAllowedOrigin = process.env.NEXT_DEV_ALLOWED_ORIGIN?.trim();
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: devAllowedOrigin ? [devAllowedOrigin] : [],
   // The map owns a long-lived imperative WebGL scene. React's development-only
   // Strict Mode remount tears down the first canvas and immediately creates a
   // second one, making large startup layers such as the rivers visibly flash.
