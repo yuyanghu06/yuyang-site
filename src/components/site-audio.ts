@@ -1,6 +1,6 @@
 "use client";
 
-import type { GeographicMapView } from "@/agent/context/camera-views";
+import type { GeographicMapView, LandmarkCameraViewId } from "@/agent/context/camera-views";
 
 export type SiteAudioView = GeographicMapView;
 
@@ -125,6 +125,7 @@ export const primeDialogueAudio = async () => {
 
 export type MapAudioState = {
   view: SiteAudioView;
+  selectedLandmark: LandmarkCameraViewId | null;
   experienceStarted: boolean;
   cameraLocked: boolean;
   cameraTransitioning: boolean;
@@ -135,6 +136,12 @@ export const createMapAudioController = () => {
   const crowd = registerChannelAudio(new Audio("/audio/community-crowd-talking-1m20.m4a"), "effects");
   crowd.loop = true;
   crowd.volume = 0;
+  const mall = registerChannelAudio(new Audio(), "effects");
+  mall.loop = true;
+  mall.volume = 0;
+  const birds = registerChannelAudio(new Audio(), "effects");
+  birds.loop = true;
+  birds.volume = 0;
   const ambience = registerChannelAudio(new Audio("/audio/far-away-city-traffic-ambience.wav"), "effects");
   ambience.loop = true;
   ambience.volume = 0;
@@ -163,6 +170,8 @@ export const createMapAudioController = () => {
   const BACKGROUND_VOLUME = 0.06;
   const BACKGROUND_CROSSFADE_MS = 3000;
   let crowdEnabled = false;
+  let mallEnabled = false;
+  let birdsEnabled = false;
   let ambienceTarget = 0;
   let zoomWatcher = 0;
   let zoomGeneration = 0;
@@ -170,7 +179,22 @@ export const createMapAudioController = () => {
   let backgroundStarted = false;
   let backgroundIndex = 0;
   let backgroundGeneration = 0;
+  let sanDiegoPrepared = false;
+  let disposed = false;
   const loopGenerations = new WeakMap<HTMLAudioElement, number>();
+
+  const prepareSanDiego = () => {
+    if (disposed || sanDiegoPrepared) return;
+    sanDiegoPrepared = true;
+    for (const [audio, source] of [
+      [mall, "/audio/vons-shopping-mall-ambience.mp3"],
+      [birds, "/audio/san-diego-suburban-birds.mp3"],
+    ] as const) {
+      audio.preload = "auto";
+      audio.src = source;
+      audio.load();
+    }
+  };
 
   const setLoop = (audio: HTMLAudioElement, enabled: boolean, target: number, fadeMs: number) => {
     const generation = (loopGenerations.get(audio) ?? 0) + 1;
@@ -236,17 +260,31 @@ export const createMapAudioController = () => {
     fadeAudioVolume(previous, 0, BACKGROUND_CROSSFADE_MS, () => stopAndReset(previous));
   };
 
-  const update = ({ view, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
+  const update = ({ view, selectedLandmark, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
+    if (disposed) return;
+    if (view === "san-diego") prepareSanDiego();
     setBackgroundEnabled(experienceStarted);
     updateBackgroundPlaylist();
-    const nextCrowdEnabled = (view === "washington" || view === "union" || view === "san-diego")
+    const nextMallEnabled = view === "san-diego" && selectedLandmark === "torrey-highlands-plaza"
+      && cameraLocked && !cameraTransitioning && !globeTransitioning;
+    if (nextMallEnabled !== mallEnabled) {
+      mallEnabled = nextMallEnabled;
+      setLoop(mall, mallEnabled, CROWD_VOLUME, CROWD_FADE_MS);
+    }
+    const nextCrowdEnabled = (view === "washington" || view === "union" || (view === "san-diego" && selectedLandmark !== "torrey-highlands-plaza"))
       && cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextCrowdEnabled !== crowdEnabled) {
       crowdEnabled = nextCrowdEnabled;
       setLoop(crowd, crowdEnabled, CROWD_VOLUME, CROWD_FADE_MS);
     }
 
-    const nextAmbienceTarget = globeTransitioning || view === "globe"
+    const nextBirdsEnabled = view === "san-diego" && !cameraLocked && !cameraTransitioning && !globeTransitioning;
+    if (nextBirdsEnabled !== birdsEnabled) {
+      birdsEnabled = nextBirdsEnabled;
+      setLoop(birds, birdsEnabled, AMBIENCE_CLOSE_VOLUME, AMBIENCE_FADE_MS);
+    }
+
+    const nextAmbienceTarget = globeTransitioning || view === "globe" || view === "san-diego"
       ? 0
       : view === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
     if (nextAmbienceTarget !== ambienceTarget) {
@@ -256,6 +294,7 @@ export const createMapAudioController = () => {
   };
 
   const playGlobeTransition = () => {
+    if (disposed) return;
     const generation = ++zoomGeneration;
     cancelAnimationFrame(zoomWatcher);
     stopAndReset(zoom);
@@ -278,10 +317,11 @@ export const createMapAudioController = () => {
   };
 
   const dispose = () => {
+    disposed = true;
     zoomGeneration += 1;
     backgroundGeneration += 1;
     cancelAnimationFrame(zoomWatcher);
-    for (const audio of [crowd, ambience, zoom, ...backgroundTracks]) {
+    for (const audio of [crowd, mall, birds, ambience, zoom, ...backgroundTracks]) {
       loopGenerations.set(audio, (loopGenerations.get(audio) ?? 0) + 1);
       stopAndReset(audio);
       audio.src = "";
@@ -289,5 +329,5 @@ export const createMapAudioController = () => {
     }
   };
 
-  return { dispose, playGlobeTransition, update };
+  return { dispose, playGlobeTransition, prepareSanDiego, update };
 };

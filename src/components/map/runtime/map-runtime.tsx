@@ -539,6 +539,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
     ensureSanDiego = () => {
       if (sanDiegoReady) return Promise.resolve(true);
       if (sanDiegoLoading) return sanDiegoLoading;
+      mapAudio.prepareSanDiego();
       setStatus("");
       sanDiegoLoading = import("../san-diego/load-scene")
         .then(({ loadSanDiegoScene }) => disposed ? null : loadSanDiegoScene({ signal: abortController.signal }))
@@ -1063,6 +1064,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
       }
       mapAudio.update({
         view: activeStudy,
+        selectedLandmark: clickableLandmarks.find((landmark) => landmark.selected)?.cameraViewId ?? null,
         experienceStarted: experienceStartedRef.current,
         cameraLocked,
         cameraTransitioning,

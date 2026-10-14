@@ -43,7 +43,7 @@ Accepting the shared guide's Yes/No invitation keeps or returns the camera to th
 - `tour-destination-choices.tsx` renders the separate city and New York neighborhood menus with one inline Reply action; `agent-chat.tsx` owns their navigation and fade timing.
 - `avatar-call.tsx` owns the guide's dock, expanded call shell, and audio controls.
 - `caption-reveal.ts` schedules frame-aligned caption text reveals.
-- `site-audio.ts` manages shared music, ambient audio, sound effects, and channel muting.
+- `site-audio.ts` manages shared music, ambient audio, sound effects, and channel muting. San Diego uses birds in the overview, student/crowd talking at its three schools, and mall ambience at Vons/Torrey Highlands Plaza; selected landmark IDs distinguish the closeups. New York retains its traffic and crowd loops.
 - `world-loader.tsx` renders the introductory loading and entry flow.
 - `info.md` is this folder's guide.
 
