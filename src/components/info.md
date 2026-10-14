@@ -48,3 +48,5 @@ Accepting the shared guide's Yes/No invitation keeps or returns the camera to th
 - `info.md` is this folder's guide.
 
 San Diego-only birds and mall ambience remain source-free at global startup. The audio controller’s idempotent `prepareSanDiego()` assigns and preloads their sources when the lazy destination load begins, so 5,338,866 bytes of unused SD audio are deferred for New York/globe visits. Playback still waits for the existing settled-camera policy, and effects mute/fades/disposal remain shared.
+
+City audio preparation is symmetric: `prepareManhattan()` leaves the 18,857,098-byte New York traffic WAV source-free until NYC is requested; `prepareSanDiego()` similarly defers birds/mall for NYC-only visits. Shared crowd, playlist mute/pause/resume, fades and camera settlement retain their existing behavior.

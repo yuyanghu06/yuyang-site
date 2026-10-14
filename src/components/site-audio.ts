@@ -144,7 +144,7 @@ export const createMapAudioController = () => {
   const birds = registerChannelAudio(new Audio(), "effects");
   birds.loop = true;
   birds.volume = 0;
-  const ambience = registerChannelAudio(new Audio("/audio/far-away-city-traffic-ambience.wav"), "effects");
+  const ambience = registerChannelAudio(new Audio(), "effects");
   ambience.loop = true;
   ambience.volume = 0;
   const zoom = registerChannelAudio(new Audio("/audio/gamestudio-world-cloud-zoom.mp3"), "effects");
@@ -182,6 +182,7 @@ export const createMapAudioController = () => {
   let backgroundIndex = 0;
   let backgroundGeneration = 0;
   let sanDiegoPrepared = false;
+  let manhattanPrepared = false;
   let disposed = false;
   const loopGenerations = new WeakMap<HTMLAudioElement, number>();
 
@@ -196,6 +197,14 @@ export const createMapAudioController = () => {
       audio.src = source;
       audio.load();
     }
+  };
+
+  const prepareManhattan = () => {
+    if (disposed || manhattanPrepared) return;
+    manhattanPrepared = true;
+    ambience.preload = "auto";
+    ambience.src = "/audio/far-away-city-traffic-ambience.wav";
+    ambience.load();
   };
 
   const setLoop = (audio: HTMLAudioElement, enabled: boolean, target: number, fadeMs: number) => {
@@ -292,6 +301,7 @@ export const createMapAudioController = () => {
   const update = ({ view, selectedLandmark, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
     if (disposed) return;
     if (view === "san-diego") prepareSanDiego();
+    if (view === "manhattan" || view === "washington" || view === "union") prepareManhattan();
     setBackgroundEnabled(experienceStarted);
     updateBackgroundPlaylist();
     const nextMallEnabled = view === "san-diego" && selectedLandmark === "torrey-highlands-plaza"
@@ -359,5 +369,5 @@ export const createMapAudioController = () => {
     }
   };
 
-  return { dispose, playGlobeTransition, prepareSanDiego, update };
+  return { dispose, playGlobeTransition, prepareSanDiego, prepareManhattan, update };
 };
