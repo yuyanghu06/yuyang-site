@@ -1,5 +1,9 @@
 # Milestone state
 
+The active checkout is on `main`. The complete San Diego and city/mobile optimization working tree is packaged into focused commits, preserving the existing main music-mute fix. `current.md` and the latest release handoff record integrated build/lint/audio/profile verification and the `origin/main` publication target. Earlier dev and pending-merge notes describe prior passes.
+
+The completed follow-up defers unused city geometry/audio symmetrically and applies mobile rendering limits to both cities. `current.md` records allocation budgets, independent and production verification, cached re-entry behavior, physical-device limitations and the pending merge.
+
 The completed San Diego optimization reduces duplicated glow geometry, hidden frame work, redundant shadow rendering and premature city audio downloads. Original assets and cameras remain exact. `current.md` records independent verification, production/browser review, measured limits and the final handoff.
 
 The latest San Diego audio pass adds a crossfaded suburban-birds overview loop and level-matched mall ambience for Vons/Torrey Highlands Plaza. The three school talking loops and NYC audio routing are verified. `current.md` records asset processing, transition checks, and the listening-review limitation.

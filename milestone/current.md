@@ -1,10 +1,24 @@
 # Current Project Milestone
 
-## Symmetric city RAM/mobile optimization in progress (2026-10-13)
+## Split commits and main release (2026-10-13)
 
-Both city views will load assets only when requested and use touch-device city rendering limits. NYC eager initialization is being deferred; SD lazy behavior stays intact. Mobile target is DPR1–1.5, SDshadow1024 instead of2048, maximum60fps interaction and existing30fps idle. Desktopquality and all geometry/counts/cameras remain intact. NYC-only traffic audio becomes source-free until NYC requested; SD-only birds/mall already prepare lazily. Avoided NYC initial tile/road decoded buffer-view budget is54,089,590 bytes plus runtimeJSON/otherassets; this is not totalRAM. Verification/review remain in progress.
+The complete working tree is split into focused commits for San Diego geography/detailing, guided tours and agent support, population/runtime optimization, location ambience, development history, deferred New York audio, and city/mobile resource optimization. The original dev branch is merged into main while preserving main’s existing music-mute pause/resume behavior, docked Reply alignment, TODO and memory-maintenance records. Remaining optimization records and this release handoff accompany the final documentation commit.
 
-The workspace is now on main with an externally initiated dev merge. Both music-mute and SD behavior/documentation are preserved while resolving overlapping conflicts; this pass does not commit or publish that merge. Planning handoff: `history/2026-10-13_22-07-16-symmetric-city-memory-mobile-plan.md`.
+The final integrated source passes the full production build (including TypeScript and all 18 static pages), full ESLint, and whitespace checks. Actual-source audio harnesses pass against both the merged main/dev snapshot and final city-audio snapshot: school/plaza/overview routing, music pause/resume without position reset, effects mute, and disposal. Pure quality-profile checks pass for desktop, phone city, globe and native DPR below 1. Earlier browser/geometry evidence remains in the cited optimization handoffs; this publication pass did not repeat a browser listening review.
+
+The active checkout is the original backend folder on `main`; publication target is `origin/main` with a normal fast-forward push. No force push or history rewrite of published commits is used. The earlier dev-workspace and pending-merge status paragraphs are historical. Release handoff: `history/2026-10-13_22-41-43-split-commits-main-release.md`.
+
+## Symmetric city RAM/mobile optimization complete (2026-10-13)
+
+New York and San Diego now prepare their own city geometry and ambience only on first request. New York ground/waterfront/loader construction is deferred; its first-entry cloud veil waits for roads, the initial 405 tiles and six registered landmarks. The legacy root-layout NYC-road preload is removed. San Diego remains first-entry lazy. Already visited cities stay cached for fast re-entry; no automatic eviction is added after visiting both.
+
+SD-only visits avoid the NYC initial tile/road decoded buffer-view budget of 54,089,590 bytes, plus runtime JSON and other geometry, and defer the 18,857,098-byte NYC traffic WAV. NYC-only visits avoid SD geometry and 5,338,866 bytes of birds/mall ambience. These are asset/buffer sizes, not measured whole-browser RAM savings. Shared crowd, music mute/pause/resume, effects mute, fades and playback gating are preserved.
+
+Touch/coarse city views with viewport short-edge ≤1024 use a native-bounded DPR range of 1–1.5 and a 60 FPS interaction ceiling, retaining 30 FPS idle. Mobile SD shadows use 1024 instead of 2048; NYC stays 1024. Desktop and globe quality limits, native DPR below 1, all geometry/population and authored cameras remain intact. Profile changes reset timing samples and clamp immediately; replaced SD shadow targets are released. At 390×844, DPR 2→1.5 renders 43.75% fewer pixels; SD shadow texels fall 75%. No physical-phone FPS gain is claimed.
+
+Independent evaluator and actual-source lifecycle/navigation/audio/profile checks pass, including retry, late cleanup, cancellation, stale status, direct landmarks, history and cached reuse. Full ESLint/TypeScript, scoped whitespace and production build pass. Chrome request traces prove no opposite-city assets in either fresh-city direction; NYC Back/Forward reuses 405 prepared tiles without new tile requests. Desktop/390×844 city layouts and direct landmark views were inspected; application errors are empty and viewport restored. Physical touch/Safari remain untested. Standalone desktop-GPU phone-size timings were variable; allocation budgets are the defensible performance evidence.
+
+The optimization pass ended with the main/dev merge conflicts resolved while release commits were pending. The release section above supersedes that Git status; both music-mute and SD behavior are preserved. Agent-owned test servers are stopped; the existing user dev server is preserved. Final handoff: `history/2026-10-13_22-35-24-symmetric-city-memory-mobile-final-review.md`.
 
 ## San Diego optimization complete (2026-10-13)
 

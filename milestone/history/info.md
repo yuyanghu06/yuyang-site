@@ -615,3 +615,13 @@ Use these records only when historical context is needed; do not load the entire
 - `2026-10-13_21-51-01-san-diego-optimization-final-review.md` records independent acceptance, production/browser evidence, rejected batching, and benchmark limits.
 
 - `2026-10-13_22-07-16-symmetric-city-memory-mobile-plan.md` records symmetric city RAM/mobile planning, budget evidence, specialist ownership and concurrent merge reconciliation.
+
+- `2026-10-13_22-19-39-city-mobile-renderer-pass.md` records the city mobile renderer pass implementation and verification.
+
+- `2026-10-13_22-19-39-city-lazy-loading-pass.md` records the city lazy loading pass implementation and verification.
+
+- `2026-10-13_22-19-39-city-audio-isolation-pass.md` records the city audio isolation pass implementation and verification.
+
+- `2026-10-13_22-35-24-symmetric-city-memory-mobile-final-review.md` records symmetric loading, mobile allocation budgets, independent acceptance, production/browser evidence, cache tradeoffs and merge state.
+
+- `2026-10-13_22-41-43-split-commits-main-release.md` records focused commit packaging, main/dev integration, preserved music-mute behavior, city/mobile additions, integrated verification and the main publication target.
