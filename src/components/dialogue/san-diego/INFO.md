@@ -1,16 +1,19 @@
 # San Diego dialogue
 
-This folder holds the region, district and landmark Markdown captions. Existing main-dev scripts remain byte-identical; new region, Torrey Pines and Park Village scripts come from new dev. The default route visits region → Torrey Highlands → Westview → plaza → Torrey Pines → Park Village. The other two schools remain selectable manually. Shared caption splitting, audio, Next/Back and Reply apply throughout. There are no direct subfolders.
+This folder groups San Diego camera dialogue. The regional overview and tour completion remain at the city root; each individual district or landmark camera has its own folder. `../index.ts` exports these scripts to the shared renderer. The overview offers Torrey Highlands, Park Village and Torrey Pines as entry areas. The circular tour visits Torrey Highlands → Deer Canyon → Mesa Verde → Westview → plaza → Park Village → Torrey Pines, skipping already visited stops and wrapping to the first unvisited location. All seven stops must be visited before completion; visit progress survives city changes and resets when a new tour invitation is accepted. Shared caption splitting, audio, Next/Back and Reply apply throughout.
 
-## Direct files
+## Subfolders
+
+- `deer-canyon-elementary-school/` contains the elementary-school camera narration.
+- `mesa-verde-middle-school/` contains the middle-school camera narration.
+- `park-village/` contains the canyon and waterfall narration for the Park Village district camera; there is no separate waterfall destination.
+- `torrey-highlands/` contains the neighborhood welcome and childhood/school context for the Torrey Highlands district camera.
+- `torrey-highlands-plaza/` contains the plaza camera's after-school hangout narration and Chef Beric links.
+- `torrey-pines/` contains the coastal beach, bluffs and lagoon district-camera narration.
+- `westview-high-school/` contains the school and club narration and East Asian Student Union link.
+
+## Files
 
 - `san-diego.md` introduces the wider region and its three district choices.
-- `torrey-highlands.md` preserves main dev's neighborhood welcome and childhood/school context, now attached to the Torrey Highlands district camera.
-- `westview-high-school.md` preserves the authored school/club narrative and East Asian Student Union link.
-- `torrey-highlands-plaza.md` preserves the after-school hangout narrative and Chef Beric links.
-- `mesa-verde-middle-school.md` preserves the manual middle-school caption.
-- `deer-canyon-elementary-school.md` preserves the manual elementary-school caption.
-- `torrey-pines.md` describes the coastal beach, bluffs and lagoon.
-- `park-village.md` describes the canyon and its visible waterfall; it introduces no separate waterfall destination.
-- `tour-complete.md` preserves main dev's hometown thank-you and New York question. Completion offers New York and Globe.
+- `tour-complete.md` contains the hometown thank-you and New York question. Completion offers New York and Globe only after all seven San Diego stops have been visited.
 - `INFO.md` documents this folder.

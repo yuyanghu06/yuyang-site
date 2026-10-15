@@ -1,5 +1,25 @@
 # Milestone state
 
+The reviewed conversation/dialogue session package passes isolated production build and full lint for authorized dev publication; isolated main merge is next. `current.md` records release scope and preservation.
+
+The base San Diego tour and overview chooser now follow Torrey Highlands → Park Village → Torrey Pines. The Highlands school/plaza sequence remains intact. `current.md` records forward/back consistency and passing routing/lint checks.
+
+The Torrey Highlands route now visits Deer Canyon, Mesa Verde, Westview and the Plaza in that order before Torrey Pines. Next/Back metadata and circular routing checks agree; `current.md` records the latest verification.
+
+Conversation file/image attachments, soft off-white input and intro fade are implemented with targeted/live API checks; independent review passes; isolated builds and authorized dev/main release are pending in `current.md`.
+
+San Diego now cycles through all seven authored stops from any entry area, skips visited locations and offers completion only after every stop is visited. The former optional schools now join the required route. `current.md` records visit/reset behavior and actual-source routing verification.
+
+All New York and San Diego ordinary tour continuation captions now share blue Next, gray Back and Reply, with consistent intermediate-caption navigation. Named destination menus retain their choices. `current.md` and the newest history handoff record the implementation and checks.
+
+Fullscreen conversation composer, final visitor-gray text styling, responsive browser checks and independent acceptance are complete; `current.md` records the final behavior and limitations.
+
+The latest San Diego dialogue adjustment removes the extra regional shortcut from district/landmark continuation rows, leaving blue Next, gray Back and inline Reply. `current.md` and the latest history handoff record scope and targeted verification.
+
+The latest adjustment speeds up San Diego's outbound fade to full cloud opacity in about 390 ms, starting immediately. `current.md` records the targeted lint/source review and visual-review limitation; `history/` contains the timing-change handoff.
+
+The current pass reorganizes authored dialogue into city folders while preserving scripts and runtime exports. Implementation, targeted checks and independent evaluation are complete with no actionable findings; `current.md` records preservation of later concurrent overview edits.
+
 The newest release packages the reviewed Torrey Pines/new-dev integration on `dev` for `origin/dev`, following a fresh passing production build, full lint and staged whitespace checks. The top section of `current.md` supersedes the older staged/uncommitted notes; its release handoff records scope, preservation and normal publication.
 
 The newest follow-up removes remaining San Diego scenery labels, adds Torrey Pines-only ocean crests, gives pins visible NYC-style bobbing, adds map-anchored overview-only clouds/planes and fixed district bird routes, and strengthens the base-view departure zoom. `current.md` records targeted/source/browser evidence and the still-staged, uncommitted merge.

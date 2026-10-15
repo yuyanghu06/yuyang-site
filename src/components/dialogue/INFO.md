@@ -5,15 +5,13 @@ This folder owns concise, conversational Markdown dialogue injected into the cli
 ## Subfolders
 
 - `global/` contains the invitation and globe-level city-choice question for New York and San Diego.
-- `manhattan/` contains only the Manhattan overview dialogue.
-- `washington-square/` contains the Washington Square overview and landmark camera dialogue.
-- `union-square/` contains the Union Square overview and landmark camera dialogue.
-- `san-diego/` contains the regional/district captions, preserved authored Torrey Highlands, Westview and plaza narratives, preserved Mesa Verde/Deer Canyon scripts and main-dev completion. Park Village's waterfall has no separate tour destination.
+- `new-york/` keeps the Manhattan overview script at its root and groups the Union Square and Washington Square overview/landmark scripts in neighborhood subfolders.
+- `san-diego/` keeps the regional overview and tour completion scripts at its root, with one subfolder per individual district or landmark camera. Park Village's waterfall has no separate tour destination.
 
 ## Files
 
-- `index.ts` imports and exports every authored overview/landmark Markdown string for the shared renderer. All dialogue files that already existed on main dev remain byte-identical.
-- `tour-stops.ts` defines phases and the default route: San Diego region → Torrey Highlands → Westview → plaza → Torrey Pines → Park Village. Mesa Verde and Deer Canyon remain manual selectable school visits with their existing dialogue; they do not change the default route. The shared phase predicate keeps Next/Back/Reply valid for all district and school captions. Main-dev globe choice, previous-stop handling and completion choices are retained.
+- `index.ts` imports and exports every authored overview/landmark Markdown string for the shared renderer. The city and camera hierarchy changes only import paths; authored narration and export names remain unchanged.
+- `tour-stops.ts` defines phases and the circular San Diego route: Torrey Highlands → Deer Canyon → Mesa Verde → Westview → plaza → Park Village → Torrey Pines → Torrey Highlands. The regional overview offers three entry areas. `getNextUnvisitedSanDiegoStop` skips visited locations and returns no next stop only after all seven are visited. The shared phase predicate keeps Next/Back/Reply valid for district and school captions; the existing globe choice and previous-stop handling remain available.
 
 
 - `caption-text.ts` owns the existing 120-character soft-target caption splitting and link protection shared by all tour and agent replies; paragraph boundaries always start another caption, and protected links are restored after segmentation.

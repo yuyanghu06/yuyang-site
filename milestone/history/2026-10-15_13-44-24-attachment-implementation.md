@@ -1,0 +1,13 @@
+# Conversation attachments implementation
+
+Roles: planner scope extension, backend coder, UI coder; integrated by orchestrator. Final requested scope expands image inputs to unrestricted file picking through a plus icon left of the text box, visitor-bubble off-white input, and whole-composer fade during the opening intro.
+
+Implemented optional user image/file payload contracts, streamed bounded API validation, canonical base64/signature checks, and Responses image/document/text mappings. Unknown UTF8 becomes delimited file text; unreadable binary remains a file card with explicit content-unavailable status and model metadata only. Nothing is executed or permanently uploaded. Image data, file text and binary payloads stay out of request/model-output logs when attachments are in history. Existing model/navigation/text flow remains.
+
+Client provides image previews/file cards, remove/reselect/paste, image-only/file-only/mixed sending, pending/preparation guards and persistent draft/attachments across layouts. Browser-normalized images cap at512KiB; raw files1MiB; combined3/message,4/request,2MiB decoded/request and3MiB raw JSON. Outbound drops old payloads while preserving visible transcript and recent context. Input matches rgb(239 237 229 /84%) with #526164 ink, no extra focus boundary, arrow send, and reduced-motion-aware400ms appearance after fullscreen settles.
+
+Files: contracts/types.ts and new files.ts plus inventory; runtime/run-agent.ts/inventory; API route.ts/new request.ts/inventory; agent-chat.tsx/new agent-composer.tsx/new agent-images.ts; agent-chat.css/styles inventory; components inventory; milestone records. Backend reports171 actual-source checks covering valid/malformed/oversized/mixed/history/body/logging mappings; client helper checks cover normalization/cleanup/bytes/history. Scoped ESLint, no-incremental TypeScript and whitespace pass.
+
+Live local API synthetic tests pass: image-only identifies ORANGE TRIANGLE42, text follow-up returns42, attached text-file query returns MAPLE-739. Browser layout/controls observed; automated filechooser.setFiles is blocked by Chrome extension file-URL permission, with no settings changed. User's live preview also displays an attached logo and its answer. Independent evaluation underway.
+
+User authorizes commit/push dev followed by merge/push main. Read-only release inspection shows dev/main diverge3/5 commits and map/audio/docs conflicts. Release requires final independent review, full lint/isolated production build, normal dev push, isolated main worktree integration preserving main loading/audio/mobile fixes, fresh merge build and normal main push. Original dev preview stays running. No release performed yet.

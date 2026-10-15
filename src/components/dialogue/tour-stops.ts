@@ -11,15 +11,29 @@ export type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "tou
 
 export const SAN_DIEGO_STOPS = {
   "san-diego": { content: sanDiegoDialogue, phase: "san_diego_next", next: "torrey-highlands", previous: "globe" },
-  "torrey-highlands": { content: torreyHighlandsDialogue, phase: "torrey_highlands_next", next: "westview-high-school", previous: "san-diego" },
-  "torrey-pines": { content: torreyPinesDialogue, phase: "torrey_pines_next", next: "park-village", previous: "torrey-highlands-plaza" },
-  "park-village": { content: parkVillageDialogue, phase: "park_village_next", next: null, previous: "torrey-pines" },
-  "westview-high-school": { content: westviewHighSchoolDialogue, phase: "westview_next", next: "torrey-highlands-plaza", previous: "torrey-highlands" },
-  "torrey-highlands-plaza": { content: torreyHighlandsPlazaDialogue, phase: "plaza_next", next: "torrey-pines", previous: "westview-high-school" },
-  // Manual school visits retain their authored dialogue without changing the default loop.
-  "mesa-verde-middle-school": { content: mesaVerdeDialogue, phase: "mesa_verde_next", next: "deer-canyon-elementary-school", previous: "torrey-highlands" },
-  "deer-canyon-elementary-school": { content: deerCanyonDialogue, phase: "deer_canyon_next", next: "torrey-pines", previous: "mesa-verde-middle-school" },
+  "torrey-highlands": { content: torreyHighlandsDialogue, phase: "torrey_highlands_next", next: "deer-canyon-elementary-school", previous: "san-diego" },
+  "torrey-pines": { content: torreyPinesDialogue, phase: "torrey_pines_next", next: "torrey-highlands", previous: "park-village" },
+  "park-village": { content: parkVillageDialogue, phase: "park_village_next", next: "torrey-pines", previous: "torrey-highlands-plaza" },
+  "westview-high-school": { content: westviewHighSchoolDialogue, phase: "westview_next", next: "torrey-highlands-plaza", previous: "mesa-verde-middle-school" },
+  "torrey-highlands-plaza": { content: torreyHighlandsPlazaDialogue, phase: "plaza_next", next: "park-village", previous: "westview-high-school" },
+  "mesa-verde-middle-school": { content: mesaVerdeDialogue, phase: "mesa_verde_next", next: "westview-high-school", previous: "deer-canyon-elementary-school" },
+  "deer-canyon-elementary-school": { content: deerCanyonDialogue, phase: "deer_canyon_next", next: "mesa-verde-middle-school", previous: "torrey-highlands" },
 } as const satisfies Partial<Record<MapDestination, { content: string; phase: IntroPhase; next: MapDestination | null; previous: MapDestination }>>;
+
+export const SAN_DIEGO_TOUR_ORDER = [
+  "torrey-highlands", "deer-canyon-elementary-school", "mesa-verde-middle-school",
+  "westview-high-school", "torrey-highlands-plaza", "park-village", "torrey-pines",
+] as const satisfies readonly (keyof typeof SAN_DIEGO_STOPS)[];
+
+/** Continue in circular tour order; only a fully visited tour can finish. */
+export function getNextUnvisitedSanDiegoStop(current: MapDestination, visited: ReadonlySet<MapDestination>) {
+  const currentIndex = SAN_DIEGO_TOUR_ORDER.findIndex((destination) => destination === current);
+  for (let offset = 1; offset <= SAN_DIEGO_TOUR_ORDER.length; offset += 1) {
+    const destination = SAN_DIEGO_TOUR_ORDER[(currentIndex + offset) % SAN_DIEGO_TOUR_ORDER.length];
+    if (!visited.has(destination)) return destination;
+  }
+  return null;
+}
 
 export const isSanDiegoTourPhase = (phase: IntroPhase) => Object.values(SAN_DIEGO_STOPS).some((stop) => stop.phase === phase);
 

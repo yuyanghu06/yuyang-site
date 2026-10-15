@@ -1,5 +1,6 @@
 import { streamAgent } from "@/agent/runtime/run-agent";
-import { MAP_DESTINATIONS, type AgentMessage, type AgentStreamEvent, type MapDestination } from "@/agent/contracts/types";
+import type { AgentStreamEvent } from "@/agent/contracts/types";
+import { AgentRequestError, parseAgentRequest, readAgentRequest } from "./request";
 
 export const runtime = "nodejs";
 
@@ -17,43 +18,24 @@ function isRateLimited(request: Request) {
   return current.count > 10;
 }
 
-function parseRequest(value: unknown): { messages: AgentMessage[]; currentView: MapDestination } | null {
-  if (typeof value !== "object" || value === null) return null;
-  const body = value as Record<string, unknown>;
-  if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 20) return null;
-  if (typeof body.currentView !== "string" || !MAP_DESTINATIONS.includes(body.currentView as MapDestination)) return null;
-  const messages: AgentMessage[] = [];
-  for (const candidate of body.messages) {
-    if (typeof candidate !== "object" || candidate === null) return null;
-    const message = candidate as Record<string, unknown>;
-    if ((message.role !== "user" && message.role !== "assistant") || typeof message.content !== "string") return null;
-    const content = message.content.trim();
-    if (!content || content.length > 4_000) return null;
-    messages.push({ role: message.role, content });
-  }
-  if (messages.at(-1)?.role !== "user") return null;
-  if (messages.reduce((total, message) => total + message.content.length, 0) > 20_000) return null;
-  return { messages, currentView: body.currentView as MapDestination };
-}
-
 export async function POST(request: Request) {
   if (isRateLimited(request)) return Response.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
-  let body: unknown;
+  let parsed: ReturnType<typeof parseAgentRequest>;
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    parsed = parseAgentRequest(await readAgentRequest(request));
+  } catch (error) {
+    const failure = error instanceof AgentRequestError ? error : new AgentRequestError("Invalid agent request.");
+    return Response.json({ error: failure.message }, { status: failure.status });
   }
-  const parsed = parseRequest(body);
-  if (!parsed) return Response.json({ error: "Invalid agent request." }, { status: 400 });
   const encoder = new TextEncoder();
   const bodyStream = new ReadableStream({
     async start(controller) {
       const send = (event: AgentStreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       try {
         for await (const event of streamAgent(parsed.messages, parsed.currentView)) send(event);
-      } catch (error) {
-        console.error("[Agent] Request failed", error instanceof Error ? error.message : "Unknown error");
+      } catch {
+        // Upstream errors may echo submitted image data; keep server logs payload-free.
+        console.error("[Agent] Request failed");
         send({ type: "error", message: "The guide is temporarily unavailable." });
       } finally {
         controller.close();

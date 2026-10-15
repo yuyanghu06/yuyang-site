@@ -1125,7 +1125,7 @@ export default function GlobalMap({ experienceStarted }: { experienceStarted: bo
           ? 1 - THREE.MathUtils.smoothstep(progress, 0.6, 0.98)
           : globeTransitionDirection === "out"
             ? globeTransitionCity === "san-diego"
-              ? THREE.MathUtils.smoothstep(progress, 0.12, 0.45)
+              ? THREE.MathUtils.smoothstep(progress, 0, 0.18)
               : THREE.MathUtils.smoothstep(progress, 0, 0.28)
             : THREE.MathUtils.smoothstep(progress, 0.08, 0.38);
         cloudVeil.style.opacity = cloudOpacity.toFixed(3);

@@ -1,5 +1,85 @@
 # Current Project Milestone
 
+## Dev conversation and dialogue release (2026-10-15)
+
+The user authorized committing/pushing the reviewed dialogue, tour, composer and file-attachment work to dev, then merging/pushing main. The staged session package passes full ESLint and an isolated production build (optimized compilation, TypeScript, all18 static pages). Attachment source/API checks and independent evaluation pass; next-env.d.ts is excluded. Original preview/server and unrelated stash are preserved. Normal dev publication follows; isolated main integration must preserve divergent mobile/loading/audio fixes and pass its own review/build.
+
+Release handoff: `history/2026-10-15_13-46-46-publish-dev-conversation-attachments.md`.
+
+## San Diego base-area order (2026-10-15)
+
+The base San Diego tour now proceeds Torrey Highlands → Park Village → Torrey Pines. The Highlands portion remains Deer Canyon → Mesa Verde → Westview → Plaza. Full circular sequence: Torrey Highlands → Deer Canyon → Mesa Verde → Westview → Plaza → Park Village → Torrey Pines → Torrey Highlands. The overview's chooser buttons follow the same base-area order. Forward/back metadata, visited-stop skipping, wraparound and completion gating agree with this sequence.
+
+Targeted ESLint for the route registry and chat component passes. The actual-source harness verifies exact full and base-area orders, all forward/back links, 1,024 position/visited-subset combinations, complete tours from every starting stop, early-exit continuation, visited-stop skipping and new-tour reset. Scoped whitespace passes. No production build or browser review was run for this route-data/menu-order change. Concurrent conversation/image work is preserved.
+
+Latest handoff: `history/2026-10-15_13-40-11-san-diego-base-area-order.md`.
+
+## Torrey Highlands school tour order (2026-10-15)
+
+Updated the circular San Diego order to Torrey Highlands → Deer Canyon → Mesa Verde → Westview → plaza → Torrey Pines → Park Village → Torrey Highlands. This applies the requested Deer Canyon → Mesa Verde → Westview (“West U”) → Plaza sequence. Next order and all previous-stop metadata agree. Existing visited-stop skipping, wraparound and completion gating remain in place.
+
+Targeted ESLint passes for `src/components/dialogue/tour-stops.ts`. The actual-source routing harness passes the exact requested order, every next/previous link, 1,024 position/visited-subset cases, complete tours from all seven starts, early Park Village wrap, skipping visited stops and fresh-tour reset. Scoped whitespace checks pass. No production build or browser review ran for this route-data change. Concurrent conversation/image work and earlier edits remain preserved.
+
+Latest handoff: `history/2026-10-15_13-38-03-highlands-school-tour-order.md`.
+
+## Conversation image inputs (2026-10-15)
+
+Implemented image/file attachments through an unrestricted plus picker left of the text input, removable previews/cards and attachment-only/mixed sends. Input matches visitor-bubble off-white with charcoal text/no focus ring/arrow send; the entire composer fades in after expanded intro settles with reduced-motion support. Images normalize to512KiB, files cap1MiB, combined3/message4/request2MiB decoded; API bounds streamed JSON at3MiB and validates payloads. Supported documents/images/text reach Responses; unsupported binary has honest unavailable-content status and metadata only. Local transcript retains previews; bounded recent payloads support followups. Attachment content stays out of logs/RAG context.
+
+Backend171 actual-source checks, client helper checks, targeted lint/no-incremental TypeScript/whitespace pass. Live API image-only, image followup and file-content tests pass. Automated browser file upload is blocked by extension file-URL permission; UI layout/controls are observed and no browser settings changed. Independent evaluation passes with no actionable findings: backend171 checks, client helpers and168 additional client→server mixed-history cases. Full repository ESLint passes. Source is ready for isolated production build and authorized publication.
+
+User authorized commit/push dev then merge/push main. Full lint and isolated production builds are required before publication. Main/dev diverge with substantive map/audio/docs conflicts; preserve main-only mobile/loading/audio fixes and leave original dev checkout/server intact.
+
+Planning handoff: `history/2026-10-15_13-37-03-image-input-plan.md`. Implementation/release plan: `history/2026-10-15_13-44-24-attachment-implementation.md`. Acceptance: `history/2026-10-15_13-45-37-attachments-acceptance-and-release.md`.
+
+## Circular San Diego tour completion (2026-10-15)
+
+San Diego completion now requires visits to all seven authored district/landmark stops. The circular order is Torrey Highlands → Westview → plaza → Mesa Verde → Deer Canyon → Torrey Pines → Park Village → Torrey Highlands. The region's three entry choices remain; Next finds the next unvisited stop from any starting point, skipping previous visits. Mesa Verde and Deer Canyon now participate in the required route, superseding earlier optional-school notes. Arrived views (including direct selections and Back) count as visits; the overview menu does not. City changes preserve progress, and accepting a new tour invitation clears it. Queued dialogue segments still finish before onward navigation.
+
+`src/components/dialogue/tour-stops.ts` owns route order and the pure next-unvisited helper. `agent-chat.tsx` records settled visits, handles same-view selection and gates the completion narration behind the helper's exhausted result. Targeted ESLint, full TypeScript without incremental output and scoped whitespace pass. A temporary actual-source harness passes 1,024 current-position/visited-subset combinations and all seven full starting-point simulations through the real arrival and Next handlers; it also checks early Park Village continuation, visited-stop skipping and new-tour reset. No browser review or production build ran. Concurrent composer, dialogue/copy and previous map/control changes remain preserved. Direct implementation follows user instruction.
+
+Latest handoff: `history/2026-10-15_13-35-10-circular-san-diego-tour.md`.
+
+## Shared tour navigation buttons (2026-10-15)
+
+New York's eight neighborhood/landmark continuation phases and San Diego's seven district/landmark phases now share one blue Next / gray Back / Reply row, including intermediate captions. Next drains queued captions before using each existing onward-tour handler. Back restores a prior caption when present, including in San Diego, then follows the existing previous-stop navigation. Named overview/region destination menus and tour completion choices remain available.
+
+Targeted ESLint for `src/components/agent-chat.tsx`, full TypeScript with incremental output disabled, scoped whitespace checks and direct control/handler review pass. No browser review or production build was run. The initial ESLint failure from using a ref-backed callback as a render condition was resolved by keeping the visibility predicate separate from event callbacks. Concurrent fullscreen-composer work and previous dialogue/map changes are preserved. Work is direct per the user's instruction.
+
+Latest handoff: `history/2026-10-15_13-30-53-shared-tour-next-back.md`.
+
+## Fullscreen conversation composer (2026-10-15)
+
+Implemented one persistent bottom-left fullscreen message input with arrow-only send and a light liquid-glass surface. The latest user choice matches placeholder and entered text to the visitor-message charcoal gray (#526164); earlier white/black iterations are superseded. Clicking adds no focus outline/boundary ring. The form uses existing draft/submission state; fullscreen Reply focuses it while retaining choices, and docked Reply/Cancel remain available. Mobile anchoring, independent history scrolling and landscape measurement exclusion are in place. Active scripted reveal is cancelled on submission.
+
+Targeted ESLint, full no-incremental TypeScript and scoped whitespace pass. Desktop/portrait/short-landscape Chrome review verifies bottom bounds, no horizontal overflow, blank/pending guards, Enter and arrow submission, Reply focus and draft retention through docked/fullscreen transitions. Focused input computed styles confirm matching rgb(82,97,100) placeholder/text and no outline. Independent evaluation accepts the implementation and final styling/docs with no remaining findings. Requested work is complete. Physical mobile keyboard/Safari are unmeasured. No production build, commit or publication.
+
+Planning handoff: `history/2026-10-15_13-29-09-fullscreen-composer-plan.md`. Implementation: `history/2026-10-15_13-32-35-fullscreen-composer-implementation.md`. Final review: `history/2026-10-15_13-34-10-fullscreen-composer-final-review.md`.
+
+## San Diego tour buttons (2026-10-15)
+
+San Diego district and landmark continuation rows now render only blue Next and gray Back, with the existing inline Reply. Removed the extra San Diego overview shortcut and explicitly applied the shared secondary-button class to Back. Overview district choices and completion destinations retain their existing behavior.
+
+Targeted ESLint for `src/components/agent-chat.tsx`, scoped whitespace checks and direct JSX/CSS review pass. No browser review or production build was run for this small UI adjustment. Existing dialogue restructuring, copy edits, faster departure fade and framework-generated changes are preserved. Work follows the user's request for direct implementation.
+
+Latest handoff: `history/2026-10-15_13-28-37-san-diego-next-back-buttons.md`.
+
+## Faster San Diego exit fade (2026-10-15)
+
+San Diego's outbound cloud veil now starts immediately and reaches full opacity at 18% of the existing 2,168 ms transition (about 390 ms), replacing the delayed 12%–45% window (260–976 ms). This covers the map earlier while retaining the existing pullback, globe handoff and arrival reveal. Only the San Diego outbound opacity branch changes.
+
+Targeted ESLint for `src/components/map/runtime/map-runtime.tsx` and diff whitespace checks pass. Direct source review confirms other transition branches remain unchanged. No browser visual review or production build was run for this timing-only adjustment. Existing dialogue and `next-env.d.ts` working edits are preserved. Work was performed directly, following the user's request to handle changes personally.
+
+Latest handoff: `history/2026-10-15_13-25-34-faster-san-diego-exit-fade.md`.
+
+## Dialogue city-folder restructuring (2026-10-15)
+
+Implemented the city hierarchy: shared global/, new-york/ with root manhattan.md and nested Union Square/Washington Square, and san-diego/ with root san-diego.md and tour-complete.md plus seven individualized camera folders. Only index.ts import paths changed; exports and navigation remain unchanged. All 20 authored scripts matched the pre-move SHA256 snapshot at implementation verification, preserving the three existing local script edits. A later concurrent overview-copy edit at 13:26:37 is retained; independent review confirms the other 19 script hashes still match. Neither restructure agent wrote the overview copy. The preexisting next-env.d.ts change is unrelated and untouched.
+
+Coder checks pass: scoped ESLint, full no-incremental TypeScript, import resolution, exact layout, stable exports, folder inventories, no stale live references and scoped whitespace. Independent evaluation passes with no actionable findings: hierarchy, inventories, stable imports/exports, all 20 actual Markdown-loader outputs and scoped whitespace are verified. The restructure is complete. No production build, commit or publication was performed.
+
+Planning handoff: `history/2026-10-15_13-24-40-dialogue-restructure-plan.md`. Implementation handoff: `history/2026-10-15_13-26-06-dialogue-restructure-implementation.md`. Final review: `history/2026-10-15_13-27-30-dialogue-restructure-review.md`.
+
 ## Main-dev San Diego integration release (2026-10-14)
 
 The user authorized committing and pushing the complete reviewed integration to main dev, meaning `dev`, with publication target `origin/dev` in `yuyanghu06/yuyang-site`. This release completes the merge of `codex/dev-torrey-pines-refinements` (`7f71eed`, including the earlier San Diego expansion) into the existing five-commit-ahead main-dev work. Earlier staged/uncommitted paragraphs below are historical. The release uses an ordinary merge commit and normal fast-forward push; no published history rewrite is used.

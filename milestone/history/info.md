@@ -6,6 +6,38 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-15_13-46-46-publish-dev-conversation-attachments.md` records the authorized dev package, isolated passing production build and main integration handoff.
+
+- `2026-10-15_13-45-37-attachments-acceptance-and-release.md` records independent attachment acceptance, full lint and release packaging scope.
+
+- `2026-10-15_13-44-24-attachment-implementation.md` records all-file scope, backend/client implementation, live API evidence and authorized dev/main release plan.
+
+- `2026-10-15_13-40-11-san-diego-base-area-order.md` records the Highlands → Park Village → Torrey Pines base order, aligned overview chooser and routing checks.
+
+- `2026-10-15_13-38-03-highlands-school-tour-order.md` records the corrected Deer Canyon → Mesa Verde → Westview → Plaza order and forward/back/circular routing checks.
+
+- `2026-10-15_13-37-03-image-input-plan.md` records the image-input plan, contract, scoped ownership and acceptance checks.
+
+- `2026-10-15_13-35-10-circular-san-diego-tour.md` records seven-stop visit tracking, circular next-unvisited progression, completion gating and actual-source verification.
+
+- `2026-10-15_13-34-10-fullscreen-composer-final-review.md` records independent acceptance, the final visitor-gray text choice and browser/source evidence.
+
+- `2026-10-15_13-32-35-fullscreen-composer-implementation.md` records the persistent glass composer, white text/no-focus-ring refinements and source/browser checks.
+
+- `2026-10-15_13-30-53-shared-tour-next-back.md` records shared New York/San Diego continuation controls, intermediate-caption Back behavior and targeted verification.
+
+- `2026-10-15_13-29-09-fullscreen-composer-plan.md` records the persistent fullscreen composer plan and acceptance criteria.
+
+- `2026-10-15_13-28-37-san-diego-next-back-buttons.md` records removal of the extra San Diego shortcut, gray Back styling and targeted validation.
+
+- `2026-10-15_13-27-30-dialogue-restructure-review.md` records independent acceptance, loader/path verification and preservation of concurrent overview edits.
+
+- `2026-10-15_13-26-06-dialogue-restructure-implementation.md` records the implemented dialogue hierarchy, byte preservation and passing targeted checks.
+
+- `2026-10-15_13-25-34-faster-san-diego-exit-fade.md` records the immediate, faster San Diego departure fade, targeted checks and preserved working edits.
+
+- `2026-10-15_13-24-40-dialogue-restructure-plan.md` records the city-folder plan, preservation constraints and acceptance checks.
+
 - `2026-10-13_21-45-18-publish-torrey-pines-refinements.md` records the requested new refinement development branch, complete release scope, fresh production-build verification, and preservation of prior development refs.
 
 - `2026-10-13_21-40-34-torrey-pines-parking.md` records the planar north Torrey Pines parking lot, local entrance/frontage grading, explicit terrain tradeoffs, independent checks, and matched visual review.
