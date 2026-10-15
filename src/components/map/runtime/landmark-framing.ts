@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-interface LandmarkFraming {
-  root: THREE.Object3D;
+interface BoundsFraming {
+  bounds: THREE.Box3;
   camera: THREE.OrthographicCamera;
   target: THREE.Vector3;
   azimuth: number;
@@ -14,6 +14,13 @@ interface LandmarkFraming {
 export function getLandmarkFitZoom({ root, camera, target, azimuth, height, radius, maximumZoom }: LandmarkFraming) {
   root.updateWorldMatrix(true, true);
   const bounds = new THREE.Box3().setFromObject(root);
+  return getBoundsFitZoom({ bounds, camera, target, azimuth, height, radius, maximumZoom });
+}
+
+type LandmarkFraming = Omit<BoundsFraming, "bounds"> & { root: THREE.Object3D };
+
+/** Fit geographic coverage without making the landscape an interactive landmark. */
+export function getBoundsFitZoom({ bounds, camera, target, azimuth, height, radius, maximumZoom }: BoundsFraming) {
   if (bounds.isEmpty()) return maximumZoom;
   const framingCamera = camera.clone();
   framingCamera.zoom = 1;

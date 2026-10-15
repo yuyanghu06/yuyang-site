@@ -51,6 +51,7 @@ export function renderMapFrame(
   mapScene: THREE.Scene,
   mapCamera: THREE.Camera,
   overlayScene: THREE.Scene,
+  overlayCamera: THREE.Camera = mapCamera,
 ) {
   renderer.clear(true, true, true);
   if (activeView === "globe") {
@@ -58,8 +59,6 @@ export function renderMapFrame(
     return;
   }
   renderer.render(mapScene, mapCamera);
-  if (activeView !== "san-diego") {
-    renderer.clearDepth();
-    renderer.render(overlayScene, mapCamera);
-  }
+  renderer.clearDepth();
+  renderer.render(overlayScene, overlayCamera);
 }

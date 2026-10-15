@@ -65,11 +65,12 @@ export function animateDestinationMarkers(
 }
 
 export function animateNeighborhoodMarkers(
-  markersByView: Map<"washington" | "union" | "san-diego", THREE.Group[]>,
+  markersByView: Map<MapView, THREE.Group[]>,
   activeView: MapView,
   elapsed: number,
   cameraLocked: boolean,
   interactionEase: number,
+  bobAmplitude = 4,
 ) {
   markersByView.forEach((markers, view) => {
     markers.forEach((marker, index) => {
@@ -78,7 +79,7 @@ export function animateNeighborhoodMarkers(
         return;
       }
       marker.position.y = marker.userData.baseY
-        + Math.sin(elapsed * 1.55 + index * 0.72 + (view === "union" ? 1.8 : 0)) * 4;
+        + Math.sin(elapsed * 1.55 + index * 0.72 + (view === "union" ? 1.8 : 0)) * bobAmplitude;
       let opacity = 1;
       marker.traverse((object) => {
         if (!(object instanceof THREE.Sprite)) return;

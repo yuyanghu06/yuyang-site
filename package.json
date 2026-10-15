@@ -23,7 +23,8 @@
     "data:san-diego": "node scripts/map-data/build-san-diego.mjs",
     "data:san-diego:cars": "node scripts/map-data/build-san-diego-car-spawns.mjs",
     "data:san-diego:people": "node scripts/map-data/build-san-diego-people-spawns.mjs",
-    "data:san-diego:population": "npm run data:san-diego:people && npm run data:san-diego:cars"
+    "data:san-diego:population": "npm run data:san-diego:people && npm run data:san-diego:cars",
+    "data:san-diego-region": "node scripts/map-data/build-san-diego-region.mjs"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^8.2.0",

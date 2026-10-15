@@ -1,18 +1,19 @@
 # San Diego dialogue
 
-This folder contains authored Torrey Highlands overview, Westview, and plaza narratives, plus provisional Markdown for the Mesa Verde and Deer Canyon school stops. The shared caption renderer, audio, Next/Back controls, and inline Reply composer match the New York experience. Personal memories come from the authored narratives; the remaining placeholders do not add personal history.
+This folder groups San Diego camera dialogue. The regional overview and tour completion remain at the city root; each individual district or landmark camera has its own folder. `../index.ts` exports these scripts to the shared renderer. The overview offers Torrey Highlands, Park Village and Torrey Pines as entry areas. The circular tour visits Torrey Highlands → Deer Canyon → Mesa Verde → Westview → plaza → Park Village → Torrey Pines, skipping already visited stops and wrapping to the first unvisited location. All seven stops must be visited before completion; visit progress survives city changes and resets when a new tour invitation is accepted. Shared caption splitting, audio, Next/Back and Reply apply throughout.
 
-## Direct subfolders
+## Subfolders
 
-There are no direct subfolders.
+- `deer-canyon-elementary-school/` contains the elementary-school camera narration.
+- `mesa-verde-middle-school/` contains the middle-school camera narration.
+- `park-village/` contains the canyon and waterfall narration for the Park Village district camera; there is no separate waterfall destination.
+- `torrey-highlands/` contains the neighborhood welcome and childhood/school context for the Torrey Highlands district camera.
+- `torrey-highlands-plaza/` contains the plaza camera's after-school hangout narration and Chef Beric links.
+- `torrey-pines/` contains the coastal beach, bluffs and lagoon district-camera narration.
+- `westview-high-school/` contains the school and club narration and East Asian Student Union link.
 
-## Direct files
+## Files
 
+- `san-diego.md` introduces the wider region and its three district choices.
+- `tour-complete.md` contains the hometown thank-you and New York question. Completion offers New York and Globe only after all seven San Diego stops have been visited.
 - `INFO.md` documents this folder.
-- `torrey-highlands.md` introduces the neighborhood where Yuyang grew up, its schools, and childhood hangouts, then starts the route to Westview. It remains attached to the `san-diego` camera ID; the script filename identifies the neighborhood rather than a future full-city overview.
-- `westview-high-school.md` contains Yuyang's school and club-presidency narrative, links the East Asian Student Union to its Instagram account, and continues toward the plaza.
-- `torrey-highlands-plaza.md` contains the authored after-school hangout narrative and links Chef Beric episodes to the supplied YouTube video and playlist.
-- `tour-complete.md` thanks visitors for visiting Yuyang's hometown and asks about heading to New York; the completion choices are New York and Globe.
-
-- `mesa-verde-middle-school.md` introduces the school and its track, then continues to Deer Canyon.
-- `deer-canyon-elementary-school.md` supplies the final school-camera placeholder.

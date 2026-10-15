@@ -9,14 +9,14 @@ The server-side portfolio guide uses the official `openai` and `@pinecone-databa
 - Read `AGENTS.md` before making changes and `milestone/current.md` at session startup. `AGENTS.md` defines the default orchestrator workflow with delegated planning, scoped coding workers, independent evaluation, and integration. `.codex/config.toml` enables subagents, and `.codex/agents/` contains reusable role configurations. `AGENTS.md` also defines the canonical Google-Doc-to-temporary-corpus-to-Pinecone workflow and metadata contract for adding RAG knowledge safely.
 - `.codex/skills/pinecone-memory/` packages that memory workflow as a reusable repository skill with destructive-target confirmation and live retrieval verification gates.
 - Read the installed Next.js guide under `node_modules/next/dist/docs/` before changing framework code.
-- `next.config.ts` configures the shared Markdown-to-string loader for both Turbopack and webpack and assigns immutable caching to versioned runtime animation GLBs.
+- `next.config.ts` configures the shared Markdown-to-string loader for both Turbopack and webpack and assigns immutable caching to versioned runtime animation GLBs. For a temporary tunnel preview, start development with `NEXT_DEV_ALLOWED_ORIGIN=<exact-tunnel-hostname> npm run dev -- --hostname 127.0.0.1`; use only the hostname, without a scheme, path, or wildcard. This enables that host's development assets and hot reload. When unset, no additional development origins are allowed; no tunnel hostname is stored in the config.
 - Run targeted checks while iterating. Run the full production build before committing.
 - Authored JavaScript and TypeScript files are protected by ESLint's `max-lines` rule; generated source is excluded.
 - `tsconfig.json` and `eslint.config.mjs` exclude ignored `data/work/` and `data/raw/` sources from application checks. The local upstream Map3D checkout lives at `data/work/map3d/`; it is used to generate San Diego assets and is never bundled or committed.
 - Do not edit generated map data or web exports when an authoring source or build script exists.
 - The FaceTime shell uses a lightweight native CSS backdrop blur; avoid reintroducing full-surface SVG displacement filters without memory and transition profiling.
 - The live avatar idle is `public/animations/idle.glb`; its manually approved face is embedded and Head-locked in the GLB rather than synthesized by the browser.
-- `package.json` and `package-lock.json` include the VRM runtime plus the official OpenAI and Pinecone server SDKs; `package.json` also exposes the temporary-corpus build and explicitly confirmed replacement-ingestion commands. `npm run data:san-diego` regenerates the Torrey Highlands scene from the tracked geographic snapshot and pinned ignored Map3D checkout; append `-- --refresh` to refresh its public OSM source. After geography or campus details change, `npm run data:san-diego:population` regenerates validated San Diego people and ordinary-car placement. Its separate `data:san-diego:people` and `data:san-diego:cars` scripts keep car spawning independent of New York's taxi fleet.
+- `package.json` and `package-lock.json` include the VRM runtime plus the official OpenAI and Pinecone server SDKs; `package.json` also exposes the temporary-corpus build and explicitly confirmed replacement-ingestion commands. `npm run data:san-diego` regenerates the Torrey Highlands scene from the tracked geographic snapshot and pinned ignored Map3D checkout; append `-- --refresh` to refresh its public OSM source. After geography or campus details change, `npm run data:san-diego:population` regenerates validated San Diego people and ordinary-car placement. `npm run data:san-diego-region` regenerates the wider coastal/canyon region and should run after original-model changes. Its separate `data:san-diego:people` and `data:san-diego:cars` scripts keep car spawning independent of New York's taxi fleet.
 - `TODO.md` tracks deferred project work, including the future view-aware ambient sound and background-music system and plane-based travel between geographic locations.
 
 ## Direct subfolders
@@ -34,14 +34,10 @@ The server-side portfolio guide uses the official `openai` and `@pinecone-databa
 ## Direct files
 
 - `AGENTS.md` defines project work, documentation, data, and asset rules.
-- `TODO.md` tracks deferred work.
 - `.gitignore` excludes generated build products, local environment files, downloads, and working checkouts.
 - `.env.example` documents required environment variable names; local `.env` files supply ignored credentials and settings.
 - `eslint.config.mjs` configures code-quality checks and excludes ignored third-party working sources.
 - `next-env.d.ts` is Next.js's generated ambient type entry point.
-- `next.config.ts` configures Markdown loading and asset caching.
-- `package.json` defines dependencies and development, build, and data-generation commands.
 - `package-lock.json` pins npm dependency resolution.
-- `tsconfig.json` configures application TypeScript and excludes ignored source workspaces.
 - `tsconfig.tsbuildinfo` is the TypeScript incremental cache.
 - `info.md` is this repository guide.

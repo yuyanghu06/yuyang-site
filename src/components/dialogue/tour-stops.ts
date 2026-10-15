@@ -1,20 +1,41 @@
 import type { MapDestination } from "@/agent/contracts/types";
 import {
   bobstLibraryDialogue, courantInstituteDialogue, liptonHallDialogue, manhattanDialogue,
-  mesaVerdeDialogue, deerCanyonDialogue, torreyHighlandsDialogue, sternSchoolOfBusinessDialogue, torreyHighlandsPlazaDialogue,
+  sanDiegoDialogue, mesaVerdeDialogue, deerCanyonDialogue, sternSchoolOfBusinessDialogue, torreyHighlandsPlazaDialogue,
+  torreyHighlandsDialogue, torreyPinesDialogue, parkVillageDialogue,
   twentyFiveUnionSquareWestDialogue, twoThirtyFiveParkAvenueSouthDialogue,
   unionSquareDialogue, washingtonSquareDialogue, westviewHighSchoolDialogue,
 } from "./index";
 
-export type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "globe_arrival" | "globe_choice" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "san_diego_next" | "westview_next" | "plaza_next" | "mesa_verde_next" | "deer_canyon_next" | "san_diego_complete" | "camera_dialogue_streaming" | "free";
+export type IntroPhase = "greeting" | "choice" | "declining" | "declined" | "touring" | "manhattan_arrival" | "manhattan_choice" | "union_next" | "carlyle_next" | "shift_next" | "washington_arrival" | "washington_next" | "lipton_arrival" | "lipton_next" | "bobst_arrival" | "bobst_next" | "stern_next" | "courant_next" | "tour_location_choice" | "san_diego_next" | "torrey_highlands_next" | "torrey_pines_next" | "park_village_next" | "westview_next" | "plaza_next" | "globe_arrival" | "globe_choice" | "mesa_verde_next" | "deer_canyon_next" | "san_diego_complete" | "camera_dialogue_streaming" | "free";
 
 export const SAN_DIEGO_STOPS = {
-  "san-diego": { content: torreyHighlandsDialogue, phase: "san_diego_next", next: "westview-high-school", previous: "globe" },
-  "westview-high-school": { content: westviewHighSchoolDialogue, phase: "westview_next", next: "torrey-highlands-plaza", previous: "san-diego" },
-  "torrey-highlands-plaza": { content: torreyHighlandsPlazaDialogue, phase: "plaza_next", next: "mesa-verde-middle-school", previous: "westview-high-school" },
-  "mesa-verde-middle-school": { content: mesaVerdeDialogue, phase: "mesa_verde_next", next: "deer-canyon-elementary-school", previous: "torrey-highlands-plaza" },
-  "deer-canyon-elementary-school": { content: deerCanyonDialogue, phase: "deer_canyon_next", next: null, previous: "mesa-verde-middle-school" },
+  "san-diego": { content: sanDiegoDialogue, phase: "san_diego_next", next: "torrey-highlands", previous: "globe" },
+  "torrey-highlands": { content: torreyHighlandsDialogue, phase: "torrey_highlands_next", next: "deer-canyon-elementary-school", previous: "san-diego" },
+  "torrey-pines": { content: torreyPinesDialogue, phase: "torrey_pines_next", next: "torrey-highlands", previous: "park-village" },
+  "park-village": { content: parkVillageDialogue, phase: "park_village_next", next: "torrey-pines", previous: "torrey-highlands-plaza" },
+  "westview-high-school": { content: westviewHighSchoolDialogue, phase: "westview_next", next: "torrey-highlands-plaza", previous: "mesa-verde-middle-school" },
+  "torrey-highlands-plaza": { content: torreyHighlandsPlazaDialogue, phase: "plaza_next", next: "park-village", previous: "westview-high-school" },
+  "mesa-verde-middle-school": { content: mesaVerdeDialogue, phase: "mesa_verde_next", next: "westview-high-school", previous: "deer-canyon-elementary-school" },
+  "deer-canyon-elementary-school": { content: deerCanyonDialogue, phase: "deer_canyon_next", next: "mesa-verde-middle-school", previous: "torrey-highlands" },
 } as const satisfies Partial<Record<MapDestination, { content: string; phase: IntroPhase; next: MapDestination | null; previous: MapDestination }>>;
+
+export const SAN_DIEGO_TOUR_ORDER = [
+  "torrey-highlands", "deer-canyon-elementary-school", "mesa-verde-middle-school",
+  "westview-high-school", "torrey-highlands-plaza", "park-village", "torrey-pines",
+] as const satisfies readonly (keyof typeof SAN_DIEGO_STOPS)[];
+
+/** Continue in circular tour order; only a fully visited tour can finish. */
+export function getNextUnvisitedSanDiegoStop(current: MapDestination, visited: ReadonlySet<MapDestination>) {
+  const currentIndex = SAN_DIEGO_TOUR_ORDER.findIndex((destination) => destination === current);
+  for (let offset = 1; offset <= SAN_DIEGO_TOUR_ORDER.length; offset += 1) {
+    const destination = SAN_DIEGO_TOUR_ORDER[(currentIndex + offset) % SAN_DIEGO_TOUR_ORDER.length];
+    if (!visited.has(destination)) return destination;
+  }
+  return null;
+}
+
+export const isSanDiegoTourPhase = (phase: IntroPhase) => Object.values(SAN_DIEGO_STOPS).some((stop) => stop.phase === phase);
 
 export const getSanDiegoStop = (view: MapDestination) => view in SAN_DIEGO_STOPS
   ? SAN_DIEGO_STOPS[view as keyof typeof SAN_DIEGO_STOPS]

@@ -1,6 +1,6 @@
 # Union Square dialogue
 
-This folder contains one Markdown script for the Union Square overview and each Union Square landmark camera view. New files remain unwired until their narration is authored and added to the tour sequence.
+This folder contains one Markdown script for the Union Square overview and each Union Square landmark camera view. The shared dialogue index exports these scripts from the New York neighborhood hierarchy.
 
 ## Subfolders
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { GeographicMapView, LandmarkCameraViewId } from "@/agent/context/camera-views";
+import { isSanDiegoView, type GeographicMapView, type LandmarkCameraViewId } from "@/agent/context/camera-views";
 
 export type SiteAudioView = GeographicMapView;
 
@@ -300,30 +300,30 @@ export const createMapAudioController = () => {
 
   const update = ({ view, selectedLandmark, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
     if (disposed) return;
-    if (view === "san-diego") prepareSanDiego();
+    if (isSanDiegoView(view)) prepareSanDiego();
     if (view === "manhattan" || view === "washington" || view === "union") prepareManhattan();
     setBackgroundEnabled(experienceStarted);
     updateBackgroundPlaylist();
-    const nextMallEnabled = view === "san-diego" && selectedLandmark === "torrey-highlands-plaza"
+    const nextMallEnabled = isSanDiegoView(view) && selectedLandmark === "torrey-highlands-plaza"
       && cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextMallEnabled !== mallEnabled) {
       mallEnabled = nextMallEnabled;
       setLoop(mall, mallEnabled, CROWD_VOLUME, CROWD_FADE_MS);
     }
-    const nextCrowdEnabled = (view === "washington" || view === "union" || (view === "san-diego" && selectedLandmark !== "torrey-highlands-plaza"))
+    const nextCrowdEnabled = (view === "washington" || view === "union" || (isSanDiegoView(view) && selectedLandmark !== "torrey-highlands-plaza"))
       && cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextCrowdEnabled !== crowdEnabled) {
       crowdEnabled = nextCrowdEnabled;
       setLoop(crowd, crowdEnabled, CROWD_VOLUME, CROWD_FADE_MS);
     }
 
-    const nextBirdsEnabled = view === "san-diego" && !cameraLocked && !cameraTransitioning && !globeTransitioning;
+    const nextBirdsEnabled = isSanDiegoView(view) && !cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextBirdsEnabled !== birdsEnabled) {
       birdsEnabled = nextBirdsEnabled;
       setLoop(birds, birdsEnabled, AMBIENCE_CLOSE_VOLUME, AMBIENCE_FADE_MS);
     }
 
-    const nextAmbienceTarget = globeTransitioning || view === "globe" || view === "san-diego"
+    const nextAmbienceTarget = globeTransitioning || view === "globe" || isSanDiegoView(view)
       ? 0
       : view === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
     if (nextAmbienceTarget !== ambienceTarget) {

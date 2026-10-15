@@ -10,7 +10,14 @@ export type AgentCommand =
   | { type: "navigate_map"; destination: MapDestination }
   | { type: "trigger_avatar_emote"; emote: AvatarEmote };
 
-export type AgentMessage = { role: "user" | "assistant"; content: string };
+export const AGENT_IMAGE_MAX_BYTES = 512 * 1024;
+export const AGENT_FILE_MAX_BYTES = 1024 * 1024;
+export const AGENT_ATTACHMENTS_MAX_BYTES = 2 * 1024 * 1024;
+export const AGENT_IMAGES_PER_MESSAGE = 3;
+export const AGENT_IMAGES_PER_REQUEST = 4;
+export type AgentImage = { name: string; dataUrl: string };
+export type AgentFile = { name: string; dataUrl: string };
+export type AgentMessage = { role: "user" | "assistant"; content: string; images?: AgentImage[]; files?: AgentFile[] };
 export type AgentStatus = "thinking" | "remembering" | "researching";
 export type RagCitation = { id: string; source: string; score: number };
 export type AgentReply = { message: AgentMessage; commands: AgentCommand[]; citations: RagCitation[] };

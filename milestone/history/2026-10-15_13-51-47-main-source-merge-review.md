@@ -1,0 +1,7 @@
+# Main integration source resolution and review
+
+Roles: scoped source coder, independent evaluator and orchestrator. Active normal merge combines main e0b382f with published dev1cec0f9 in isolated /tmp/yuyang-main-integration-20261015. Original checkout/server remains dev; next-env and stash untouched.
+
+Resolved seven map-runtime conflict regions and one audio region semantically. Kept main lazy NYC readiness, atomic rollback/retry/cache/generation safety, native-bounded mobile quality/shadow disposal, deferred NYC/SD audio, music mute pause/resume and docked Reply alignment. Expanded every city-family classification to include new San Diego districts; preserved dev region/coverage/sky/ocean/birds/population, cameras/rotation and faster exit0→0.18 fade/0.72zoom. Separate-city overlay camera API and SD screen-pixel pin bob remain compatible. Merged docs preserve both histories and remove obsolete claims excluding main optimizations.
+
+Targeted ESLint and full no-incremental TypeScript pass. Actual-source1,597 assertions pass and were independently rerun: loader readiness/retry/cache/late disposal, all navigation pairs, quality/render overlays, deterministic Audio routes/mute/preparation/disposal. Evaluator additionally checks324 route pairs,16 mobile quality cases and8 renderer cases. Main171 attachment backend + client helper checks pass;9 chat/attachment/tour source modules are byte-identical to reviewed dev release. Conflict index and whitespace are clean. Final full lint/production build underway; publication pending.

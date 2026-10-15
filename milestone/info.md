@@ -1,5 +1,35 @@
 # Milestone state
 
+The main integration of published dev `1cec0f9` passes full lint, fresh production build and independent regression review. Normal authorized merge publication follows; the original checkout/server remains dev. `current.md` is authoritative over older pending-state notes.
+
+Dev `1cec0f9` is published; main integration proceeds in an isolated worktree while original preview stays on dev. Source merge and independent review pass; fresh final production build is running; `current.md` supersedes prior branch-state paragraphs.
+
+The reviewed conversation/dialogue session package passes isolated production build and full lint for authorized dev publication; isolated main merge is next. `current.md` records release scope and preservation.
+
+The base San Diego tour and overview chooser now follow Torrey Highlands → Park Village → Torrey Pines. The Highlands school/plaza sequence remains intact. `current.md` records forward/back consistency and passing routing/lint checks.
+
+The Torrey Highlands route now visits Deer Canyon, Mesa Verde, Westview and the Plaza in that order before Torrey Pines. Next/Back metadata and circular routing checks agree; `current.md` records the latest verification.
+
+Conversation file/image attachments, soft off-white input and intro fade are implemented with targeted/live API checks; independent review passes; isolated builds and authorized dev/main release are pending in `current.md`.
+
+San Diego now cycles through all seven authored stops from any entry area, skips visited locations and offers completion only after every stop is visited. The former optional schools now join the required route. `current.md` records visit/reset behavior and actual-source routing verification.
+
+All New York and San Diego ordinary tour continuation captions now share blue Next, gray Back and Reply, with consistent intermediate-caption navigation. Named destination menus retain their choices. `current.md` and the newest history handoff record the implementation and checks.
+
+Fullscreen conversation composer, final visitor-gray text styling, responsive browser checks and independent acceptance are complete; `current.md` records the final behavior and limitations.
+
+The latest San Diego dialogue adjustment removes the extra regional shortcut from district/landmark continuation rows, leaving blue Next, gray Back and inline Reply. `current.md` and the latest history handoff record scope and targeted verification.
+
+The latest adjustment speeds up San Diego's outbound fade to full cloud opacity in about 390 ms, starting immediately. `current.md` records the targeted lint/source review and visual-review limitation; `history/` contains the timing-change handoff.
+
+The current pass reorganizes authored dialogue into city folders while preserving scripts and runtime exports. Implementation, targeted checks and independent evaluation are complete with no actionable findings; `current.md` records preservation of later concurrent overview edits.
+
+The newest release packages the reviewed Torrey Pines/new-dev integration on `dev` for `origin/dev`, following a fresh passing production build, full lint and staged whitespace checks. The top section of `current.md` supersedes the older staged/uncommitted notes; its release handoff records scope, preservation and normal publication.
+
+The newest follow-up removes remaining San Diego scenery labels, adds Torrey Pines-only ocean crests, gives pins visible NYC-style bobbing, adds map-anchored overview-only clouds/planes and fixed district bird routes, and strengthens the base-view departure zoom. `current.md` records targeted/source/browser evidence and the still-staged, uncommitted merge.
+
+The active checkout is `dev` (main dev), integrating `codex/dev-torrey-pines-refinements` (new dev) with all conflict decisions applied. The latest section of `current.md` records the preserved Torrey Highlands model/scripts/population, regional seam regeneration, new tour order, audio/shadow/loading policies, fixed regional rotation, rotatable district/landmark views, unlabeled district pins and final verification. The resolved merge is staged and uncommitted for user review. Older latest/release paragraphs below are historical.
+
 The active checkout is on `main`. The complete San Diego and city/mobile optimization working tree is packaged into focused commits, preserving the existing main music-mute fix. `current.md` and the latest release handoff record integrated build/lint/audio/profile verification and the `origin/main` publication target. Earlier dev and pending-merge notes describe prior passes.
 
 The completed follow-up defers unused city geometry/audio symmetrically and applies mobile rendering limits to both cities. `current.md` records allocation budgets, independent and production verification, cached re-entry behavior, physical-device limitations and the pending merge.
@@ -27,6 +57,7 @@ The latest pass adds Mesa Verde and Deer Canyon informational overview markers f
 The latest local `dev` pass tightens the San Diego globe label, removes its loading caption, enables overview yaw without pitch, widens the overview and shifts it north, and adds Mesa Verde’s reference-based oval track. Geographic boundaries are unchanged. Validation and the new append-only handoff are recorded in `current.md` and `history/`.
 
 The latest release package prepares the complete San Diego and project workflow diff on `dev` for `origin/dev`, following a fresh successful production build. `current.md` records publication scope and verification. San Diego uses fixed authored cameras, guided navigation, and the greener palette; earlier sections retain camera and map implementation context.
+The latest state records the requested new `codex/dev-torrey-pines-refinements` release branch, its complete refinement/preview-configuration package, fresh passing production build, protected asset hashes, and preserved previous development branches. It retains the north Torrey Pines parking correction, source-preserving road and trail pass, corrected foundation/sidewalk geometry, refined topology, temporary phone-review Cloudflare Tunnel, smaller Park Village waterfall, expanded overview and districts, independent verification, explicit terrain tradeoffs, review captures, and physical-device/performance limits.
 
 The current state records the delegated orchestrator/planner/coder/evaluator workflow and project-local agent configurations. It also records the final-answer-only agent stream boundary, crawlable ten-article casual SEO blog, Reply availability on every automatic dialogue segment, frame-aligned mobile dialogue reveal, resize-driven short-landscape spacing, pinch-only mobile map zoom, connection-independent buffered agent dialogue playback, the complete Union Square guided landmark sequence and one-time reciprocal Union/Washington handoff, mandatory paragraph-to-caption boundaries, the animated Tavily `Researching…` status, dialogue-only agent response formatting, mandatory Tavily use for live-data questions, and clamped audio fade progress and interpolated frame volumes.
 
