@@ -22,6 +22,7 @@ const sources = [
   { group: "overview-original", manifest: original },
 ];
 const sourceNodes = new Map();
+const sourceTrees = new Map();
 
 function decodedBufferBytes(bytes) {
   const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -37,7 +38,7 @@ function decodedBufferBytes(bytes) {
 function policy(name) {
   if (name === "Pacific Ocean" || /waterfall/.test(name)) return { kind: "retained", ratio: 1, errorMeters: 0 };
   if (/buildings|School|Plaza/.test(name)) return { kind: "rooftops", ratio: 0.05, errorMeters: 0.5, lockBorder: true };
-  if (/trees|Trees/.test(name)) return { kind: "trees", ratio: 0.15, errorMeters: 3 };
+  if (/trees/i.test(name)) return { kind: "trees", ratio: 1, errorMeters: 0 };
   if (name === "Regional landscape") return { kind: "surface", ratio: 0.05, errorMeters: 0.005, lockBorder: true };
   if (name === "terrain") return { kind: "surface", ratio: 0.05, errorMeters: 0.005, lockBorder: true };
   return { kind: "surface", ratio: 0.05, errorMeters: 0.03, lockBorder: /beach|Lagoons/.test(name) };
@@ -63,6 +64,43 @@ function documentStats(document) {
     triangles, vertices, primitives,
     accessorPayloadBytes: document.getRoot().listAccessors().reduce((sum, accessor) => sum + accessor.getArray().byteLength, 0),
   };
+}
+
+function treeGeometry(primitive) {
+  const position = primitive.getAttribute("POSITION").getArray();
+  const color = primitive.getAttribute("COLOR_0").getArray();
+  const indices = primitive.getIndices().getArray();
+  const count = position.length / 3, positionIds = new Map(), keys = [], ids = new Uint32Array(count);
+  const parent = new Uint32Array(count), used = new Uint8Array(count);
+  for (let index = 0; index < count; index++) {
+    const positionKey = Buffer.from(position.buffer, position.byteOffset + index * 3 * position.BYTES_PER_ELEMENT,
+      3 * position.BYTES_PER_ELEMENT).toString("hex");
+    const colorKey = Buffer.from(color.buffer, color.byteOffset + index * 3 * color.BYTES_PER_ELEMENT,
+      3 * color.BYTES_PER_ELEMENT).toString("hex");
+    if (!positionIds.has(positionKey)) {
+      const id = positionIds.size;
+      positionIds.set(positionKey, id); parent[id] = id;
+    }
+    ids[index] = positionIds.get(positionKey);
+    keys.push(`${positionKey}:${colorKey}`);
+  }
+  const find = (id) => {
+    while (parent[id] !== id) { parent[id] = parent[parent[id]]; id = parent[id]; }
+    return id;
+  };
+  const faces = [];
+  for (let index = 0; index < indices.length; index += 3) {
+    const [a, b, c] = [indices[index], indices[index + 1], indices[index + 2]];
+    const root = find(ids[a]);
+    parent[find(ids[b])] = root; parent[find(ids[c])] = root;
+    used[ids[a]] = used[ids[b]] = used[ids[c]] = 1;
+    // Reordering may rotate a face's first vertex, but must preserve winding.
+    faces.push([`${keys[a]}|${keys[b]}|${keys[c]}`, `${keys[b]}|${keys[c]}|${keys[a]}`,
+      `${keys[c]}|${keys[a]}|${keys[b]}`].sort()[0]);
+  }
+  const components = new Set();
+  for (let id = 0; id < positionIds.size; id++) if (used[id]) components.add(find(id));
+  return { triangles: indices.length / 3, connectedComponents: components.size, geometryHash: hash(faces.sort().join("\n")) };
 }
 
 function roofIndices(primitive) {
@@ -118,6 +156,7 @@ function simplifyPrimitive(document, primitive, settings, matrix) {
 function validate(document) {
   const groups = document.getRoot().getDefaultScene().listChildren().map((node) => node.getName());
   for (const source of sources) if (!groups.includes(source.group)) throw new Error(`Missing ${source.group}`);
+  const seenTrees = new Set();
   for (const node of document.getRoot().listNodes()) {
     if (node.getExtras().cameraViewId) throw new Error("Overview proxies must not be interactive");
     if (!node.getMatrix().every(Number.isFinite)) throw new Error(`Invalid transform: ${node.getName()}`);
@@ -125,7 +164,7 @@ function validate(document) {
     if (source && !node.getMatrix().every((value, index) => value === source.matrix[index])) {
       throw new Error(`Changed source transform: ${node.getName()}`);
     }
-    for (const primitive of node.getMesh()?.listPrimitives() ?? []) {
+    for (const [index, primitive] of (node.getMesh()?.listPrimitives() ?? []).entries()) {
       const positions = primitive.getAttribute("POSITION").getArray();
       const indices = primitive.getIndices().getArray();
       if (indices.length % 3 || !indices.length) throw new Error(`Invalid triangle count: ${node.getName()}`);
@@ -135,8 +174,19 @@ function validate(document) {
       if (source && bounds.min.some((value, axis) => value < source.bounds.min[axis] || bounds.max[axis] > source.bounds.max[axis])) {
         throw new Error(`Overview expands source bounds: ${node.getName()}`);
       }
+      const expectedTree = sourceTrees.get(node.getName())?.[index];
+      if (expectedTree) {
+        seenTrees.add(node.getName());
+        const actualTree = treeGeometry(primitive);
+        if (actualTree.triangles !== expectedTree.triangles
+          || actualTree.connectedComponents !== expectedTree.connectedComponents
+          || actualTree.geometryHash !== expectedTree.geometryHash) {
+          throw new Error(`Changed source tree geometry: ${node.getName()}`);
+        }
+      }
     }
   }
+  for (const name of sourceTrees.keys()) if (!seenTrees.has(name)) throw new Error(`Missing source tree layer: ${name}`);
 }
 
 await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
@@ -160,6 +210,7 @@ for (const source of sources) {
   const sourceStats = new Map();
   for (const node of input.getRoot().listNodes()) {
     sourceNodes.set(node.getName(), { matrix: node.getMatrix(), bounds: node.getMesh() ? primitiveStats(node.getMesh().listPrimitives()[0]).bounds : null });
+    if (/trees/i.test(node.getName())) sourceTrees.set(node.getName(), node.getMesh().listPrimitives().map(treeGeometry));
     const extras = { ...node.getExtras() }; delete extras.cameraViewId;
     node.setExtras(extras);
     for (const primitive of node.getMesh()?.listPrimitives() ?? []) {
@@ -170,10 +221,13 @@ for (const source of sources) {
     }
   }
   await input.transform(weld());
-  for (const node of input.getRoot().listNodes()) for (const primitive of node.getMesh()?.listPrimitives() ?? []) {
+  for (const node of input.getRoot().listNodes()) for (const [index, primitive] of (node.getMesh()?.listPrimitives() ?? []).entries()) {
     const settings = policy(node.getName());
     const measuredErrorMeters = simplifyPrimitive(input, primitive, settings, node.getWorldMatrix());
-    layers.push({ group: source.group, name: node.getName(), settings, measuredErrorMeters, before: sourceStats.get(primitive), after: primitiveStats(primitive) });
+    layers.push({ group: source.group, name: node.getName(), settings, measuredErrorMeters, before: sourceStats.get(primitive), after: primitiveStats(primitive),
+      ...(settings.kind === "trees" ? { treePreservation: { treeCount: source.manifest.counts.trees,
+        before: sourceTrees.get(node.getName())[index], after: treeGeometry(primitive) } } : {}),
+    });
     console.log(`${node.getName()}: ${sourceStats.get(primitive).triangles.toLocaleString()} → ${primitiveStats(primitive).triangles.toLocaleString()} triangles`);
   }
   await input.transform(prune());
@@ -203,11 +257,12 @@ const manifest = {
   attribution: "© OpenStreetMap contributors · Map3D (MIT)",
   generation: {
     command: "npm run data:san-diego-overview", source: "The exact full-detail GLBs referenced above; no map download or source regeneration.",
-    algorithm: "Drop normals, weld matching position/color vertices, retain upward-facing building roof/campus triangles, run topology/color-seam-aware meshoptimizer edge collapses, compact every vertex/index buffer, deduplicate and meshopt-compress lossless Float32 positions.",
+    algorithm: "Drop normals, weld matching position/color vertices, retain all tree triangles and upward-facing building roof/campus triangles, simplify other layers with topology/color-seam-aware meshoptimizer edge collapses, compact every vertex/index buffer, deduplicate and meshopt-compress lossless Float32 positions.",
     surfaceProtection: "Ocean retained exactly. Landscape, beach and creek topological borders are locked. All surface vertices within 1 m of the original-patch perimeter are locked. Other surface errors use conservative absolute meter limits; unchanged source vertex colors and source node transforms are retained.",
+    treeProtection: `All ${original.counts.trees} original and ${regional.counts.trees} regional trees retain every triangle, trunk/crown component, Float32 position, color byte and node transform. Normal buffers are omitted and equal position/color vertices may share storage; no tree simplification or deletion occurs. Source and decoded overview triangle hashes and component counts must match.`,
     shading: "Normals are derived per face by GLTFLoader/Three.js flat shading; no normal buffers or textures are downloaded or uploaded.",
     memoryMetric: "decodedBufferBytes sums decoded glTF buffer-view capacities, including padded attribute strides, matching Three.js geometry upload buffers. accessorPayloadBytes excludes stride padding. Neither metric includes GPU driver overhead, render targets, JavaScript objects, or temporary decompression allocations.",
-    limitations: "Overview only: building facades/undersides and tiny architectural details are omitted; trees are coarsened. Error meters are meshoptimizer's positional metric, not a proven maximum surface distance. Districts and landmarks must use full-detail source assets.",
+    limitations: "Overview only: building facades/undersides and tiny architectural details are omitted. All tree geometry is retained. Surface error meters are meshoptimizer's positional metric, not a proven maximum surface distance. Districts and landmarks must use full-detail source assets.",
     deterministic: "No timestamps or random sampling. Run with the checked-in package lock and current source hashes.",
     compression: { extension: "EXT_meshopt_compression", positions: "lossless Float32", colors: "source 8-bit", normals: "omitted; shader-derived flat normals" },
   },
