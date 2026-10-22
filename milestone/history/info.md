@@ -6,6 +6,10 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-21_21-27-57-startup-loading-optimization.md` records demand-loaded NYC layers, the compact reproducible overview and audio, smooth readiness-gated city arrival, cancellation/failure recovery, measured byte savings and final independent/production verification.
+
+- `2026-10-14_13-26-27-san-diego-overview-optimization.md` records selective San Diego LOD loading, measured overview geometry/download/buffer/GPU savings, source preservation, New York resource cleanup, verification and cache tradeoffs.
+
 - `2026-10-15_13-46-46-publish-dev-conversation-attachments.md` records the authorized dev package, isolated passing production build and main integration handoff.
 
 - `2026-10-15_13-45-37-attachments-acceptance-and-release.md` records independent attachment acceptance, full lint and release packaging scope.

@@ -1,0 +1,867 @@
+{
+  "version": 1,
+  "modelUrl": "/models/san-diego/overview.glb",
+  "contentHash": "3833c64cb4a680d942baff81559a67641bbf8902dc011566ab7f3a207bd424e9",
+  "byteLength": 12860620,
+  "originalModel": {
+    "modelUrl": "/models/san-diego/torrey-highlands.glb",
+    "contentHash": "eca6e8141563ba184bd4f45c5e5712a1ac0af367f181eb2774cf6ead134e295d"
+  },
+  "regionalModel": {
+    "modelUrl": "/models/san-diego/region.glb",
+    "contentHash": "aa015d1b40c4a100877eb2909891ed7d95075d638c2182cc235aa91ea449a901"
+  },
+  "groups": {
+    "region": "overview-region",
+    "original": "overview-original"
+  },
+  "attribution": "© OpenStreetMap contributors · Map3D (MIT)",
+  "generation": {
+    "command": "npm run data:san-diego-overview",
+    "source": "The exact full-detail GLBs referenced above; no map download or source regeneration.",
+    "algorithm": "Drop normals, weld matching position/color vertices, retain upward-facing building roof/campus triangles, run topology/color-seam-aware meshoptimizer edge collapses, compact every vertex/index buffer, deduplicate and meshopt-compress lossless Float32 positions.",
+    "surfaceProtection": "Ocean retained exactly. Landscape, beach and creek topological borders are locked. All surface vertices within 1 m of the original-patch perimeter are locked. Other surface errors use conservative absolute meter limits; unchanged source vertex colors and source node transforms are retained.",
+    "shading": "Normals are derived per face by GLTFLoader/Three.js flat shading; no normal buffers or textures are downloaded or uploaded.",
+    "memoryMetric": "decodedBufferBytes sums decoded glTF buffer-view capacities, including padded attribute strides, matching Three.js geometry upload buffers. accessorPayloadBytes excludes stride padding. Neither metric includes GPU driver overhead, render targets, JavaScript objects, or temporary decompression allocations.",
+    "limitations": "Overview only: building facades/undersides and tiny architectural details are omitted; trees are coarsened. Error meters are meshoptimizer's positional metric, not a proven maximum surface distance. Districts and landmarks must use full-detail source assets.",
+    "deterministic": "No timestamps or random sampling. Run with the checked-in package lock and current source hashes.",
+    "compression": {
+      "extension": "EXT_meshopt_compression",
+      "positions": "lossless Float32",
+      "colors": "source 8-bit",
+      "normals": "omitted; shader-derived flat normals"
+    }
+  },
+  "stats": {
+    "before": {
+      "triangles": 3160176,
+      "vertices": 4250291,
+      "primitives": 18,
+      "accessorPayloadBytes": 116466882,
+      "decodedBufferBytes": 125741556,
+      "byteLength": 39166988
+    },
+    "after": {
+      "triangles": 1439440,
+      "vertices": 1483029,
+      "primitives": 18,
+      "accessorPayloadBytes": 38149641,
+      "decodedBufferBytes": 39632670,
+      "byteLength": 12860620
+    },
+    "reduction": {
+      "triangles": 0.5445063819230321,
+      "vertices": 0.65107589103899,
+      "decodedBufferBytes": 0.6848084972004005,
+      "byteLength": 0.671646438577304
+    },
+    "layers": [
+      {
+        "group": "overview-region",
+        "name": "Regional landscape",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.005,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0.004962066188454628,
+        "before": {
+          "triangles": 191837,
+          "vertices": 248083,
+          "accessorPayloadBytes": 6767538,
+          "bounds": {
+            "min": [
+              -12123.1748046875,
+              -2.0299999713897705,
+              -7665.248046875
+            ],
+            "max": [
+              10140.322265625,
+              174.0351104736328,
+              13253.51171875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 120910,
+          "vertices": 63938,
+          "accessorPayloadBytes": 1684530,
+          "bounds": {
+            "min": [
+              -12123.1748046875,
+              -2.0299999713897705,
+              -7665.248046875
+            ],
+            "max": [
+              10140.322265625,
+              174.0351104736328,
+              13253.51171875
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Pacific Ocean",
+        "settings": {
+          "kind": "retained",
+          "ratio": 1,
+          "errorMeters": 0
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 762,
+          "vertices": 754,
+          "accessorPayloadBytes": 18144,
+          "bounds": {
+            "min": [
+              -18095.02734375,
+              0.4000000059604645,
+              -7665.248046875
+            ],
+            "max": [
+              -9159.4296875,
+              0.4000000059604645,
+              13253.51171875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 762,
+          "vertices": 754,
+          "accessorPayloadBytes": 15882,
+          "bounds": {
+            "min": [
+              -18095.02734375,
+              0.4000000059604645,
+              -7665.248046875
+            ],
+            "max": [
+              -9159.4296875,
+              0.4000000059604645,
+              13253.51171875
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Coastal beach",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.03,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0.02980087511241436,
+        "before": {
+          "triangles": 15260,
+          "vertices": 23044,
+          "accessorPayloadBytes": 506352,
+          "bounds": {
+            "min": [
+              -12158.0458984375,
+              -1.2999999523162842,
+              -6069.1787109375
+            ],
+            "max": [
+              -9122.357421875,
+              45.17105484008789,
+              10793.6005859375
+            ]
+          }
+        },
+        "after": {
+          "triangles": 10594,
+          "vertices": 10480,
+          "accessorPayloadBytes": 220764,
+          "bounds": {
+            "min": [
+              -12158.0458984375,
+              -1.2999999523162842,
+              -6069.1787109375
+            ],
+            "max": [
+              -9122.357421875,
+              45.17105484008789,
+              10793.6005859375
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Mapped landcover",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.03,
+          "lockBorder": false
+        },
+        "measuredErrorMeters": 0.029497042298316956,
+        "before": {
+          "triangles": 910803,
+          "vertices": 851053,
+          "accessorPayloadBytes": 26248590,
+          "bounds": {
+            "min": [
+              -11810.0576171875,
+              -1.7000000476837158,
+              -5165.248046875
+            ],
+            "max": [
+              7640.32275390625,
+              174.3651123046875,
+              10753.51171875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 405243,
+          "vertices": 273605,
+          "accessorPayloadBytes": 8966991,
+          "bounds": {
+            "min": [
+              -11810.0576171875,
+              -1.7000000476837158,
+              -5165.248046875
+            ],
+            "max": [
+              7640.32275390625,
+              174.3651123046875,
+              10753.51171875
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Lagoons and creeks",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.03,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0.029620831832289696,
+        "before": {
+          "triangles": 88837,
+          "vertices": 105301,
+          "accessorPayloadBytes": 2961462,
+          "bounds": {
+            "min": [
+              -11853.9169921875,
+              0.30000001192092896,
+              -5850.05078125
+            ],
+            "max": [
+              8313.853515625,
+              119.14408111572266,
+              11293.55078125
+            ]
+          }
+        },
+        "after": {
+          "triangles": 63148,
+          "vertices": 77237,
+          "accessorPayloadBytes": 1916331,
+          "bounds": {
+            "min": [
+              -11853.9169921875,
+              0.30000001192092896,
+              -5850.05078125
+            ],
+            "max": [
+              8313.853515625,
+              119.14408111572266,
+              11293.55078125
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Regional roads",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.03,
+          "lockBorder": false
+        },
+        "measuredErrorMeters": 0.029956046491861343,
+        "before": {
+          "triangles": 789375,
+          "vertices": 957985,
+          "accessorPayloadBytes": 26716230,
+          "bounds": {
+            "min": [
+              -12065.73046875,
+              0.20000000298023224,
+              -6920.150390625
+            ],
+            "max": [
+              8528.431640625,
+              175.36663818359375,
+              13017.67578125
+            ]
+          }
+        },
+        "after": {
+          "triangles": 491324,
+          "vertices": 623131,
+          "accessorPayloadBytes": 15242853,
+          "bounds": {
+            "min": [
+              -12065.73046875,
+              0.20000000298023224,
+              -6920.150390625
+            ],
+            "max": [
+              8528.431640625,
+              175.36663818359375,
+              13017.67578125
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Regional buildings",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0.0024659750051796436,
+        "before": {
+          "triangles": 417021,
+          "vertices": 719667,
+          "accessorPayloadBytes": 17958258,
+          "bounds": {
+            "min": [
+              -11786.92578125,
+              -2.0799999237060547,
+              -5200.001953125
+            ],
+            "max": [
+              7655.36962890625,
+              178.5679931640625,
+              10788.2548828125
+            ]
+          }
+        },
+        "after": {
+          "triangles": 95691,
+          "vertices": 132475,
+          "accessorPayloadBytes": 3135417,
+          "bounds": {
+            "min": [
+              -11786.92578125,
+              4.940000057220459,
+              -5200.001953125
+            ],
+            "max": [
+              7655.36962890625,
+              178.5679931640625,
+              10788.2548828125
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "District buildings",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 220244,
+          "vertices": 370773,
+          "accessorPayloadBytes": 9316842,
+          "bounds": {
+            "min": [
+              -10183.298828125,
+              6.848773956298828,
+              1695.1141357421875
+            ],
+            "max": [
+              570.1754150390625,
+              106.74765014648438,
+              7004.38818359375
+            ]
+          }
+        },
+        "after": {
+          "triangles": 54085,
+          "vertices": 67672,
+          "accessorPayloadBytes": 1664100,
+          "bounds": {
+            "min": [
+              -10183.298828125,
+              15.42724323272705,
+              1695.1141357421875
+            ],
+            "max": [
+              570.1754150390625,
+              106.74765014648438,
+              7004.38818359375
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Coastal pines and canyon trees",
+        "settings": {
+          "kind": "trees",
+          "ratio": 0.15,
+          "errorMeters": 3
+        },
+        "measuredErrorMeters": 2.996338129043579,
+        "before": {
+          "triangles": 86200,
+          "vertices": 198260,
+          "accessorPayloadBytes": 4603080,
+          "bounds": {
+            "min": [
+              -11703.765625,
+              3.828339099884033,
+              -5109.5771484375
+            ],
+            "max": [
+              7556.064453125,
+              198.50038146972656,
+              10649.529296875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 40798,
+          "vertices": 25887,
+          "accessorPayloadBytes": 633093,
+          "bounds": {
+            "min": [
+              -11703.765625,
+              4.218624591827393,
+              -5109.5771484375
+            ],
+            "max": [
+              7556.064453125,
+              198.50038146972656,
+              10649.529296875
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-region",
+        "name": "Park Village canyon waterfall",
+        "settings": {
+          "kind": "retained",
+          "ratio": 1,
+          "errorMeters": 0
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 754,
+          "vertices": 1279,
+          "accessorPayloadBytes": 27546,
+          "bounds": {
+            "min": [
+              -2413.66357421875,
+              14.904813766479492,
+              3734.18505859375
+            ],
+            "max": [
+              -2353.952880859375,
+              21.714599609375,
+              3779.65087890625
+            ]
+          }
+        },
+        "after": {
+          "triangles": 754,
+          "vertices": 442,
+          "accessorPayloadBytes": 11154,
+          "bounds": {
+            "min": [
+              -2413.66357421875,
+              14.904813766479492,
+              3734.18505859375
+            ],
+            "max": [
+              -2353.952880859375,
+              21.714599609375,
+              3779.65087890625
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "terrain",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.005,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 1185,
+          "vertices": 1387,
+          "accessorPayloadBytes": 36237,
+          "bounds": {
+            "min": [
+              -1419.7176513671875,
+              -0.029999999329447746,
+              -1658.66796875
+            ],
+            "max": [
+              1639.2135009765625,
+              0.27300000190734863,
+              1402.632080078125
+            ]
+          }
+        },
+        "after": {
+          "triangles": 1185,
+          "vertices": 1387,
+          "accessorPayloadBytes": 27915,
+          "bounds": {
+            "min": [
+              -1419.7176513671875,
+              -0.029999999329447746,
+              -1658.66796875
+            ],
+            "max": [
+              1639.2135009765625,
+              0.27300000190734863,
+              1402.632080078125
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Mesa Verde Middle School",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 11900,
+          "vertices": 23076,
+          "accessorPayloadBytes": 555996,
+          "bounds": {
+            "min": [
+              -224.55694580078125,
+              0.119999960064888,
+              -103.5
+            ],
+            "max": [
+              224.55694580078125,
+              7.579999923706055,
+              103.5
+            ]
+          }
+        },
+        "after": {
+          "triangles": 2372,
+          "vertices": 4199,
+          "accessorPayloadBytes": 77217,
+          "bounds": {
+            "min": [
+              -224.55694580078125,
+              0.4000000059604645,
+              -103.5
+            ],
+            "max": [
+              224.55694580078125,
+              7.579999923706055,
+              103.5
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Westview High School",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 6359,
+          "vertices": 12211,
+          "accessorPayloadBytes": 294585,
+          "bounds": {
+            "min": [
+              -201.189453125,
+              0.3499999940395355,
+              -204.86221313476562
+            ],
+            "max": [
+              201.189453125,
+              8.869999885559082,
+              204.86221313476562
+            ]
+          }
+        },
+        "after": {
+          "triangles": 1322,
+          "vertices": 2306,
+          "accessorPayloadBytes": 42522,
+          "bounds": {
+            "min": [
+              -201.189453125,
+              2.549999952316284,
+              -204.86221313476562
+            ],
+            "max": [
+              201.189453125,
+              8.869999885559082,
+              204.86221313476562
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Deer Canyon Elementary School",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 8841,
+          "vertices": 17435,
+          "accessorPayloadBytes": 419181,
+          "bounds": {
+            "min": [
+              -71.84967041015625,
+              0.119999960064888,
+              -103.78841400146484
+            ],
+            "max": [
+              71.84967041015625,
+              7.579999923706055,
+              103.78841400146484
+            ]
+          }
+        },
+        "after": {
+          "triangles": 1594,
+          "vertices": 3032,
+          "accessorPayloadBytes": 55044,
+          "bounds": {
+            "min": [
+              -71.84967041015625,
+              0.550000011920929,
+              -103.78841400146484
+            ],
+            "max": [
+              71.84967041015625,
+              7.579999923706055,
+              103.78841400146484
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Neighborhood buildings",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 271533,
+          "vertices": 416069,
+          "accessorPayloadBytes": 11995845,
+          "bounds": {
+            "min": [
+              -1430.8232421875,
+              0.3499999940395355,
+              -1670.8018798828125
+            ],
+            "max": [
+              1650.7486572265625,
+              12.369999885559082,
+              1410.32421875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 101770,
+          "vertices": 118878,
+          "accessorPayloadBytes": 3004410,
+          "bounds": {
+            "min": [
+              -1430.8232421875,
+              2.549999952316284,
+              -1670.8018798828125
+            ],
+            "max": [
+              1650.7486572265625,
+              12.369999885559082,
+              1410.32421875
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Torrey Highlands Plaza",
+        "settings": {
+          "kind": "rooftops",
+          "ratio": 0.05,
+          "errorMeters": 0.5,
+          "lockBorder": true
+        },
+        "measuredErrorMeters": 0,
+        "before": {
+          "triangles": 2063,
+          "vertices": 3873,
+          "accessorPayloadBytes": 93711,
+          "bounds": {
+            "min": [
+              -101.78196716308594,
+              0.3499999940395355,
+              -88.8850326538086
+            ],
+            "max": [
+              101.78196716308594,
+              7.369999885559082,
+              88.8850326538086
+            ]
+          }
+        },
+        "after": {
+          "triangles": 398,
+          "vertices": 698,
+          "accessorPayloadBytes": 12858,
+          "bounds": {
+            "min": [
+              -101.78196716308594,
+              4.900000095367432,
+              -88.8850326538086
+            ],
+            "max": [
+              101.78196716308594,
+              7.369999885559082,
+              88.8850326538086
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Streets and paths",
+        "settings": {
+          "kind": "surface",
+          "ratio": 0.05,
+          "errorMeters": 0.03,
+          "lockBorder": false
+        },
+        "measuredErrorMeters": 0.019597802311182022,
+        "before": {
+          "triangles": 33002,
+          "vertices": 81221,
+          "accessorPayloadBytes": 2101665,
+          "bounds": {
+            "min": [
+              -1423.5340576171875,
+              0.4650000035762787,
+              -1664.1302490234375
+            ],
+            "max": [
+              1643.455810546875,
+              5.949999809265137,
+              1406.2410888671875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 31860,
+          "vertices": 64135,
+          "accessorPayloadBytes": 1153185,
+          "bounds": {
+            "min": [
+              -1423.5340576171875,
+              0.4650000035762787,
+              -1664.1302490234375
+            ],
+            "max": [
+              1643.455810546875,
+              5.949999809265137,
+              1406.2410888671875
+            ]
+          }
+        }
+      },
+      {
+        "group": "overview-original",
+        "name": "Trees",
+        "settings": {
+          "kind": "trees",
+          "ratio": 0.15,
+          "errorMeters": 3
+        },
+        "measuredErrorMeters": 2.5847582817077637,
+        "before": {
+          "triangles": 104200,
+          "vertices": 218820,
+          "accessorPayloadBytes": 5845620,
+          "bounds": {
+            "min": [
+              -1416.4580078125,
+              -1.1908705488394844e-7,
+              -1656.289794921875
+            ],
+            "max": [
+              1631.7774658203125,
+              12.48271656036377,
+              1400.196044921875
+            ]
+          }
+        },
+        "after": {
+          "triangles": 15630,
+          "vertices": 12773,
+          "accessorPayloadBytes": 285375,
+          "bounds": {
+            "min": [
+              -1416.4580078125,
+              2.5425870418548584,
+              -1656.289794921875
+            ],
+            "max": [
+              1631.7774658203125,
+              12.48271656036377,
+              1399.139404296875
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

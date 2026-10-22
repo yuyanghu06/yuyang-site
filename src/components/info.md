@@ -1,5 +1,9 @@
 # React components
 
+Startup audio is demand-loaded by `site-audio.ts`: map audio elements begin without sources, playback requires a real activation gesture, city ambience starts only in the applicable view, and the playlist prepares only its current track and the upcoming crossfade. Compact AAC derivatives preserve the original recordings' timing and levels; source recordings remain available in `public/audio/`. The map shell's production entry gate follows the globe's first prepared render instead of a fixed five-second delay.
+
+During an active guided tour, `agent-chat.tsx` restores the city or neighborhood chooser when the map settles on the globe or Manhattan, including travel cancelled or failed before arrival. Pending travel invalidates the settled-view reporter synchronously, so even failure before the next animation frame restores the destination controls. Escape that cancels pending map navigation is consumed before the avatar shell's normal caption-dismissal handler; ordinary avatar Escape behavior is retained.
+
 The combined chat preserves main-dev globe controls and scripts, adopts the new regional route and uses a shared district/school phase predicate for Next/Back/Reply. Completion retains only New York and Globe. Site audio keeps main-dev birds, plaza mall and school crowd routing across the expanded district views.
 
 Dock placement note: `avatar-call.tsx` consumes the shared agent contracts and tracks the minimized avatar's horizontal and vertical snapped edges so its caption remains inward-facing and aligns with the avatar's bottom edge at either lower corner.

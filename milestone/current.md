@@ -1,5 +1,17 @@
 # Current Project Milestone
 
+## Demand-loaded startup and smoother initial city entry (2026-10-21)
+
+The globe no longer starts New York geometry, offline footprint JSON, city ambience or playlist downloads. A cold local browser comparison drops startup asset response bodies from 49,265,377 bytes / 426 requests to 4,687,073 bytes / 6 requests (90.49% fewer bytes). Production before its CTA loads five globe/avatar assets totaling 4,682,561 bytes. These are measured local response bodies, not elapsed-time or physical-device benchmarks.
+
+New York intent prepares one merged overview and roads behind the cloud veil; final geometry transfer is about 4.03 MB across three requests. The deterministic overview is 4,919,020 bytes, 66.29% smaller than the previous 405 source tiles, with three mesh batches, preserved park rings and curated landmark silhouettes. Decoded geometry buffer capacities fall 46.08%. Neighborhoods prepare only their exact 900-meter tile subsets and the 66,195-byte landmark payload; full offline footprints remain available to the data pipeline. Both city entries wait for readiness, Manhattan lands directly at authored zoom 0.3, and production readiness follows the first prepared globe render rather than a five-second timer.
+
+Audio is gesture- and view-gated, with only the current playlist track and its upcoming crossfade prepared. Five AAC derivatives reduce active recording bytes by 68.75%; traffic alone falls 94.45%, with decoded timing preserved. Original recordings and full city/detail sources remain unchanged. Pending Escape and failed preparation restore guided destination controls, including failures before the next animation frame.
+
+Full ESLint, TypeScript, the final production build (18 static pages), generated-asset reproducibility, audio/media and loading/navigation harnesses pass. Independent evaluation rechecked and resolved missing overview landmark silhouettes and cancelled-load guide recovery, with no remaining actionable findings. Browser review covers startup, New York/Washington/Bobst, portrait framing, production CTA, selective San Diego entry, history, slow-cloud holds, injected failure/retry controls and pending Escape. Physical-device timing and subjective audio quality are unmeasured. Existing unrelated San Diego and concurrent avatar work is preserved. No commit, push or deployment was requested.
+
+Local production preview is available at `http://127.0.0.1:3000`; the temporary audit proxy and its browser tab were closed. Latest handoff: `history/2026-10-21_21-27-57-startup-loading-optimization.md`.
+
 ## Dev conversation and dialogue release (2026-10-15)
 
 The user authorized committing/pushing the reviewed dialogue, tour, composer and file-attachment work to dev, then merging/pushing main. The staged session package passes full ESLint and an isolated production build (optimized compilation, TypeScript, all18 static pages). Attachment source/API checks and independent evaluation pass; next-env.d.ts is excluded. Original preview/server and unrelated stash are preserved. Normal dev publication follows; isolated main integration must preserve divergent mobile/loading/audio fixes and pass its own review/build.
@@ -79,6 +91,22 @@ Implemented the city hierarchy: shared global/, new-york/ with root manhattan.md
 Coder checks pass: scoped ESLint, full no-incremental TypeScript, import resolution, exact layout, stable exports, folder inventories, no stale live references and scoped whitespace. Independent evaluation passes with no actionable findings: hierarchy, inventories, stable imports/exports, all 20 actual Markdown-loader outputs and scoped whitespace are verified. The restructure is complete. No production build, commit or publication was performed.
 
 Planning handoff: `history/2026-10-15_13-24-40-dialogue-restructure-plan.md`. Implementation handoff: `history/2026-10-15_13-26-06-dialogue-restructure-implementation.md`. Final review: `history/2026-10-15_13-27-30-dialogue-restructure-review.md`.
+
+## San Diego overview LOD and loader memory pass (2026-10-14)
+
+The current local `dev` branch now loads a separately generated, simplified San Diego overview before any full district model. Cold San Diego entry fetches three small manifests and `overview.glb` only. Torrey Highlands and its four landmarks request the unchanged original model; Torrey Pines/Park Village request the unchanged regional model. Original population code/spawn arrays, registrations and meshes defer until the first Torrey Highlands request; ocean-wave sampling defers until Torrey Pines, including a Park Village-first visit. Returning to the base view always hides full detail and restores both overview groups. Exact district/landmark assets, cameras, palette, source data, merged selection, dialogue and population counts are preserved.
+
+The deterministic `npm run data:san-diego-overview` derives noninteractive proxies from the exact full GLBs, retains source positions/colors/transforms and protected coast/patch borders, omits overview building facades and tiny architecture, coarsens scenery, and uses shader flat normals without normal buffers. Overview geometry falls from 3,160,176 to 1,439,440 triangles (54.45%); download bytes from 39,166,988 to 12,860,620 (67.16%); decoded geometry buffer capacities from 125,741,556 to 39,632,670 bytes (68.48%). These are cold-entry geometry figures, not whole-app RAM. Once both detail sets have been visited, the intentional revisit cache retains about 165.37 MB of combined geometry buffers; close regional views still use the full regional model. The initial 70% triangle reduction aspiration was relaxed to preserve the finely separated terrain/road layers and overview appearance.
+
+An isolated same-camera browser benchmark at 1280×720 and DPR 1 renders 18 draws in both versions and measures median GPU time 3.933 ms full-detail versus 2.058 ms overview, across 90 sampled frames after 15 warmups (88/89 usable GPU queries). This is an isolated scene comparison, not whole-app FPS or phone performance. Desktop visual comparison preserves coherent roads, coast and original-patch seam.
+
+The LOD controller deduplicates requests, mounts prepared layers atomically, keeps the current scene during loading, rolls back registration failure, supports retry, rejects superseded navigation and disposes aborted/late decode results. Escape during a pending district request invalidates the request before globe departure. New York loader cleanup releases late/off-scene models, failed road-dependent tiles, unused replacement materials/textures and merged source objects; tile requests deduplicate across awaits. Existing NYC visuals and eager-loading policy remain intact.
+
+Full ESLint, full TypeScript without incremental output, whitespace checks and one fresh production build pass (all 18 static pages). Actual-source/real-GLB tests cover selective fetches, 4 unique merged landmarks/shared glows, deferred population, 96 waves, retries, late decode/disposal, cached overview visibility, slow-load Escape and navigation routes. Independent evaluation reports no actionable findings. Desktop browser checks cover all three districts, all four landmarks, Escape/history return and source-selective downloads; 390×844 checks verify map framing only. The automated phone resize leaves the unchanged avatar tile blank until desktop is restored; this observed responsive behavior is recorded for follow-up, without claiming full phone UI verification. Final browser evidence is recorded in the session handoff. Source full-model hashes remain unchanged; overview SHA256 is `3833c64cb4a680d942baff81559a67641bbf8902dc011566ab7f3a207bd424e9`, and both generated files reproduce byte-for-byte.
+
+Changes are local and uncommitted; no push or deployment. The user's existing dev server is preserved. Physical touch/Safari, phone GPU measurements and subjective audio review are not claimed. Regenerate the overview after changing either detailed source model.
+
+Latest handoff: `history/2026-10-14_13-26-27-san-diego-overview-optimization.md`.
 
 ## Main-dev San Diego integration release (2026-10-14)
 

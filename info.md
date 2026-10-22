@@ -16,7 +16,7 @@ The server-side portfolio guide uses the official `openai` and `@pinecone-databa
 - Do not edit generated map data or web exports when an authoring source or build script exists.
 - The FaceTime shell uses a lightweight native CSS backdrop blur; avoid reintroducing full-surface SVG displacement filters without memory and transition profiling.
 - The live avatar idle is `public/animations/idle.glb`; its manually approved face is embedded and Head-locked in the GLB rather than synthesized by the browser.
-- `package.json` defines dependencies and development, build and memory/data commands. Both the original San Diego people/car generators and the separate regional generator are retained; regenerate the region after any original-model update.
+- `package.json` defines dependencies and development, build and memory/data commands. `npm run data:manhattan-overview` derives one compact Manhattan building overview and a browser-only landmark-details payload from the existing city tiles/runtime data; original tiles and offline footprints remain authoritative for detail and placement. Both the original San Diego people/car generators and the separate regional generator are retained; regenerate the region after any original-model update. `npm run data:san-diego-overview` then derives the lightweight, noninteractive whole-city proxy from both exact full-detail GLBs; it never rewrites those source models.
 - `TODO.md` tracks deferred project work, including the future view-aware ambient sound and background-music system.
 
 ## Direct subfolders

@@ -1,5 +1,7 @@
 # Milestone state
 
+Startup and initial city entry now use demand-loaded NYC overview/detail layers, actual globe readiness, gesture-gated compact audio and recovered guided controls after cancelled or failed travel. `current.md` records measured startup savings, final asset metrics, production/browser checks and independent acceptance; `history/` contains the complete handoff.
+
 The reviewed conversation/dialogue session package passes isolated production build and full lint for authorized dev publication; isolated main merge is next. `current.md` records release scope and preservation.
 
 The base San Diego tour and overview chooser now follow Torrey Highlands → Park Village → Torrey Pines. The Highlands school/plaza sequence remains intact. `current.md` records forward/back consistency and passing routing/lint checks.
@@ -19,6 +21,8 @@ The latest San Diego dialogue adjustment removes the extra regional shortcut fro
 The latest adjustment speeds up San Diego's outbound fade to full cloud opacity in about 390 ms, starting immediately. `current.md` records the targeted lint/source review and visual-review limitation; `history/` contains the timing-change handoff.
 
 The current pass reorganizes authored dialogue into city folders while preserving scripts and runtime exports. Implementation, targeted checks and independent evaluation are complete with no actionable findings; `current.md` records preservation of later concurrent overview edits.
+
+The latest local `dev` pass adds selective San Diego overview/detail loading, deterministic lighter overview geometry, deferred district effects/population, and New York loader resource cleanup. `current.md` records measured cold-entry savings, the retained-detail cache tradeoff, source preservation, tests and build; the newest history entry contains the final handoff. Earlier release entries remain historical.
 
 The newest release packages the reviewed Torrey Pines/new-dev integration on `dev` for `origin/dev`, following a fresh passing production build, full lint and staged whitespace checks. The top section of `current.md` supersedes the older staged/uncommitted notes; its release handoff records scope, preservation and normal publication.
 
