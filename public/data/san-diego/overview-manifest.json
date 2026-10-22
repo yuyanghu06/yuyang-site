@@ -1,8 +1,8 @@
 {
   "version": 1,
   "modelUrl": "/models/san-diego/overview.glb",
-  "contentHash": "3833c64cb4a680d942baff81559a67641bbf8902dc011566ab7f3a207bd424e9",
-  "byteLength": 12860620,
+  "contentHash": "3035dfb67a16bcaebbcbfbf27fcdfe8e7589fa2174080d14f399a3732aa39db5",
+  "byteLength": 13689492,
   "originalModel": {
     "modelUrl": "/models/san-diego/torrey-highlands.glb",
     "contentHash": "eca6e8141563ba184bd4f45c5e5712a1ac0af367f181eb2774cf6ead134e295d"
@@ -19,11 +19,12 @@
   "generation": {
     "command": "npm run data:san-diego-overview",
     "source": "The exact full-detail GLBs referenced above; no map download or source regeneration.",
-    "algorithm": "Drop normals, weld matching position/color vertices, retain upward-facing building roof/campus triangles, run topology/color-seam-aware meshoptimizer edge collapses, compact every vertex/index buffer, deduplicate and meshopt-compress lossless Float32 positions.",
+    "algorithm": "Drop normals, weld matching position/color vertices, retain all tree triangles and upward-facing building roof/campus triangles, simplify other layers with topology/color-seam-aware meshoptimizer edge collapses, compact every vertex/index buffer, deduplicate and meshopt-compress lossless Float32 positions.",
     "surfaceProtection": "Ocean retained exactly. Landscape, beach and creek topological borders are locked. All surface vertices within 1 m of the original-patch perimeter are locked. Other surface errors use conservative absolute meter limits; unchanged source vertex colors and source node transforms are retained.",
+    "treeProtection": "All 2605 original and 2155 regional trees retain every triangle, trunk/crown component, Float32 position, color byte and node transform. Normal buffers are omitted and equal position/color vertices may share storage; no tree simplification or deletion occurs. Source and decoded overview triangle hashes and component counts must match.",
     "shading": "Normals are derived per face by GLTFLoader/Three.js flat shading; no normal buffers or textures are downloaded or uploaded.",
     "memoryMetric": "decodedBufferBytes sums decoded glTF buffer-view capacities, including padded attribute strides, matching Three.js geometry upload buffers. accessorPayloadBytes excludes stride padding. Neither metric includes GPU driver overhead, render targets, JavaScript objects, or temporary decompression allocations.",
-    "limitations": "Overview only: building facades/undersides and tiny architectural details are omitted; trees are coarsened. Error meters are meshoptimizer's positional metric, not a proven maximum surface distance. Districts and landmarks must use full-detail source assets.",
+    "limitations": "Overview only: building facades/undersides and tiny architectural details are omitted. All tree geometry is retained. Surface error meters are meshoptimizer's positional metric, not a proven maximum surface distance. Districts and landmarks must use full-detail source assets.",
     "deterministic": "No timestamps or random sampling. Run with the checked-in package lock and current source hashes.",
     "compression": {
       "extension": "EXT_meshopt_compression",
@@ -42,18 +43,18 @@
       "byteLength": 39166988
     },
     "after": {
-      "triangles": 1439440,
-      "vertices": 1483029,
+      "triangles": 1573412,
+      "vertices": 1558609,
       "primitives": 18,
-      "accessorPayloadBytes": 38149641,
-      "decodedBufferBytes": 39632670,
-      "byteLength": 12860620
+      "accessorPayloadBytes": 40087173,
+      "decodedBufferBytes": 41645782,
+      "byteLength": 13689492
     },
     "reduction": {
-      "triangles": 0.5445063819230321,
-      "vertices": 0.65107589103899,
-      "decodedBufferBytes": 0.6848084972004005,
-      "byteLength": 0.671646438577304
+      "triangles": 0.5021125405673608,
+      "vertices": 0.6332935791925776,
+      "decodedBufferBytes": 0.6687985792063842,
+      "byteLength": 0.6504839228382842
     },
     "layers": [
       {
@@ -420,10 +421,10 @@
         "name": "Coastal pines and canyon trees",
         "settings": {
           "kind": "trees",
-          "ratio": 0.15,
-          "errorMeters": 3
+          "ratio": 1,
+          "errorMeters": 0
         },
-        "measuredErrorMeters": 2.996338129043579,
+        "measuredErrorMeters": 0,
         "before": {
           "triangles": 86200,
           "vertices": 198260,
@@ -442,13 +443,13 @@
           }
         },
         "after": {
-          "triangles": 40798,
-          "vertices": 25887,
-          "accessorPayloadBytes": 633093,
+          "triangles": 86200,
+          "vertices": 51720,
+          "accessorPayloadBytes": 1293000,
           "bounds": {
             "min": [
               -11703.765625,
-              4.218624591827393,
+              3.828339099884033,
               -5109.5771484375
             ],
             "max": [
@@ -456,6 +457,19 @@
               198.50038146972656,
               10649.529296875
             ]
+          }
+        },
+        "treePreservation": {
+          "treeCount": 2155,
+          "before": {
+            "triangles": 86200,
+            "connectedComponents": 4310,
+            "geometryHash": "e0bf454cf059763dc765cf543d285b27b68f8af51bee8d4a540fc5a9a8b31d26"
+          },
+          "after": {
+            "triangles": 86200,
+            "connectedComponents": 4310,
+            "geometryHash": "e0bf454cf059763dc765cf543d285b27b68f8af51bee8d4a540fc5a9a8b31d26"
           }
         }
       },
@@ -823,10 +837,10 @@
         "name": "Trees",
         "settings": {
           "kind": "trees",
-          "ratio": 0.15,
-          "errorMeters": 3
+          "ratio": 1,
+          "errorMeters": 0
         },
-        "measuredErrorMeters": 2.5847582817077637,
+        "measuredErrorMeters": 0,
         "before": {
           "triangles": 104200,
           "vertices": 218820,
@@ -845,20 +859,33 @@
           }
         },
         "after": {
-          "triangles": 15630,
-          "vertices": 12773,
-          "accessorPayloadBytes": 285375,
+          "triangles": 104200,
+          "vertices": 62520,
+          "accessorPayloadBytes": 1563000,
           "bounds": {
             "min": [
               -1416.4580078125,
-              2.5425870418548584,
+              -1.1908705488394844e-7,
               -1656.289794921875
             ],
             "max": [
               1631.7774658203125,
               12.48271656036377,
-              1399.139404296875
+              1400.196044921875
             ]
+          }
+        },
+        "treePreservation": {
+          "treeCount": 2605,
+          "before": {
+            "triangles": 104200,
+            "connectedComponents": 5210,
+            "geometryHash": "57923a2954960e4cf15792f14a335e65ed1eef6a392a0d4a6b130ba94eca587c"
+          },
+          "after": {
+            "triangles": 104200,
+            "connectedComponents": 5210,
+            "geometryHash": "57923a2954960e4cf15792f14a335e65ed1eef6a392a0d4a6b130ba94eca587c"
           }
         }
       }

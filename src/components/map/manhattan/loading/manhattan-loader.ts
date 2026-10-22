@@ -68,6 +68,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
   const readyNeighborhoods = new Map<Neighborhood, Set<string>>();
   let overviewReady = false;
   let overviewPromise: Promise<void> | null = null;
+  let sharedParks: THREE.Scene | null = null;
   let manifestPromise: Promise<OverviewManifest> | null = null;
   let tileManifestPromise: Promise<WashingtonCityManifest> | null = null;
   let detailsPromise: Promise<PreparedDetails> | null = null;
@@ -85,6 +86,53 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
   const getTileManifest = () => tileManifestPromise ??= fetchJson<WashingtonCityManifest>("/models/washington-city/manifest.json")
     .catch((error) => { tileManifestPromise = null; throw error; });
 
+  const loadParkData = async () => {
+    const [washingtonPark, unionPark, { AMBIENT_LAYOUT }, park, landmarkHelpers] = await Promise.all([
+      fetchJson<WashingtonParkData>(`/data/washington-square-park.json?v=${SHARED_DATA_VERSION}`),
+      fetchJson<WashingtonParkData>(`/data/union-square-park.json?v=${SHARED_DATA_VERSION}`),
+      import("../../../../generated/ambient-layout"),
+      import("../neighborhoods/park"),
+      import("../neighborhoods/landmarks"),
+    ]);
+    return { washingtonPark, unionPark, AMBIENT_LAYOUT, park, landmarkHelpers };
+  };
+  let parkDataPromise: ReturnType<typeof loadParkData> | null = null;
+  const getParkData = () => parkDataPromise ??= loadParkData()
+    .catch((error) => { parkDataPromise = null; throw error; });
+
+  const prepareSharedParks = async () => {
+    const group = new THREE.Scene();
+    group.name = "Prepared shared NYC park scenery";
+    const animations: AmbientAnimation[] = [];
+    try {
+      const { washingtonPark, AMBIENT_LAYOUT, park, landmarkHelpers } = await getParkData();
+      checkCurrent();
+      group.add(park.createCrosswalks(washingtonPark.crossings,
+        new THREE.MeshBasicMaterial({ color: 0xfffdf5, depthTest: true, depthWrite: true })));
+      group.add(park.createParkPaths(new THREE.MeshStandardMaterial({ color: 0xc6baa6, roughness: 1 })));
+      // Attach each factory result immediately so later preparation failures own
+      // every previously constructed mesh and its instancing buffers.
+      group.add(park.createParkTrees(AMBIENT_LAYOUT.washingtonTrees, "Washington Square"));
+      group.add(park.createParkTrees(AMBIENT_LAYOUT.unionTrees, "Union Square and Gramercy Park"));
+      group.add(park.createParkTrees(AMBIENT_LAYOUT.contextTrees, "Manhattan context park"));
+      landmarkHelpers.createGouldPlaza(group);
+      landmarkHelpers.createCourantGarden(group);
+      if (washingtonPark.fountain) {
+        const fountain = park.createSimpleFountain(washingtonPark.fountain);
+        group.add(fountain.group);
+        fountain.animation.update(0);
+        animations.push({ update: (elapsed) => {
+          const view = getActiveStudy();
+          if (view === "manhattan" || view === "washington" || view === "union") fountain.animation.update(elapsed);
+        } });
+      }
+      return { group, animations };
+    } catch (error) {
+      disposeSceneObjects([group]);
+      throw error;
+    }
+  };
+
   const ensureOverview = () => {
     if (overviewReady) return Promise.resolve();
     if (overviewPromise) return overviewPromise;
@@ -94,18 +142,22 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
       const stagedSkyOverlay = new THREE.Scene();
       let installed = false;
       try {
-        // Observe both decoders even when one fails: a late successful decode
-        // must be released instead of escaping the scene teardown traversal.
-        const results = await Promise.allSettled([
+        // Observe every sibling even after failure: completed park geometry
+        // and late decoded GLBs remain owned until mounted or disposed together.
+        const [buildingResult, roadResult, parkResult] = await Promise.allSettled([
           getManifest().then((manifest) => loadGlb(`${manifest.modelUrl}?v=${manifest.contentHash}`, lifecycle.signal)),
           loadGlb(`/models/manhattan-roads.glb?v=${SHARED_DATA_VERSION}`, lifecycle.signal),
+          prepareSharedParks(),
         ]);
-        results.forEach((result) => { if (result.status === "fulfilled") roots.push(result.value.scene); });
-        const failed = results.find((result) => result.status === "rejected");
-        if (failed?.status === "rejected") throw failed.reason;
+        if (buildingResult.status === "fulfilled") roots.push(buildingResult.value.scene);
+        if (roadResult.status === "fulfilled") roots.push(roadResult.value.scene);
+        if (parkResult.status === "fulfilled") roots.push(parkResult.value.group);
+        if (buildingResult.status === "rejected") throw buildingResult.reason;
+        if (roadResult.status === "rejected") throw roadResult.reason;
+        if (parkResult.status === "rejected") throw parkResult.reason;
         checkCurrent();
-        const buildings = roots[0];
-        const roads = roots[1];
+        const buildings = buildingResult.value.scene;
+        const roads = roadResult.value.scene;
         buildings.traverse((object) => {
           if (!(object instanceof THREE.Mesh)) return;
           object.raycast = () => undefined;
@@ -132,10 +184,12 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
         });
         const travelers = createSkyTravelers(stagedSky, stagedSkyOverlay);
         overview.add(buildings);
-        // Roads remain the exact stencil-first base for overview and detail.
-        scene.add(overview, roads, detailLayer, ...stagedSky.children);
+        // Roads and shared park scenery remain visible in every NYC view.
+        scene.add(overview, roads, detailLayer, parkResult.value.group, ...stagedSky.children);
         skyOverlayScene.add(...stagedSkyOverlay.children);
         options.setSkyTravelers(travelers);
+        sharedParks = parkResult.value.group;
+        ambientAnimations.push(...parkResult.value.animations);
         installed = true;
         overviewReady = true;
       } finally {
@@ -157,20 +211,15 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
       const animations: AmbientAnimation[] = [];
       let retained = false;
       try {
-        const [runtime, washingtonPark, unionPark, { AMBIENT_LAYOUT }, park, landmarkHelpers, streetLife] = await Promise.all([
+        const [runtime, { washingtonPark, unionPark, AMBIENT_LAYOUT, park, landmarkHelpers }, streetLife] = await Promise.all([
           getManifest().then((manifest) => fetchJson<Pick<WashingtonCityRuntimeData, "details">>(`${manifest.details.url}?v=${manifest.details.contentHash}`)),
-          fetchJson<WashingtonParkData>(`/data/washington-square-park.json?v=${SHARED_DATA_VERSION}`),
-          fetchJson<WashingtonParkData>(`/data/union-square-park.json?v=${SHARED_DATA_VERSION}`),
-          import("../../../../generated/ambient-layout"),
-          import("../neighborhoods/park"),
-          import("../neighborhoods/landmarks"),
+          getParkData(),
           import("../ambient/street-life"),
         ]);
         checkCurrent();
-        const { createCrosswalks, createParkPaths, createParkTrees, createSimpleFountain,
-          createSimpleArch, loadBlenderArch, loadBobstLibrary, makeSurfaceGeometry } = park;
-        const { bakeLandmarkAsSingleMesh, createCourantGarden, createGouldPlaza,
-          createInteractiveBuildingGroup, createLandmarkDetails, createSternRotundaDetails } = landmarkHelpers;
+        const { createSimpleArch, loadBlenderArch, loadBobstLibrary, makeSurfaceGeometry } = park;
+        const { bakeLandmarkAsSingleMesh, createInteractiveBuildingGroup,
+          createLandmarkDetails, createSternRotundaDetails } = landmarkHelpers;
         // GLB downloads finish before any registration. Failed preparation leaves
         // the current view intact, and all fulfilled/late siblings are owned here.
         const modelResults = await Promise.allSettled([
@@ -226,8 +275,6 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
         stageMarker("union", goldbellyLandmark);
         const unionSquareCafeLandmark = stageLandmark(unionSquareCafe);
         stageMarker("union", unionSquareCafeLandmark);
-        createGouldPlaza(staging);
-        createCourantGarden(staging);
         for (const [id, details] of landmarkDetails) {
           if (!["1008875", "1008627", "1077346", "1078952", "1087304", "1017906"].includes(id)) {
             staging.add(details);
@@ -245,18 +292,6 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
           grass.receiveShadow = true;
           grass.name = "OpenStreetMap Manhattan park grass";
           staging.add(grass);
-        }
-        staging.add(createCrosswalks(washingtonPark.crossings, new THREE.MeshBasicMaterial({ color: 0xfffdf5, depthTest: true, depthWrite: true })));
-        staging.add(createParkPaths(new THREE.MeshStandardMaterial({ color: 0xc6baa6, roughness: 1 })));
-        staging.add(createParkTrees(AMBIENT_LAYOUT.washingtonTrees, "Washington Square"),
-          createParkTrees(AMBIENT_LAYOUT.unionTrees, "Union Square and Gramercy Park"),
-          createParkTrees(AMBIENT_LAYOUT.contextTrees, "Manhattan context park"));
-        if (washingtonPark.fountain) {
-          const fountain = createSimpleFountain(washingtonPark.fountain);
-          staging.add(fountain.group);
-          animations.push({ update: (elapsed) => {
-            if (getActiveStudy() === "washington" || getActiveStudy() === "union") fountain.animation.update(elapsed);
-          } });
         }
         const isNeighborhood = () => getActiveStudy() === "washington" || getActiveStudy() === "union";
         animations.push(streetLife.createPedestrians(staging, isNeighborhood, () => 0),
@@ -356,6 +391,7 @@ export function startManhattanLoading(options: ManhattanLoaderOptions) {
       const neighborhood = view === "washington" || view === "union" ? view : null;
       overview.visible = !neighborhood;
       detailLayer.visible = !!neighborhood;
+      if (sharedParks) sharedParks.visible = view === "manhattan" || !!neighborhood;
       for (const [file, root] of tiles) root.visible = !!neighborhood && !!readyNeighborhoods.get(neighborhood)?.has(file);
     },
     cancelPendingExcept(view: string) {
