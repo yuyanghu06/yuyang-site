@@ -1,0 +1,361 @@
+{
+  "version": 1,
+  "modelUrl": "/models/washington-city/overview.glb",
+  "contentHash": "0ae1b1ee1b80a8b69ac4e48e1fab9c13658fa14fa53fe054189d854231bed52e",
+  "byteLength": 4919020,
+  "details": {
+    "url": "/models/washington-city/details.json",
+    "contentHash": "980483b68705a88c9ab211f608c0dfea244c83d0a20c7e2b2b9fc355d43ef10b",
+    "byteLength": 66195
+  },
+  "source": {
+    "manifestVersion": "d7909be8fe5f",
+    "manifestHash": "d5bf3bd21e7bf39186a0e2db5ecd2473e48dc98bb69b723fd683ea8dc73ec86c",
+    "runtimeHash": "cbb33d17c901b882d75c2dc662181b66afbc39af0c47703c794a822820b508fe",
+    "tileContentHash": "3c4a5f46786e80b767b33970fe33cc78d00b97c9f19b38fd8b2c34752c38e25e",
+    "tileCount": 405,
+    "tileRadius": 2600,
+    "minTileX": -1152,
+    "center": [
+      220,
+      28,
+      -400
+    ],
+    "parks": [
+      {
+        "file": "public/data/washington-square-park.json",
+        "contentHash": "5162618467efcc4f61711de97e48c3d974924ba181b9c0fd9d1f584f6076afb9"
+      },
+      {
+        "file": "public/data/union-square-park.json",
+        "contentHash": "5364c171a43e76d0acffeff4f0a5065c36e1924181b217f51b80ad8f413bf97f"
+      },
+      {
+        "file": "src/generated/ambient-layout.ts",
+        "contentHash": "c3b2abdcfc5d939d1d68492075d47e21ac06f1bb673c67e2aa99e5ba231ce18f"
+      }
+    ],
+    "fittedModels": [
+      {
+        "file": "public/models/bobst-library.glb",
+        "contentHash": "d6c5d07c3a4ffb2daa64bdede6ae886a1aa961a55c937742c99fb0c9bc6ba23d",
+        "byteLength": 130020
+      },
+      {
+        "file": "public/models/washington-square-arch.glb",
+        "contentHash": "a87c651b3234aa69a414e6cc93bc9d1ab34b75023fef4b633765fcd08eab2228",
+        "byteLength": 25000
+      }
+    ]
+  },
+  "generation": {
+    "command": "node scripts/map-data/build-manhattan-overview.mjs",
+    "algorithm": "Decode immutable city tiles, restore omitted curated base surfaces from runtime.details and exactly fitted Bobst/arch source models, bake geographic transforms, omit buried building ground faces and normal buffers, batch wall/roof geometry, weld matching position/color vertices, quantize positions to 16 bits and meshopt-compress.",
+    "settings": {
+      "quantizePosition": 16,
+      "maxPositionErrorMeters": 0.07
+    },
+    "positions": "Geographic positions retained on a 16-bit overview grid; measured maximum vertex displacement is recorded below and must remain below 7 cm.",
+    "maxGeographicBakeErrorMeters": 0.00016998859974812712,
+    "maxPositionQuantizationErrorMeters": 0.06312666604879935,
+    "maxPositionErrorMeters": 0.06329665464854747,
+    "colors": "Exact existing tile RGB bytes; curated runtime/model linear colors rounded to normalized 8-bit RGB. Shader-derived flat normals.",
+    "maxMaterialColorBakeError": 0.0019437888055043873,
+    "curatedLandmarks": [
+      {
+        "id": "1008627",
+        "coverage": "runtime.details base surfaces",
+        "triangles": 308,
+        "bounds": {
+          "min": [
+            115.601,
+            3.752,
+            208.143
+          ],
+          "max": [
+            165.124,
+            53.749,
+            270.493
+          ]
+        },
+        "colors": {
+          "wall": 7298388,
+          "roof": 9273718
+        }
+      },
+      {
+        "id": "1008629",
+        "coverage": "existing tile",
+        "file": "tile-1_1.glb",
+        "bounds": {
+          "min": [
+            159.263,
+            4.148,
+            235.094
+          ],
+          "max": [
+            247.501,
+            72.117,
+            322.499
+          ]
+        },
+        "colors": {
+          "wall": 9395792,
+          "roof": 11182228
+        }
+      },
+      {
+        "id": "1008875",
+        "coverage": "runtime.details base surfaces",
+        "triangles": 366,
+        "bounds": {
+          "min": [
+            -212.581,
+            -0.364,
+            -108.592
+          ],
+          "max": [
+            -162.034,
+            59.827,
+            -57.927
+          ]
+        },
+        "colors": {
+          "wall": 9790803,
+          "roof": 12102299
+        }
+      },
+      {
+        "id": "1017906",
+        "coverage": "runtime.details base surfaces",
+        "triangles": 224,
+        "bounds": {
+          "min": [
+            793.264,
+            3.57,
+            -779.974
+          ],
+          "max": [
+            839.786,
+            60.66,
+            -749.98
+          ]
+        },
+        "colors": {
+          "wall": 13085315,
+          "roof": 10195844
+        }
+      },
+      {
+        "id": "1077346",
+        "coverage": "runtime.details base surfaces",
+        "triangles": 106,
+        "bounds": {
+          "min": [
+            67.948,
+            4.253,
+            205.259
+          ],
+          "max": [
+            119.41,
+            48.902,
+            247.555
+          ]
+        },
+        "colors": {
+          "wall": 9395792,
+          "roof": 11182228
+        }
+      },
+      {
+        "id": "1078952",
+        "coverage": "runtime.details base surfaces",
+        "triangles": 580,
+        "bounds": {
+          "min": [
+            30.536,
+            2.89,
+            151.972
+          ],
+          "max": [
+            98.137,
+            54.594,
+            227.327
+          ]
+        },
+        "colors": {
+          "wall": 11119269,
+          "roof": 12894390
+        }
+      },
+      {
+        "id": "1087304",
+        "coverage": "runtime.details base surfaces",
+        "triangles": 50,
+        "bounds": {
+          "min": [
+            501.809,
+            5.56,
+            -623.013
+          ],
+          "max": [
+            532.222,
+            55.125,
+            -589.758
+          ]
+        },
+        "colors": {
+          "wall": 12884850,
+          "roof": 9740676
+        }
+      },
+      {
+        "id": "1008626",
+        "name": "Bobst Library",
+        "coverage": "exact fitted model",
+        "triangles": 1856,
+        "bounds": {
+          "min": [
+            -37.04813229862255,
+            2.68800003652754,
+            108.53189870264993
+          ],
+          "max": [
+            56.43208698339722,
+            53.77473711675113,
+            200.48404447212334
+          ]
+        },
+        "fitMatrix": [
+          1.74323358789631,
+          0,
+          1.1223208706456815,
+          0,
+          0,
+          1.8242393943722324,
+          0,
+          0,
+          -0.9524969658681928,
+          0,
+          1.4794563183303373,
+          0,
+          9.692,
+          2.688,
+          154.508,
+          1
+        ]
+      },
+      {
+        "id": "1088400",
+        "name": "Washington Square Arch",
+        "coverage": "exact fitted model",
+        "triangles": 630,
+        "bounds": {
+          "min": [
+            10.510046783447871,
+            0.68,
+            -53.33341635506916
+          ],
+          "max": [
+            27.87195321655213,
+            21.18,
+            -39.00058364493084
+          ]
+        },
+        "fitMatrix": [
+          -1.263838780919716,
+          0,
+          -0.8068424590702704,
+          0,
+          0,
+          1.4994276301026317,
+          0,
+          0,
+          0.8068424590702704,
+          0,
+          -1.263838780919716,
+          0,
+          19.191,
+          0.68,
+          -46.167,
+          1
+        ]
+      }
+    ],
+    "parks": {
+      "nodeName": "overview-park-grass",
+      "rings": 70,
+      "color": "#9dbd7c",
+      "elevationMeters": 0.74,
+      "geometry": "Exact existing Washington Square, Union Square and ambient context park rings/triangulation; Float32 positions without overview quantization.",
+      "runtimeMaterial": "Apply stencilWrite=true, stencilRef=1, stencilFunc=NotEqualStencilFunc to this node; glTF does not encode Three.js stencil state. Retain the existing stencil-first road rendering."
+    },
+    "coverage": "The same tile-center radius and Hudson cutoff as the previous eager Manhattan tile load, plus all curated base-building silhouettes and the exactly fitted Bobst/arch models. Roads and interactive selection/details remain separate.",
+    "limitations": "Overview only. Hidden building undersides and procedural landmark trim/windows are omitted; positions move by less than 7 cm. Every source tile wall/roof triangle and RGB byte remain. Curated base surfaces retain their exact footprint/height/roof topology, and their linear colors round to 8-bit RGB. Full neighborhood tiles remain unchanged.",
+    "deterministic": "No timestamps, random sampling, downloads, or full-detail rewrites. Regenerate after city source tiles or runtime metadata change.",
+    "memoryMetric": "Decoded buffer-view capacities include padded strides; they exclude temporary decode allocations, JavaScript objects and GPU driver overhead."
+  },
+  "stats": {
+    "before": {
+      "byteLength": 14591908,
+      "decodedBufferBytes": 43231722,
+      "triangles": 1096927,
+      "vertices": 1832508,
+      "primitives": 1215,
+      "accessorPayloadBytes": 34069182
+    },
+    "after": {
+      "triangles": 927380,
+      "vertices": 1015209,
+      "primitives": 3,
+      "accessorPayloadBytes": 20264700,
+      "bounds": {
+        "min": [
+          -1814.676025390625,
+          -6.9952203573246265,
+          -2660.405517578125
+        ],
+        "max": [
+          2287.5172697975268,
+          448.5141641439457,
+          2540.410888671875
+        ]
+      },
+      "decodedBufferBytes": 23308716,
+      "byteLength": 4919020
+    },
+    "reduction": {
+      "triangles": 0.15456543598616868,
+      "vertices": 0.4460002357424906,
+      "decodedBufferBytes": 0.46084229538670696,
+      "byteLength": 0.6628939820618387
+    },
+    "retainedSourceBounds": {
+      "min": [
+        -1814.676025390625,
+        -6.989051818847656,
+        -2660.405517578125
+      ],
+      "max": [
+        2287.542236328125,
+        448.50799560546875,
+        2540.410888671875
+      ]
+    },
+    "layers": [
+      {
+        "name": "wall",
+        "triangles": 614221
+      },
+      {
+        "name": "roof",
+        "triangles": 312767
+      },
+      {
+        "name": "overview-park-grass",
+        "rings": 70,
+        "triangles": 392
+      }
+    ]
+  }
+}

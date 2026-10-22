@@ -1,5 +1,9 @@
 # Milestone state
 
+The startup optimization is pushed as dev `930eaa1`; its isolated production integration passes fresh full build/lint, browser checks and independent review. `current.md` records preserved mobile/audio behavior, the confirmed Vercel target and the release handoff; normal main publication and live verification follow. Earlier publication paragraphs describe their original sessions.
+
+Startup and initial city entry now use demand-loaded NYC overview/detail layers, actual globe readiness, gesture-gated compact audio and recovered guided controls after cancelled or failed travel. `current.md` records measured startup savings, final asset metrics, production/browser checks and independent acceptance; `history/` contains the complete handoff.
+
 The main integration of published dev `1cec0f9` passes full lint, fresh production build and independent regression review. Normal authorized merge publication follows; the original checkout/server remains dev. `current.md` is authoritative over older pending-state notes.
 
 Dev `1cec0f9` is published; main integration proceeds in an isolated worktree while original preview stays on dev. Source merge and independent review pass; fresh final production build is running; `current.md` supersedes prior branch-state paragraphs.
@@ -23,6 +27,8 @@ The latest San Diego dialogue adjustment removes the extra regional shortcut fro
 The latest adjustment speeds up San Diego's outbound fade to full cloud opacity in about 390 ms, starting immediately. `current.md` records the targeted lint/source review and visual-review limitation; `history/` contains the timing-change handoff.
 
 The current pass reorganizes authored dialogue into city folders while preserving scripts and runtime exports. Implementation, targeted checks and independent evaluation are complete with no actionable findings; `current.md` records preservation of later concurrent overview edits.
+
+The latest local `dev` pass adds selective San Diego overview/detail loading, deterministic lighter overview geometry, deferred district effects/population, and New York loader resource cleanup. `current.md` records measured cold-entry savings, the retained-detail cache tradeoff, source preservation, tests and build; the newest history entry contains the final handoff. Earlier release entries remain historical.
 
 The newest release packages the reviewed Torrey Pines/new-dev integration on `dev` for `origin/dev`, following a fresh passing production build, full lint and staged whitespace checks. The top section of `current.md` supersedes the older staged/uncommitted notes; its release handoff records scope, preservation and normal publication.
 

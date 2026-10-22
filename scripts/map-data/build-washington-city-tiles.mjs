@@ -122,8 +122,10 @@ for (const building of source.buildings) {
   tiles.set(key, tile);
 }
 
-await fs.rm(OUTPUT, { recursive: true, force: true });
 await fs.mkdir(OUTPUT, { recursive: true });
+for (const file of await fs.readdir(OUTPUT)) {
+  if (file.toLowerCase() !== "info.md") await fs.rm(path.join(OUTPUT, file), { recursive: true, force: true });
+}
 const exporter = new GLTFExporter(); const manifestTiles = [];
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder });
@@ -147,3 +149,4 @@ for (const [key, tile] of [...tiles].sort(([a], [b]) => a.localeCompare(b))) {
 await fs.writeFile(path.join(OUTPUT, "manifest.json"), JSON.stringify({ version: sourceVersion, tileSize: TILE_SIZE, buildingCount: source.buildings.length, tiles: manifestTiles }));
 await fs.writeFile(path.join(OUTPUT, "runtime.json"), JSON.stringify({ footprints, details }));
 console.log(`Built ${manifestTiles.length} spatial GLB tiles from ${source.buildings.length} buildings.`);
+await import("./build-manhattan-overview.mjs");

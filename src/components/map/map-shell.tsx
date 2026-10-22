@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { primeAgentDialogueAudio } from "../agent-chat";
 import WorldLoader from "../world-loader";
 import "@/styles/map-shell.css";
@@ -17,11 +17,7 @@ export default function MapShell() {
   const [buildComplete, setBuildComplete] = useState(BYPASS_WORLD_LOADER);
   const [experienceStarted, setExperienceStarted] = useState(BYPASS_WORLD_LOADER);
 
-  useEffect(() => {
-    if (BYPASS_WORLD_LOADER) return;
-    const timer = window.setTimeout(() => setBuildComplete(true), 5_000);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const handleWorldReady = useCallback(() => setBuildComplete(true), []);
 
   const continueToWorld = async () => {
     const audioPriming = primeAgentDialogueAudio().catch(() => {
@@ -34,7 +30,7 @@ export default function MapShell() {
 
   return (
     <>
-      <GlobalMap experienceStarted={experienceStarted} />
+      <GlobalMap experienceStarted={experienceStarted} onReady={handleWorldReady} />
       {!experienceStarted && <WorldLoader ready={buildComplete} onContinue={continueToWorld} />}
     </>
   );

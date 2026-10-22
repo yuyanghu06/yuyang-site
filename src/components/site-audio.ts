@@ -93,6 +93,9 @@ const stopAndReset = (audio: HTMLAudioElement) => {
 };
 
 let dialogueAudio: HTMLAudioElement | null = null;
+let audioGesturePrimed = false;
+const hasAudioActivation = () => audioGesturePrimed
+  || (typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true);
 const getDialogueAudio = () => {
   if (!dialogueAudio) {
     dialogueAudio = registerChannelAudio(new Audio("/audio/sans-dialogue-blip.mp3"), "effects");
@@ -111,18 +114,23 @@ export const playDialogueBlip = () => {
 };
 
 export const stopDialogueBlip = () => {
-  getDialogueAudio().pause();
+  dialogueAudio?.pause();
 };
 
 export const primeDialogueAudio = async () => {
+  // The experience CTA calls this synchronously from its user gesture.
+  audioGesturePrimed = true;
   const audio = getDialogueAudio();
   const volume = audio.volume;
   audio.volume = 0;
   audio.currentTime = 0;
-  await audio.play();
-  audio.pause();
-  audio.currentTime = 0;
-  audio.volume = volume;
+  try {
+    await audio.play();
+  } finally {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = volume;
+  }
 };
 
 export type MapAudioState = {
@@ -135,32 +143,40 @@ export type MapAudioState = {
 };
 
 export const createMapAudioController = () => {
-  const crowd = registerChannelAudio(new Audio("/audio/community-crowd-talking-1m20.m4a"), "effects");
-  crowd.loop = true;
-  crowd.volume = 0;
-  const mall = registerChannelAudio(new Audio(), "effects");
-  mall.loop = true;
-  mall.volume = 0;
-  const birds = registerChannelAudio(new Audio(), "effects");
-  birds.loop = true;
-  birds.volume = 0;
-  const ambience = registerChannelAudio(new Audio(), "effects");
-  ambience.loop = true;
-  ambience.volume = 0;
-  const zoom = registerChannelAudio(new Audio("/audio/gamestudio-world-cloud-zoom.mp3"), "effects");
-  zoom.preload = "auto";
-  zoom.volume = 0;
-  const backgroundTracks = [
-    "/audio/background-416-chiptune.mp3",
-    "/audio/background-platform-shoes.mp3",
-    "/audio/background-pixel-dreams.mp3",
-    "/audio/background-exploration-chiptune.mp3",
-  ].map((source) => {
-    const audio = registerChannelAudio(new Audio(source), "music");
-    audio.preload = "metadata";
+  const sources = new Map<HTMLAudioElement, string>();
+  const createAudio = (source: string, channel: SiteAudioChannel, loop = false) => {
+    // Even metadata preload can fetch an entire MP3. Leave sources unset until needed.
+    const audio = registerChannelAudio(new Audio(), channel);
+    audio.preload = "none";
+    audio.loop = loop;
     audio.volume = 0;
+    sources.set(audio, source);
     return audio;
-  });
+  };
+  const prepareAudio = (audio: HTMLAudioElement) => {
+    if (audio.getAttribute("src")) return;
+    audio.preload = "auto";
+    audio.src = sources.get(audio)!;
+    audio.load();
+  };
+  const releaseAudio = (audio: HTMLAudioElement) => {
+    stopAndReset(audio);
+    audio.preload = "none";
+    if (!audio.getAttribute("src")) return;
+    audio.removeAttribute("src");
+    audio.load();
+  };
+  const crowd = createAudio("/audio/community-crowd-talking-1m20.m4a", "effects", true);
+  const mall = createAudio("/audio/vons-shopping-mall-ambience.mp3", "effects", true);
+  const birds = createAudio("/audio/san-diego-suburban-birds.mp3", "effects", true);
+  const ambience = createAudio("/audio/far-away-city-traffic-ambience.m4a", "effects", true);
+  const zoom = createAudio("/audio/gamestudio-world-cloud-zoom.mp3", "effects");
+  const backgroundTracks = [
+    "/audio/background-416-chiptune.m4a",
+    "/audio/background-platform-shoes.m4a",
+    "/audio/background-pixel-dreams.m4a",
+    "/audio/background-exploration-chiptune.m4a",
+  ].map((source) => createAudio(source, "music"));
 
   const CROWD_VOLUME = 0.216;
   const CROWD_FADE_MS = 250;
@@ -171,6 +187,7 @@ export const createMapAudioController = () => {
   const ZOOM_FADE_MS = 200;
   const BACKGROUND_VOLUME = 0.06;
   const BACKGROUND_CROSSFADE_MS = 3000;
+  const BACKGROUND_PREPARE_SECONDS = 12;
   let crowdEnabled = false;
   let mallEnabled = false;
   let birdsEnabled = false;
@@ -182,35 +199,22 @@ export const createMapAudioController = () => {
   let backgroundIndex = 0;
   let backgroundGeneration = 0;
   let sanDiegoPrepared = false;
-  let manhattanPrepared = false;
   let disposed = false;
   const loopGenerations = new WeakMap<HTMLAudioElement, number>();
 
   const prepareSanDiego = () => {
-    if (disposed || sanDiegoPrepared) return;
+    if (disposed || sanDiegoPrepared || !hasAudioActivation()) return;
     sanDiegoPrepared = true;
-    for (const [audio, source] of [
-      [mall, "/audio/vons-shopping-mall-ambience.mp3"],
-      [birds, "/audio/san-diego-suburban-birds.mp3"],
-    ] as const) {
-      audio.preload = "auto";
-      audio.src = source;
-      audio.load();
-    }
-  };
-
-  const prepareManhattan = () => {
-    if (disposed || manhattanPrepared) return;
-    manhattanPrepared = true;
-    ambience.preload = "auto";
-    ambience.src = "/audio/far-away-city-traffic-ambience.wav";
-    ambience.load();
+    prepareAudio(mall);
+    prepareAudio(birds);
   };
 
   const setLoop = (audio: HTMLAudioElement, enabled: boolean, target: number, fadeMs: number) => {
     const generation = (loopGenerations.get(audio) ?? 0) + 1;
     loopGenerations.set(audio, generation);
     if (enabled) {
+      activeFades.get(audio)?.cancel();
+      prepareAudio(audio);
       if (audio.paused) {
         audio.volume = 0;
         void audio.play().then(() => {
@@ -224,20 +228,29 @@ export const createMapAudioController = () => {
     fadeAudioVolume(audio, 0, fadeMs, () => stopAndReset(audio));
   };
 
-  const playBackgroundTrack = (index: number) => {
-    if (channelMuted.music) return;
+  const playBackgroundTrack = (index: number, previousIndex?: number, resume = false) => {
+    if (disposed || !backgroundEnabled || channelMuted.music || !hasAudioActivation()) return;
     const audio = backgroundTracks[index];
     const generation = ++backgroundGeneration;
     backgroundIndex = index;
     backgroundStarted = true;
-    audio.currentTime = 0;
+    activeFades.get(audio)?.cancel();
+    prepareAudio(audio);
+    if (!resume) audio.currentTime = 0;
     audio.volume = 0;
     void audio.play().then(() => {
-      if (backgroundGeneration === generation && backgroundEnabled) {
+      if (!disposed && backgroundGeneration === generation && backgroundEnabled && !channelMuted.music) {
         fadeAudioVolume(audio, BACKGROUND_VOLUME, BACKGROUND_CROSSFADE_MS);
+        if (previousIndex !== undefined) {
+          const previous = backgroundTracks[previousIndex];
+          fadeAudioVolume(previous, 0, BACKGROUND_CROSSFADE_MS, () => releaseAudio(previous));
+        }
       }
     }).catch(() => {
-      if (backgroundGeneration === generation) backgroundStarted = false;
+      if (!disposed && backgroundGeneration === generation) {
+        backgroundIndex = previousIndex ?? index;
+        backgroundStarted = previousIndex !== undefined;
+      }
     });
   };
 
@@ -251,7 +264,8 @@ export const createMapAudioController = () => {
     backgroundGeneration += 1;
     backgroundStarted = false;
     for (const audio of backgroundTracks) {
-      fadeAudioVolume(audio, 0, BACKGROUND_CROSSFADE_MS, () => stopAndReset(audio));
+      if (channelMuted.music) releaseAudio(audio);
+      else fadeAudioVolume(audio, 0, BACKGROUND_CROSSFADE_MS, () => releaseAudio(audio));
     }
   };
 
@@ -263,21 +277,25 @@ export const createMapAudioController = () => {
     }
     const current = backgroundTracks[backgroundIndex];
     const duration = current.duration;
-    const shouldAdvance = current.ended
-      || (Number.isFinite(duration) && duration - current.currentTime <= BACKGROUND_CROSSFADE_MS / 1000);
-    if (!shouldAdvance) return;
-    const previous = current;
+    const remaining = duration - current.currentTime;
     const nextIndex = (backgroundIndex + 1) % backgroundTracks.length;
-    playBackgroundTrack(nextIndex);
-    fadeAudioVolume(previous, 0, BACKGROUND_CROSSFADE_MS, () => stopAndReset(previous));
+    if (Number.isFinite(duration) && remaining <= BACKGROUND_PREPARE_SECONDS) {
+      prepareAudio(backgroundTracks[nextIndex]);
+    }
+    const shouldAdvance = current.ended
+      || (Number.isFinite(duration) && remaining <= BACKGROUND_CROSSFADE_MS / 1000);
+    if (!shouldAdvance) return;
+    playBackgroundTrack(nextIndex, backgroundIndex);
   };
 
   const syncMusicMute = () => {
-    const generation = ++backgroundGeneration;
+    if (disposed) return;
+    backgroundGeneration += 1;
     if (channelMuted.music) {
       for (const audio of backgroundTracks) {
         activeFades.get(audio)?.cancel();
         audio.pause();
+        if (!backgroundEnabled) releaseAudio(audio);
       }
       return;
     }
@@ -286,44 +304,41 @@ export const createMapAudioController = () => {
       playBackgroundTrack(backgroundIndex);
       return;
     }
-    const audio = backgroundTracks[backgroundIndex];
-    audio.volume = 0;
-    void audio.play().then(() => {
-      if (backgroundGeneration === generation && backgroundEnabled && !channelMuted.music) {
-        fadeAudioVolume(audio, BACKGROUND_VOLUME, BACKGROUND_CROSSFADE_MS);
-      }
-    }).catch(() => {
-      if (backgroundGeneration === generation) backgroundStarted = false;
+    // Resume the selected track at its paused time, keeping only its prepared successor.
+    const nextIndex = (backgroundIndex + 1) % backgroundTracks.length;
+    backgroundTracks.forEach((audio, index) => {
+      if (index !== backgroundIndex && index !== nextIndex) releaseAudio(audio);
     });
+    playBackgroundTrack(backgroundIndex, undefined, true);
   };
   musicMuteListeners.add(syncMusicMute);
 
   const update = ({ view, selectedLandmark, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
     if (disposed) return;
-    if (isSanDiegoView(view)) prepareSanDiego();
-    if (view === "manhattan" || view === "washington" || view === "union") prepareManhattan();
-    setBackgroundEnabled(experienceStarted);
+    const playbackEnabled = experienceStarted && hasAudioActivation();
+    if (playbackEnabled && isSanDiegoView(view)) prepareSanDiego();
+    setBackgroundEnabled(playbackEnabled);
     updateBackgroundPlaylist();
-    const nextMallEnabled = isSanDiegoView(view) && selectedLandmark === "torrey-highlands-plaza"
+    const nextMallEnabled = playbackEnabled && isSanDiegoView(view) && selectedLandmark === "torrey-highlands-plaza"
       && cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextMallEnabled !== mallEnabled) {
       mallEnabled = nextMallEnabled;
       setLoop(mall, mallEnabled, CROWD_VOLUME, CROWD_FADE_MS);
     }
-    const nextCrowdEnabled = (view === "washington" || view === "union" || (isSanDiegoView(view) && selectedLandmark !== "torrey-highlands-plaza"))
+    const nextCrowdEnabled = playbackEnabled && (view === "washington" || view === "union" || (isSanDiegoView(view) && selectedLandmark !== "torrey-highlands-plaza"))
       && cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextCrowdEnabled !== crowdEnabled) {
       crowdEnabled = nextCrowdEnabled;
       setLoop(crowd, crowdEnabled, CROWD_VOLUME, CROWD_FADE_MS);
     }
 
-    const nextBirdsEnabled = isSanDiegoView(view) && !cameraLocked && !cameraTransitioning && !globeTransitioning;
+    const nextBirdsEnabled = playbackEnabled && isSanDiegoView(view) && !cameraLocked && !cameraTransitioning && !globeTransitioning;
     if (nextBirdsEnabled !== birdsEnabled) {
       birdsEnabled = nextBirdsEnabled;
       setLoop(birds, birdsEnabled, AMBIENCE_CLOSE_VOLUME, AMBIENCE_FADE_MS);
     }
 
-    const nextAmbienceTarget = globeTransitioning || view === "globe" || isSanDiegoView(view)
+    const nextAmbienceTarget = !playbackEnabled || globeTransitioning || view === "globe" || isSanDiegoView(view)
       ? 0
       : view === "manhattan" ? AMBIENCE_BASE_VOLUME : AMBIENCE_CLOSE_VOLUME;
     if (nextAmbienceTarget !== ambienceTarget) {
@@ -333,10 +348,11 @@ export const createMapAudioController = () => {
   };
 
   const playGlobeTransition = () => {
-    if (disposed) return;
+    if (disposed || !hasAudioActivation()) return;
     const generation = ++zoomGeneration;
     cancelAnimationFrame(zoomWatcher);
     stopAndReset(zoom);
+    prepareAudio(zoom);
     zoom.volume = 0;
     void zoom.play().then(() => {
       if (zoomGeneration === generation) fadeAudioVolume(zoom, ZOOM_VOLUME, ZOOM_FADE_MS);
@@ -363,11 +379,10 @@ export const createMapAudioController = () => {
     cancelAnimationFrame(zoomWatcher);
     for (const audio of [crowd, mall, birds, ambience, zoom, ...backgroundTracks]) {
       loopGenerations.set(audio, (loopGenerations.get(audio) ?? 0) + 1);
-      stopAndReset(audio);
-      audio.src = "";
+      releaseAudio(audio);
       channelAudio[backgroundTracks.includes(audio) ? "music" : "effects"].delete(audio);
     }
   };
 
-  return { dispose, playGlobeTransition, prepareSanDiego, prepareManhattan, update };
+  return { dispose, playGlobeTransition, prepareSanDiego, update };
 };

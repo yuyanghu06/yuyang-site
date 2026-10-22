@@ -1,5 +1,9 @@
 # React components
 
+Startup audio is demand-loaded by `site-audio.ts`: map audio elements begin without sources, playback requires a real activation gesture, city ambience starts only in the applicable view, and the playlist prepares only its current track and the upcoming crossfade. Compact AAC derivatives preserve the original recordings' timing and levels; source recordings remain available in `public/audio/`. The map shell's production entry gate follows the globe's first prepared render instead of a fixed five-second delay.
+
+During an active guided tour, `agent-chat.tsx` restores the city or neighborhood chooser when the map settles on the globe or Manhattan, including travel cancelled or failed before arrival. Pending travel invalidates the settled-view reporter synchronously, so even failure before the next animation frame restores the destination controls. Escape that cancels pending map navigation is consumed before the avatar shell's normal caption-dismissal handler; ordinary avatar Escape behavior is retained.
+
 The combined chat preserves main-dev globe controls and scripts, adopts the new regional route and uses a shared district/school phase predicate for Next/Back/Reply. Completion retains only New York and Globe. Site audio keeps main-dev birds, plaza mall and school crowd routing across the expanded district views.
 
 Dock placement note: `avatar-call.tsx` consumes the shared agent contracts and tracks the minimized avatar's horizontal and vertical snapped edges so its caption remains inward-facing and aligns with the avatar's bottom edge at either lower corner.
@@ -61,4 +65,4 @@ The shared guide offers New York and San Diego from the same tour flow. The broa
 
 San Diego-only birds and mall ambience remain source-free at global startup. The audio controller’s idempotent `prepareSanDiego()` assigns and preloads their sources when the lazy destination load begins, so 5,338,866 bytes of unused SD audio are deferred for New York/globe visits. Playback still waits for the existing settled-camera policy, and effects mute/fades/disposal remain shared.
 
-City audio preparation is symmetric: `prepareManhattan()` leaves the 18,857,098-byte New York traffic WAV source-free until NYC is requested; `prepareSanDiego()` similarly defers birds/mall for NYC-only visits. Shared crowd, playlist mute/pause/resume, fades and camera settlement retain their existing behavior.
+City audio begins source-free behind the activation and experience gates. New York traffic uses the 1,046,406-byte AAC derivative and starts only when its view needs audible ambience; no Manhattan WAV preload API remains. `prepareSanDiego()` defers birds/mall until an activated San Diego request. Shared crowd/zoom playback, active-only compact playlist preparation, music pause/resume, fades and camera settlement retain their existing policies.

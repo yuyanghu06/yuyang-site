@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import type { SanDiegoDistrictView } from "@/agent/context/camera-views";
-import { createSanDiegoPopulation, validateSanDiegoPopulation } from "./population";
+import type { createSanDiegoPopulation } from "./population";
+import { createSanDiegoLod } from "./scene-lod";
 import { prepareSanDiegoScene } from "./scene-resources";
 import { disposeSceneObjects } from "../runtime/dispose-runtime";
 
@@ -38,9 +39,11 @@ export interface SanDiegoAnnotation {
   view: SanDiegoDistrictView;
   position: [number, number, number];
 }
-interface ModelManifest {
+interface ModelReference {
   modelUrl: string;
   contentHash: string;
+}
+interface ModelManifest extends ModelReference {
   attribution: string;
   overview: SanDiegoCamera;
 }
@@ -55,9 +58,19 @@ interface RegionManifest extends ModelManifest {
   districts: SanDiegoDistrict[];
   annotations?: SanDiegoAnnotation[];
 }
-export interface SanDiegoScene {
+interface OverviewManifest extends ModelReference {
+  originalModel: ModelReference;
+  regionalModel: ModelReference;
+}
+export type SanDiegoDetail = {
+  kind: "original";
   group: THREE.Group;
   landmarks: { cameraViewId: SanDiegoLandmarkId; root: THREE.Mesh }[];
+  createPopulation: (isVisible: () => boolean, revealAt: () => number) => ReturnType<typeof createSanDiegoPopulation>;
+} | { kind: "region"; group: THREE.Group };
+export interface SanDiegoScene {
+  group: THREE.Group;
+  lod: ReturnType<typeof createSanDiegoLod<SanDiegoDetail>>;
   overview: SanDiegoCamera;
   bounds: SanDiegoBounds;
   coverageBounds: SanDiegoBounds;
@@ -65,21 +78,20 @@ export interface SanDiegoScene {
   districts: SanDiegoDistrict[];
   annotations: SanDiegoAnnotation[];
   attribution: string;
-  createPopulation: (isVisible: () => boolean, revealAt: () => number) => ReturnType<typeof createSanDiegoPopulation>;
 }
 
 function disposeGroup(group: THREE.Group) {
   disposeSceneObjects([group]);
 }
 
-async function loadManifest<T extends ModelManifest>(url: string, signal?: AbortSignal): Promise<T> {
+async function loadManifest<T extends ModelReference>(url: string, signal?: AbortSignal): Promise<T> {
   // Mutable manifests revalidate; only their content-addressed GLBs cache long-term.
   const response = await fetch(url, { signal, cache: "no-cache" });
   if (!response.ok) throw new Error(`San Diego manifest failed (${response.status})`);
   return response.json() as Promise<T>;
 }
 
-async function loadModel(manifest: ModelManifest, signal?: AbortSignal) {
+async function loadModel(manifest: ModelReference, signal?: AbortSignal) {
   const response = await fetch(`${manifest.modelUrl}?v=${manifest.contentHash.slice(0, 12)}`, { signal });
   if (!response.ok) throw new Error(`San Diego scene failed (${response.status})`);
   const data = await response.arrayBuffer();
@@ -93,81 +105,84 @@ async function loadModel(manifest: ModelManifest, signal?: AbortSignal) {
   return scene;
 }
 
-/** Load both local scales atomically; no live geographic service is contacted. */
+/** Overview is the only geometry decoded on city entry; district source GLBs remain untouched. */
 export async function loadSanDiegoScene({ signal }: { signal?: AbortSignal } = {}): Promise<SanDiegoScene> {
-  const [manifest, region] = await Promise.all([
+  const [manifest, region, overview] = await Promise.all([
     loadManifest<SanDiegoManifest>("/data/san-diego/manifest.json", signal),
     loadManifest<RegionManifest>("/data/san-diego/region-manifest.json", signal),
+    loadManifest<OverviewManifest>("/data/san-diego/overview-manifest.json", signal),
   ]);
-  const expectedDistricts = ["torrey-highlands", "torrey-pines", "park-village"];
-  validateSanDiegoPopulation(manifest.contentHash);
-  if (region.originalModel.contentHash !== manifest.contentHash || region.originalModel.modelUrl !== manifest.modelUrl) {
+  const matches = (a: ModelReference, b: ModelReference) => a.contentHash === b.contentHash && a.modelUrl === b.modelUrl;
+  if (!matches(region.originalModel, manifest)) {
     throw new Error("San Diego region is stale. Regenerate data:san-diego-region for the current Torrey Highlands model.");
   }
+  if (!matches(overview.originalModel, manifest) || !matches(overview.regionalModel, region)) {
+    throw new Error("San Diego overview is stale. Regenerate data:san-diego-overview for the current source models.");
+  }
+  const expectedDistricts = ["torrey-highlands", "torrey-pines", "park-village"];
   if (region.districts.length !== expectedDistricts.length
     || expectedDistricts.some((id) => !region.districts.some((district) => district.id === id))) {
     throw new Error("San Diego region requires all three districts");
   }
-  // allSettled lets us dispose any successful half when its partner fails or aborts.
-  const models = await Promise.allSettled([loadModel(manifest, signal), loadModel(region, signal)]);
+  const overviewGroup = await loadModel(overview, signal);
   const group = new THREE.Group();
   group.name = "San Diego · coast and canyon districts";
-  models.forEach((model, index) => {
-    if (model.status !== "fulfilled") return;
-    model.value.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-      object.castShadow = index === 0
-        ? object.name !== "terrain" // Preserve the original Torrey Highlands policy.
-        : REGIONAL_SHADOW_CASTERS.has(object.name);
-      object.receiveShadow = true;
-    });
-    group.add(model.value);
-  });
+  group.add(overviewGroup);
   try {
-    const failure = models.find((model) => model.status === "rejected");
-    if (failure?.status === "rejected") throw failure.reason;
     signal?.throwIfAborted();
-    const original = models[0];
-    if (original.status !== "fulfilled") throw new Error("Torrey Highlands did not load");
-    const landmarks = manifest.landmarks.map(({ cameraViewId, rootName }) => {
-      let root: THREE.Mesh | undefined;
-      group.traverse((object) => {
-        if (object instanceof THREE.Mesh && object.userData.cameraViewId === cameraViewId) root = object;
-      });
-      if (!root) throw new Error(`Missing merged San Diego landmark: ${rootName}`);
-      root.name = rootName;
-      root.matrixAutoUpdate = true;
-      return { cameraViewId, root };
-    });
-    const expectedLandmarks: SanDiegoLandmarkId[] = ["westview-high-school", "torrey-highlands-plaza", "mesa-verde-middle-school", "deer-canyon-elementary-school"];
-    if (landmarks.length !== 4 || new Set(landmarks.map(({ root }) => root)).size !== 4
-      || expectedLandmarks.some((id) => !landmarks.some(({ cameraViewId }) => cameraViewId === id))) {
-      throw new Error("San Diego scene requires all four unique landmark roots");
-    }
-    // Keep the main-dev model's roads, transforms, material policy and camera intact.
-    prepareSanDiegoScene(original.value, landmarks.map(({ root }) => root));
-    const regional = models[1];
-    if (regional.status === "fulfilled") prepareSanDiegoScene(regional.value, [], (mesh) => REGIONAL_SHADOW_CASTERS.has(mesh.name));
+    const overviewOriginal = overviewGroup.getObjectByName("overview-original");
+    const overviewRegion = overviewGroup.getObjectByName("overview-region");
+    if (!overviewOriginal || !overviewRegion) throw new Error("San Diego overview requires both independent source layers");
+    // Overview never casts shadows, even when retained as distant district surroundings.
+    prepareSanDiegoScene(overviewGroup, [], () => false);
     group.updateMatrix();
     group.matrixAutoUpdate = false;
+    const lod = createSanDiegoLod<SanDiegoDetail>({
+      group, overviewOriginal, overviewRegion,
+      load: async (kind, detailSignal) => {
+        if (kind === "region") {
+          const regional = await loadModel(region, detailSignal);
+          try {
+            prepareSanDiegoScene(regional, [], (mesh) => REGIONAL_SHADOW_CASTERS.has(mesh.name));
+            return { kind, group: regional };
+          } catch (error) { disposeGroup(regional); throw error; }
+        }
+        // Frozen spawn tables and shared instancing code are not needed by the overview.
+        const { createSanDiegoPopulation, validateSanDiegoPopulation } = await import("./population");
+        detailSignal.throwIfAborted();
+        validateSanDiegoPopulation(manifest.contentHash);
+        const original = await loadModel(manifest, detailSignal);
+        try {
+          const landmarks = manifest.landmarks.map(({ cameraViewId, rootName }) => {
+            let root: THREE.Mesh | undefined;
+            original.traverse((object) => {
+              if (object instanceof THREE.Mesh && object.userData.cameraViewId === cameraViewId) root = object;
+            });
+            if (!root) throw new Error(`Missing merged San Diego landmark: ${rootName}`);
+            root.name = rootName;
+            return { cameraViewId, root };
+          });
+          const expectedLandmarks: SanDiegoLandmarkId[] = ["westview-high-school", "torrey-highlands-plaza", "mesa-verde-middle-school", "deer-canyon-elementary-school"];
+          if (landmarks.length !== 4 || new Set(landmarks.map(({ root }) => root)).size !== 4
+            || expectedLandmarks.some((id) => !landmarks.some(({ cameraViewId }) => cameraViewId === id))) {
+            throw new Error("San Diego scene requires all four unique landmark roots");
+          }
+          prepareSanDiegoScene(original, landmarks.map(({ root }) => root));
+          return { kind, group: original, landmarks,
+            createPopulation: (isVisible, revealAt) => createSanDiegoPopulation(original, isVisible, revealAt) };
+        } catch (error) { disposeGroup(original); throw error; }
+      },
+    });
     return {
-      group,
-      landmarks,
+      group, lod,
       overview: region.overview,
       bounds: region.bounds,
-      // Older manifests used these same source limits as their overview bounds.
       coverageBounds: region.coverageBounds ?? region.bounds,
       transitionCoverageBounds: region.peripheralGeometryBounds ?? region.coverageBounds ?? region.bounds,
-      // The original overview is the authoritative Torrey Highlands camera.
       districts: region.districts.map((district) => district.id === "torrey-highlands"
-        ? { ...district, camera: manifest.overview }
-        : district),
+        ? { ...district, camera: manifest.overview } : district),
       annotations: region.annotations ?? [],
       attribution: region.attribution,
-      createPopulation: (isVisible, revealAt) => createSanDiegoPopulation(original.value, isVisible, revealAt),
     };
-  } catch (error) {
-    disposeGroup(group);
-    throw error;
-  }
+  } catch (error) { disposeGroup(group); throw error; }
 }

@@ -6,9 +6,15 @@ Use these records only when historical context is needed; do not load the entire
 
 ## Files
 
+- `2026-10-22_18-39-59-startup-production-release.md` records the reviewed startup release package, production merge preservation, passing isolated builds and independent checks, and the confirmed Vercel publication target.
+
+- `2026-10-21_21-27-57-startup-loading-optimization.md` records demand-loaded NYC layers, the compact reproducible overview and audio, smooth readiness-gated city arrival, cancellation/failure recovery, measured byte savings and final independent/production verification.
+
 - `2026-10-15_13-52-12-publish-main-attachments-integration.md` records the final passing main build, integrated scope, independent acceptance and authorized publication.
 
 - `2026-10-15_13-51-47-main-source-merge-review.md` records semantic main/dev source integration, preserved features and independent regression checks.
+
+- `2026-10-14_13-26-27-san-diego-overview-optimization.md` records selective San Diego LOD loading, measured overview geometry/download/buffer/GPU savings, source preservation, New York resource cleanup, verification and cache tradeoffs.
 
 - `2026-10-15_13-46-46-publish-dev-conversation-attachments.md` records the authorized dev package, isolated passing production build and main integration handoff.
 

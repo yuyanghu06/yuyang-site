@@ -226,8 +226,9 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
       const previousView = lastSettledViewRef.current;
       lastSettledViewRef.current = view;
       if (view !== "san-diego" && getSanDiegoStop(view)) sanDiegoVisitedStopsRef.current.add(view);
-      if (view === "globe" && guidedTourActiveRef.current
-        && (introPhaseRef.current === "globe_arrival" || getSanDiegoStop(previousView))) {
+      // A canceled city arrival can settle on the same globe without ever
+      // leaving it. Restore the chooser for that guided-tour path as well.
+      if (view === "globe" && guidedTourActiveRef.current) {
         backwardTourDestinationRef.current = null;
         return showDestinationChoice("globe");
       }
@@ -342,7 +343,10 @@ export default function AgentChat({ currentView, expanded, dockedCaptionVisible,
         });
         return;
       }
-      if (view !== "manhattan" || (introPhaseRef.current !== "touring" && introPhaseRef.current !== "globe_choice")) return;
+      // Failed neighborhood preparation can settle back on the still-visible
+      // overview while a guided arrival phase is waiting for its destination.
+      if (view !== "manhattan" || (!guidedTourActiveRef.current
+        && introPhaseRef.current !== "touring" && introPhaseRef.current !== "globe_choice")) return;
       showDestinationChoice("manhattan");
     };
     window.addEventListener(MAP_VIEW_SETTLED_EVENT, handleViewSettled);

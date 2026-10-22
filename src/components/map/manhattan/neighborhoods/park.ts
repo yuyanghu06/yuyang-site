@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import { loadGlb, replaceMeshMaterials } from "../../shared/gltf-loader";
+export { loadGlb, replaceMeshMaterials } from "../../shared/gltf-loader";
 import { AMBIENT_LAYOUT } from "../../../../generated/ambient-layout";
 import type {
   AmbientAnimation,
@@ -265,13 +265,6 @@ export function createSimpleArch(data: NonNullable<WashingtonParkData["arch"]>, 
   return arch;
 }
 
-export async function loadGlb(url: string, signal: AbortSignal) {
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`${url} failed (${response.status})`);
-  const buffer = await response.arrayBuffer();
-  return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, "");
-}
-
 export async function loadBlenderArch(
   data: NonNullable<WashingtonParkData["arch"]>,
   signal: AbortSignal,
@@ -284,9 +277,9 @@ export async function loadBlenderArch(
       roughness: 0.86,
       side: THREE.DoubleSide,
     });
+    replaceMeshMaterials(model, white);
     model.traverse((object) => {
       if (object instanceof THREE.Mesh) {
-        object.material = white;
         object.castShadow = true;
         object.receiveShadow = true;
       }
@@ -371,4 +364,3 @@ export function createCrosswalks(data: WashingtonParkData["crossings"], material
   crossings.renderOrder = 2;
   return crossings;
 }
-
