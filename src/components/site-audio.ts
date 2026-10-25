@@ -196,16 +196,8 @@ export const createMapAudioController = () => {
   let backgroundStarted = false;
   let backgroundIndex = 0;
   let backgroundGeneration = 0;
-  let sanDiegoPrepared = false;
   let disposed = false;
   const loopGenerations = new WeakMap<HTMLAudioElement, number>();
-
-  const prepareSanDiego = () => {
-    if (disposed || sanDiegoPrepared || !hasAudioActivation()) return;
-    sanDiegoPrepared = true;
-    prepareAudio(mall);
-    prepareAudio(birds);
-  };
 
   const setLoop = (audio: HTMLAudioElement, enabled: boolean, target: number, fadeMs: number) => {
     const generation = (loopGenerations.get(audio) ?? 0) + 1;
@@ -287,7 +279,6 @@ export const createMapAudioController = () => {
   const update = ({ view, selectedLandmark, experienceStarted, cameraLocked, cameraTransitioning, globeTransitioning }: MapAudioState) => {
     if (disposed) return;
     const playbackEnabled = experienceStarted && hasAudioActivation();
-    if (playbackEnabled && isSanDiegoView(view)) prepareSanDiego();
     setBackgroundEnabled(playbackEnabled);
     updateBackgroundPlaylist();
     const nextMallEnabled = playbackEnabled && isSanDiegoView(view) && selectedLandmark === "torrey-highlands-plaza"
@@ -354,5 +345,5 @@ export const createMapAudioController = () => {
     }
   };
 
-  return { dispose, playGlobeTransition, prepareSanDiego, update };
+  return { dispose, playGlobeTransition, update };
 };
