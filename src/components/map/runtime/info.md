@@ -1,5 +1,7 @@
 # Map runtime
 
+San Diego geometry preparation starts no ambience downloads. The runtime reports its current view and camera state to the shared audio controller: birds first load and play after an activated San Diego view has settled with an unlocked camera and no globe transition, while mall audio waits for a settled, locked Torrey Highlands Plaza visit. Failed or canceled entry keeps both recordings unloaded; revisits reuse sources already assigned by playback.
+
 This folder composes one persistent renderer, geographic navigation, camera framing, visibility lifecycle and resource cleanup across the globe and both cities. It has no direct subfolders.
 
 ## Direct files
@@ -13,7 +15,7 @@ This folder composes one persistent renderer, geographic navigation, camera fram
 - `viewport-lifecycle.ts` suspends and resumes animation for page visibility and viewport presence.
 - `info.md` documents this folder.
 
-San Diego prepares its deferred birds/mall ambience alongside destination intent. New York traffic receives its compact source only when an activated New York view needs playback; it has no separate geometry-time preload. Torrey Highlands Plaza uses mall ambience, schools use crowd audio, and unlocked San Diego district/overview views use birds; New York retains traffic and neighborhood crowd routing. Shared effects mute, music pause/resume, fades and disposal remain in the central audio controller.
+San Diego loads bird ambience after an unlocked view settles and mall ambience after the plaza camera settles. City preparation starts neither download. New York traffic receives its compact source only when an activated New York view needs playback; it has no separate geometry-time preload. Torrey Highlands Plaza uses mall ambience, schools use crowd audio, and unlocked San Diego district/overview views use birds; New York retains traffic and neighborhood crowd routing. Shared effects mute, music pause/resume, fades and disposal remain in the central audio controller.
 
 Touch/coarse city views with viewport short-edge at most 1024 use native-bounded DPR 1–1.5, a 60 FPS interaction ceiling and the established 30 FPS settled cadence. San Diego shadows use 1024 on that profile and 2048 on desktop; New York retains 1024. City/viewport/pointer changes refresh quality without restarting camera fitting, and shadow resizing releases both old render targets. Torrey Highlands keeps its original fixed lighting, zero normal bias and four merged landmark cameras; larger district light framing invalidates its independent shadow cache, while the broad regional overview omits shadows.
 

@@ -1,8 +1,8 @@
 {
   "version": 1,
   "modelUrl": "/models/san-diego/overview.glb",
-  "contentHash": "3035dfb67a16bcaebbcbfbf27fcdfe8e7589fa2174080d14f399a3732aa39db5",
-  "byteLength": 13689492,
+  "contentHash": "87a734912d908a51de33e35d9d9b48bebd70038939fecabc0691d0bf5f624862",
+  "byteLength": 13005996,
   "originalModel": {
     "modelUrl": "/models/san-diego/torrey-highlands.glb",
     "contentHash": "eca6e8141563ba184bd4f45c5e5712a1ac0af367f181eb2774cf6ead134e295d"
@@ -19,16 +19,58 @@
   "generation": {
     "command": "npm run data:san-diego-overview",
     "source": "The exact full-detail GLBs referenced above; no map download or source regeneration.",
-    "algorithm": "Drop normals, weld matching position/color vertices, retain all tree triangles and upward-facing building roof/campus triangles, simplify other layers with topology/color-seam-aware meshoptimizer edge collapses, compact every vertex/index buffer, deduplicate and meshopt-compress lossless Float32 positions.",
+    "algorithm": "Recreate the approved overview from full source GLBs with its existing normal removal, welding, tree preservation, roof selection, surface simplification and final cache/fetch reorder. Then apply the documented upward-only height precision to two surface layers and Meshopt-compress, with no further geometry processing.",
     "surfaceProtection": "Ocean retained exactly. Landscape, beach and creek topological borders are locked. All surface vertices within 1 m of the original-patch perimeter are locked. Other surface errors use conservative absolute meter limits; unchanged source vertex colors and source node transforms are retained.",
+    "heightStorage": {
+      "targets": [
+        "Regional roads",
+        "Mapped landcover"
+      ],
+      "gridDenominator": 1024,
+      "maximumUpwardMeters": 0.0009765625,
+      "baseline": "Recreate the approved overview from the exact full source GLBs using its existing policies and final cache/fetch reorder. Never read a previously generated overview as input.",
+      "method": "After the baseline is decoded, round only unlocked Y values upward to the next binary 1/1024-meter step. X/Z, indices, triangle order, color bytes, materials and transforms stay bit-exact. No subsequent geometry transformation occurs.",
+      "protection": "Freeze every vertex of a face with any vertex inside or within 260 m of the original-patch rectangle, and every face with exactly zero projected XZ area. Freeze minimum/maximum Y vertices and any vertex whose rounded Y would exceed the old maximum, preserving height bounds.",
+      "guarantee": "With unchanged projected triangles and nonnegative per-vertex height changes, every covered point stays at the same or greater height by at most 1/1024 m; no new burial or footprint gap is introduced. Vertical faces are frozen, so valid faces cannot collapse. Existing nearly coplanar color depth ties can shift below one millimeter.",
+      "validation": "Before writing and after decoding, compare every mesh's fixed topology, draw order, colors, materials and transforms; all 16 non-target position arrays must match exactly. Check target X/Z bits, upward-only height bound, locked coordinates and height extrema. All tree checks remain mandatory.",
+      "layers": [
+        {
+          "name": "Mapped landcover",
+          "vertices": 273605,
+          "changedVertices": 262667,
+          "lockedVertices": 9939,
+          "seamTriangles": 1933,
+          "verticalTriangles": 4756,
+          "extremaVertices": 458,
+          "minY": -1.7000000476837158,
+          "maxY": 174.3651123046875,
+          "maxUpwardMeters": 0.0009760856628417969,
+          "maxXZMovementMeters": 0
+        },
+        {
+          "name": "Regional roads",
+          "vertices": 623131,
+          "changedVertices": 612348,
+          "lockedVertices": 8071,
+          "seamTriangles": 6678,
+          "verticalTriangles": 145,
+          "extremaVertices": 9,
+          "minY": 0.20000000298023224,
+          "maxY": 175.36663818359375,
+          "maxUpwardMeters": 0.0009756088256835938,
+          "maxXZMovementMeters": 0
+        }
+      ]
+    },
     "treeProtection": "All 2605 original and 2155 regional trees retain every triangle, trunk/crown component, Float32 position, color byte and node transform. Normal buffers are omitted and equal position/color vertices may share storage; no tree simplification or deletion occurs. Source and decoded overview triangle hashes and component counts must match.",
     "shading": "Normals are derived per face by GLTFLoader/Three.js flat shading; no normal buffers or textures are downloaded or uploaded.",
     "memoryMetric": "decodedBufferBytes sums decoded glTF buffer-view capacities, including padded attribute strides, matching Three.js geometry upload buffers. accessorPayloadBytes excludes stride padding. Neither metric includes GPU driver overhead, render targets, JavaScript objects, or temporary decompression allocations.",
-    "limitations": "Overview only: building facades/undersides and tiny architectural details are omitted. All tree geometry is retained. Surface error meters are meshoptimizer's positional metric, not a proven maximum surface distance. Districts and landmarks must use full-detail source assets.",
+    "limitations": "The approved overview's building facade/underside omissions are unchanged. The new storage pass removes no geometry: triangle count, draw count and decoded geometry memory stay unchanged. Two surface layers move only upward by less than 0.977 mm, which can alter existing submillimeter color depth ties. All tree geometry remains exact. Legacy simplifier error meters are a positional metric, not a proven maximum surface distance; districts/landmarks retain full-detail source assets.",
+    "gzipMetric": "gzipByteLength uses Node.js gzipSync defaults on the generated GLB, measuring compressed asset bytes rather than device time or whole-page transfer. HTTP compression may differ.",
     "deterministic": "No timestamps or random sampling. Run with the checked-in package lock and current source hashes.",
     "compression": {
       "extension": "EXT_meshopt_compression",
-      "positions": "lossless Float32",
+      "positions": "Float32; two surface layers have upward-only submillimeter Y precision, all X/Z and other layers exact",
       "colors": "source 8-bit",
       "normals": "omitted; shader-derived flat normals"
     }
@@ -42,19 +84,34 @@
       "decodedBufferBytes": 125741556,
       "byteLength": 39166988
     },
+    "baseline": {
+      "triangles": 1573412,
+      "vertices": 1558609,
+      "primitives": 18,
+      "accessorPayloadBytes": 40087173,
+      "decodedBufferBytes": 41645782,
+      "byteLength": 13689492,
+      "gzipByteLength": 10987595,
+      "contentHash": "3035dfb67a16bcaebbcbfbf27fcdfe8e7589fa2174080d14f399a3732aa39db5"
+    },
     "after": {
       "triangles": 1573412,
       "vertices": 1558609,
       "primitives": 18,
       "accessorPayloadBytes": 40087173,
       "decodedBufferBytes": 41645782,
-      "byteLength": 13689492
+      "byteLength": 13005996,
+      "gzipByteLength": 10184310
     },
     "reduction": {
       "triangles": 0.5021125405673608,
       "vertices": 0.6332935791925776,
       "decodedBufferBytes": 0.6687985792063842,
-      "byteLength": 0.6504839228382842
+      "byteLength": 0.667934741369441
+    },
+    "versusBaseline": {
+      "byteLength": 0.04992851451317548,
+      "gzipByteLength": 0.07310835537713212
     },
     "layers": [
       {

@@ -722,7 +722,6 @@ export default function GlobalMap({ experienceStarted, onReady }: { experienceSt
       if (sanDiegoLoading) return sanDiegoLoading;
       let loadedScene: SanDiegoScene | null = null;
       const previousSkyRoots = new Set(sanDiegoSkyScene.children);
-      mapAudio.prepareSanDiego();
       setStatus("");
       sanDiegoLoading = import("../san-diego/load-scene")
         .then(({ loadSanDiegoScene }) => disposed ? null : loadSanDiegoScene({ signal: sanDiegoAbortController.signal }))
